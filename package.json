@@ -1,0 +1,17 @@
+{
+  "name": "hardware-server",
+  "version": "0.1.0",
+  "description": "Electric Bird hardware cloud server for gateway registry, telemetry, and remote config.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  }
+}
