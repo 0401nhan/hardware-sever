@@ -6,8 +6,9 @@ import { createRequire } from "node:module";
 import initSqlJs from "sql.js";
 
 const require = createRequire(import.meta.url);
+const DEFAULT_GATEWAY_OFFLINE_AFTER_MS = 90_000;
 
-export async function openDatabase(dbPath, tokenHashSecret) {
+export async function openDatabase(dbPath, tokenHashSecret, options = {}) {
   fs.mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true });
   const db = await openSqliteDatabase(dbPath);
 
@@ -109,13 +110,18 @@ export async function openDatabase(dbPath, tokenHashSecret) {
       ON template_registers(template_id, register_index);
   `);
 
-  return new HardwareStore(db, tokenHashSecret);
+  return new HardwareStore(db, tokenHashSecret, options);
 }
 
 export class HardwareStore {
-  constructor(db, tokenHashSecret) {
+  constructor(db, tokenHashSecret, {
+    offlineAfterMs = DEFAULT_GATEWAY_OFFLINE_AFTER_MS,
+    now = () => Date.now(),
+  } = {}) {
     this.db = db;
     this.tokenHashSecret = tokenHashSecret;
+    this.offlineAfterMs = offlineAfterMs;
+    this.now = now;
   }
 
   listGateways() {
@@ -129,12 +135,12 @@ export class HardwareStore {
         ) AS latest_config_version
       FROM gateways g
       ORDER BY COALESCE(g.last_seen_at, g.created_at) DESC, g.id ASC
-    `).all().map(mapGatewayRow);
+    `).all().map((row) => mapGatewayRow(row, this.offlineAfterMs, this.now));
   }
 
   getGateway(id) {
     const row = this.db.prepare("SELECT * FROM gateways WHERE id = ?").get(id);
-    return row ? mapGatewayRow(row) : null;
+    return row ? mapGatewayRow(row, this.offlineAfterMs, this.now) : null;
   }
 
   upsertGateway({ id, name = "", site = "", token = "" }) {
@@ -454,13 +460,13 @@ function sortKeys(value) {
   }, {});
 }
 
-function mapGatewayRow(row) {
+function mapGatewayRow(row, offlineAfterMs = DEFAULT_GATEWAY_OFFLINE_AFTER_MS, now = () => Date.now()) {
   return {
     id: row.id,
     name: row.name,
     site: row.site,
     tokenHash: row.token_hash,
-    status: row.status,
+    status: gatewayStatus(row, offlineAfterMs, now),
     lastSeenAt: row.last_seen_at,
     appVersion: row.app_version,
     desiredConfigVersion: row.desired_config_version,
@@ -471,6 +477,16 @@ function mapGatewayRow(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function gatewayStatus(row, offlineAfterMs, now) {
+  if (row.status !== "online") return row.status;
+  if (!row.last_seen_at) return "offline";
+
+  const lastSeenAt = Date.parse(row.last_seen_at);
+  if (!Number.isFinite(lastSeenAt)) return "offline";
+
+  return now() - lastSeenAt > offlineAfterMs ? "offline" : "online";
 }
 
 function mapConfigRow(row) {

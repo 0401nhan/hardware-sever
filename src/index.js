@@ -20,6 +20,7 @@ const config = {
   tokenHashSecret: process.env.TOKEN_HASH_SECRET || process.env.ADMIN_PASSWORD || "development-token-secret",
   provisioningToken: process.env.PROVISIONING_TOKEN || "replace-me",
   autoRegisterGateways: String(process.env.AUTO_REGISTER_GATEWAYS || "true").toLowerCase() === "true",
+  gatewayOfflineAfterMs: positiveIntegerEnv("GATEWAY_OFFLINE_AFTER_MS", 90_000),
 };
 
 let store;
@@ -32,7 +33,9 @@ main().catch((error) => {
 });
 
 async function main() {
-store = await openDatabase(config.dbPath, config.tokenHashSecret);
+store = await openDatabase(config.dbPath, config.tokenHashSecret, {
+  offlineAfterMs: config.gatewayOfflineAfterMs,
+});
 templateSeed = readDeviceTemplateSeed(config.deviceTemplatesPath);
 store.seedDeviceTemplates(templateSeed.templates);
 
@@ -498,4 +501,9 @@ function safeEqual(input, expected) {
   const expectedHash = crypto.createHash("sha256").update(String(expected ?? "")).digest();
 
   return crypto.timingSafeEqual(inputHash, expectedHash);
+}
+
+function positiveIntegerEnv(name, fallback) {
+  const value = Number.parseInt(process.env[name] || "", 10);
+  return Number.isInteger(value) && value > 0 ? value : fallback;
 }

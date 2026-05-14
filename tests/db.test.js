@@ -117,3 +117,36 @@ test("allows the same telemetry record id on different gateways", async () => {
     store.close();
   }
 });
+
+test("reports an online gateway as offline after heartbeat timeout", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hardware-server-gateway-offline-"));
+  const now = new Date("2026-05-14T10:00:00.000Z").getTime();
+  const store = await openDatabase(path.join(dir, "hardware-server.sqlite"), "test-secret", {
+    offlineAfterMs: 90_000,
+    now: () => now,
+  });
+
+  try {
+    store.upsertGateway({ id: "GW-OFFLINE", token: "token" });
+    store.db.prepare(`
+      UPDATE gateways
+      SET status = 'online',
+          last_seen_at = ?
+      WHERE id = ?
+    `).run("2026-05-14T09:59:00.000Z", "GW-OFFLINE");
+
+    assert.equal(store.getGateway("GW-OFFLINE").status, "online");
+
+    store.db.prepare(`
+      UPDATE gateways
+      SET status = 'online',
+          last_seen_at = ?
+      WHERE id = ?
+    `).run("2026-05-14T09:58:29.000Z", "GW-OFFLINE");
+
+    assert.equal(store.getGateway("GW-OFFLINE").status, "offline");
+    assert.equal(store.listGateways()[0].status, "offline");
+  } finally {
+    store.close();
+  }
+});
