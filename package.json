@@ -3,15 +3,16 @@
   "version": "0.1.0",
   "description": "Electric Bird hardware cloud server for gateway registry, telemetry, and remote config.",
   "type": "module",
-  "main": "src/index.js",
+  "main": "app.js",
   "scripts": {
-    "start": "node src/index.js",
+    "start": "node app.js",
     "test": "node --test"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=20"
   },
   "dependencies": {
+    "better-sqlite3": "^12.10.0",
     "dotenv": "^16.4.7",
     "yaml": "^2.9.0"
   }

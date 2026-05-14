@@ -4,7 +4,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const { DatabaseSync } = require("node:sqlite");
+const DatabaseSync = loadDatabaseSync();
 
 export function openDatabase(dbPath, tokenHashSecret) {
   fs.mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true });
@@ -592,4 +592,18 @@ function slug(value) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
+}
+
+function loadDatabaseSync() {
+  if (process.env.SQLITE_DRIVER !== "better-sqlite3") {
+    try {
+      return require("node:sqlite").DatabaseSync;
+    } catch (error) {
+      if (!["ERR_UNKNOWN_BUILTIN_MODULE", "MODULE_NOT_FOUND"].includes(error?.code)) {
+        throw error;
+      }
+    }
+  }
+
+  return require("better-sqlite3");
 }
