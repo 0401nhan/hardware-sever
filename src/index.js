@@ -22,7 +22,7 @@ const config = {
   autoRegisterGateways: String(process.env.AUTO_REGISTER_GATEWAYS || "true").toLowerCase() === "true",
 };
 
-const store = openDatabase(config.dbPath, config.tokenHashSecret);
+const store = await openDatabase(config.dbPath, config.tokenHashSecret);
 const templateSeed = readDeviceTemplateSeed(config.deviceTemplatesPath);
 store.seedDeviceTemplates(templateSeed.templates);
 

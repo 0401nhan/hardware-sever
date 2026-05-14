@@ -12,8 +12,8 @@
     "node": ">=20"
   },
   "dependencies": {
-    "better-sqlite3": "^12.10.0",
     "dotenv": "^16.4.7",
+    "sql.js": "^1.14.1",
     "yaml": "^2.9.0"
   }
 }

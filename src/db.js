@@ -3,12 +3,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 
-const require = createRequire(import.meta.url);
-const DatabaseSync = loadDatabaseSync();
+import initSqlJs from "sql.js";
 
-export function openDatabase(dbPath, tokenHashSecret) {
+const require = createRequire(import.meta.url);
+
+export async function openDatabase(dbPath, tokenHashSecret) {
   fs.mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true });
-  const db = new DatabaseSync(dbPath);
+  const db = await openSqliteDatabase(dbPath);
 
   db.exec(`
     PRAGMA journal_mode = WAL;
@@ -594,10 +595,11 @@ function slug(value) {
     .replace(/^_+|_+$/g, "");
 }
 
-function loadDatabaseSync() {
-  if (process.env.SQLITE_DRIVER !== "better-sqlite3") {
+async function openSqliteDatabase(dbPath) {
+  if (process.env.SQLITE_DRIVER !== "sqljs") {
     try {
-      return require("node:sqlite").DatabaseSync;
+      const { DatabaseSync } = require("node:sqlite");
+      return new DatabaseSync(dbPath);
     } catch (error) {
       if (!["ERR_UNKNOWN_BUILTIN_MODULE", "MODULE_NOT_FOUND"].includes(error?.code)) {
         throw error;
@@ -605,5 +607,175 @@ function loadDatabaseSync() {
     }
   }
 
-  return require("better-sqlite3");
+  const wasmPath = require.resolve("sql.js/dist/sql-wasm.wasm");
+  const SQL = await initSqlJs({
+    locateFile: () => wasmPath,
+  });
+  const existingDatabase = fs.existsSync(dbPath) && fs.statSync(dbPath).size > 0
+    ? fs.readFileSync(dbPath)
+    : null;
+
+  return new SqlJsDatabase(SQL, dbPath, existingDatabase);
+}
+
+class SqlJsDatabase {
+  constructor(SQL, dbPath, existingDatabase) {
+    this.dbPath = dbPath;
+    this.db = existingDatabase
+      ? new SQL.Database(new Uint8Array(existingDatabase))
+      : new SQL.Database();
+    this.transactionDepth = 0;
+    this.closed = false;
+  }
+
+  exec(sql) {
+    const result = this.db.exec(sql);
+    this.#afterSql(sql);
+    return result;
+  }
+
+  prepare(sql) {
+    return new SqlJsStatement(this, sql);
+  }
+
+  close() {
+    if (this.closed) return;
+    this.#save();
+    this.db.close();
+    this.closed = true;
+  }
+
+  runPrepared(sql, params) {
+    const statement = this.db.prepare(sql);
+
+    try {
+      statement.run(normalizeSqlParams(params));
+      const result = this.#lastWriteResult();
+      this.#afterSql(sql);
+      return result;
+    } finally {
+      statement.free();
+    }
+  }
+
+  getPrepared(sql, params) {
+    const statement = this.db.prepare(sql);
+
+    try {
+      statement.bind(normalizeSqlParams(params));
+      return statement.step() ? statement.getAsObject() : undefined;
+    } finally {
+      statement.free();
+    }
+  }
+
+  allPrepared(sql, params) {
+    const statement = this.db.prepare(sql);
+    const rows = [];
+
+    try {
+      statement.bind(normalizeSqlParams(params));
+      while (statement.step()) {
+        rows.push(statement.getAsObject());
+      }
+      return rows;
+    } finally {
+      statement.free();
+    }
+  }
+
+  #afterSql(sql) {
+    const operation = firstSqlOperation(sql);
+
+    if (operation === "BEGIN") {
+      this.transactionDepth += 1;
+      return;
+    }
+
+    if (operation === "COMMIT") {
+      this.transactionDepth = Math.max(0, this.transactionDepth - 1);
+      this.#save();
+      return;
+    }
+
+    if (operation === "ROLLBACK") {
+      this.transactionDepth = Math.max(0, this.transactionDepth - 1);
+      return;
+    }
+
+    if (this.transactionDepth === 0 && isWriteSql(operation)) {
+      this.#save();
+    }
+  }
+
+  #lastWriteResult() {
+    const result = this.db.exec("SELECT changes() AS changes, last_insert_rowid() AS lastInsertRowid");
+    const [changes = 0, lastInsertRowid = 0] = result[0]?.values?.[0] || [];
+
+    return {
+      changes,
+      lastInsertRowid,
+    };
+  }
+
+  #save() {
+    fs.mkdirSync(path.dirname(path.resolve(this.dbPath)), { recursive: true });
+    const tmpPath = `${this.dbPath}.tmp`;
+
+    fs.writeFileSync(tmpPath, Buffer.from(this.db.export()));
+    fs.renameSync(tmpPath, this.dbPath);
+  }
+}
+
+class SqlJsStatement {
+  constructor(database, sql) {
+    this.database = database;
+    this.sql = sql;
+  }
+
+  run(...params) {
+    return this.database.runPrepared(this.sql, params);
+  }
+
+  get(...params) {
+    return this.database.getPrepared(this.sql, params);
+  }
+
+  all(...params) {
+    return this.database.allPrepared(this.sql, params);
+  }
+}
+
+function normalizeSqlParams(params) {
+  if (params.length === 1 && Array.isArray(params[0])) {
+    return params[0].map(normalizeSqlParam);
+  }
+
+  return params.map(normalizeSqlParam);
+}
+
+function normalizeSqlParam(value) {
+  return value === undefined ? null : value;
+}
+
+function firstSqlOperation(sql) {
+  return String(sql)
+    .trim()
+    .replace(/^;+/, "")
+    .split(/\s+/, 1)[0]
+    .toUpperCase();
+}
+
+function isWriteSql(operation) {
+  return [
+    "CREATE",
+    "DELETE",
+    "DROP",
+    "INSERT",
+    "PRAGMA",
+    "REINDEX",
+    "REPLACE",
+    "UPDATE",
+    "VACUUM",
+  ].includes(operation);
 }

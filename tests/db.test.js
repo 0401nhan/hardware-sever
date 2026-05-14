@@ -6,9 +6,9 @@ import path from "node:path";
 
 import { openDatabase } from "../src/db.js";
 
-test("persists device templates in server sqlite", () => {
+test("persists device templates in server sqlite", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hardware-server-db-"));
-  const store = openDatabase(path.join(dir, "hardware-server.sqlite"), "test-secret");
+  const store = await openDatabase(path.join(dir, "hardware-server.sqlite"), "test-secret");
 
   try {
     const saved = store.saveDeviceTemplates([
@@ -47,9 +47,9 @@ test("persists device templates in server sqlite", () => {
   }
 });
 
-test("rejects duplicate server device template ids", () => {
+test("rejects duplicate server device template ids", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hardware-server-db-duplicate-"));
-  const store = openDatabase(path.join(dir, "hardware-server.sqlite"), "test-secret");
+  const store = await openDatabase(path.join(dir, "hardware-server.sqlite"), "test-secret");
 
   try {
     assert.throws(
@@ -64,9 +64,9 @@ test("rejects duplicate server device template ids", () => {
   }
 });
 
-test("ignores duplicate telemetry record ids for the same gateway", () => {
+test("ignores duplicate telemetry record ids for the same gateway", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hardware-server-telemetry-dedupe-"));
-  const store = openDatabase(path.join(dir, "hardware-server.sqlite"), "test-secret");
+  const store = await openDatabase(path.join(dir, "hardware-server.sqlite"), "test-secret");
 
   try {
     store.upsertGateway({
@@ -101,9 +101,9 @@ test("ignores duplicate telemetry record ids for the same gateway", () => {
   }
 });
 
-test("allows the same telemetry record id on different gateways", () => {
+test("allows the same telemetry record id on different gateways", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hardware-server-telemetry-gateway-scope-"));
-  const store = openDatabase(path.join(dir, "hardware-server.sqlite"), "test-secret");
+  const store = await openDatabase(path.join(dir, "hardware-server.sqlite"), "test-secret");
 
   try {
     store.upsertGateway({ id: "GW-1", token: "token-1" });

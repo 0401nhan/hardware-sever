@@ -9,9 +9,10 @@ RUN mkdir -p /data \
 COPY package*.json ./
 RUN npm ci --omit=dev
 
+COPY app.js ./app.js
 COPY config ./config
 COPY src ./src
 
 USER node
 
-CMD ["node", "src/index.js"]
+CMD ["node", "app.js"]
