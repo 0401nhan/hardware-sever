@@ -11,7 +11,7 @@ import { renderDashboardPage, renderLoginPage } from "./ui.js";
 const config = {
   host: process.env.HOST || "0.0.0.0",
   port: Number.parseInt(process.env.PORT || "8080", 10),
-  publicUrl: process.env.PUBLIC_URL || "https://server.eletricbird.vn",
+  publicUrl: process.env.PUBLIC_URL || "https://server.electricbird.vn",
   dbPath: process.env.DB_PATH || "data/hardware-server.sqlite",
   deviceTemplatesPath: process.env.DEVICE_TEMPLATES_PATH || "config/device-templates.yml",
   adminUsername: process.env.ADMIN_USERNAME || "admin",

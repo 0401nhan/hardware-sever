@@ -63,14 +63,14 @@ After the first connection, the dashboard will show the auto-created gateway. Fo
 The intended public URL is:
 
 ```text
-https://server.eletricbird.vn
+https://server.electricbird.vn
 ```
 
 Gateway config should point to:
 
 ```text
-server.url: https://server.eletricbird.vn/api/telemetry
-remoteConfig.url: https://server.eletricbird.vn/api/gateway
+server.url: https://server.electricbird.vn/api/telemetry
+remoteConfig.url: https://server.electricbird.vn/api/gateway
 ```
 
 ## Gateway API
@@ -117,7 +117,7 @@ docker compose logs -f hardware-server
 The container listens on port `8080`. Put Nginx/Caddy in front of it for TLS:
 
 ```text
-https://server.eletricbird.vn -> http://127.0.0.1:8080
+https://server.electricbird.vn -> http://127.0.0.1:8080
 ```
 
 ## Data
