@@ -22,11 +22,21 @@ const config = {
   autoRegisterGateways: String(process.env.AUTO_REGISTER_GATEWAYS || "true").toLowerCase() === "true",
 };
 
-const store = await openDatabase(config.dbPath, config.tokenHashSecret);
-const templateSeed = readDeviceTemplateSeed(config.deviceTemplatesPath);
+let store;
+let templateSeed;
+let server;
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
+
+async function main() {
+store = await openDatabase(config.dbPath, config.tokenHashSecret);
+templateSeed = readDeviceTemplateSeed(config.deviceTemplatesPath);
 store.seedDeviceTemplates(templateSeed.templates);
 
-const server = http.createServer(async (req, res) => {
+server = http.createServer(async (req, res) => {
   try {
     const pathname = requestPath(req);
 
@@ -315,6 +325,7 @@ const server = http.createServer(async (req, res) => {
 server.listen(config.port, config.host, () => {
   console.log(`Hardware server listening on http://${config.host}:${config.port}`);
 });
+}
 
 function authenticateGateway(req, gatewayId) {
   if (!gatewayId) throw httpError(400, "gateway_id is required");
