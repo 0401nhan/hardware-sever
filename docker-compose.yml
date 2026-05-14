@@ -13,11 +13,13 @@ services:
       PORT: 8080
       PUBLIC_URL: https://server.eletricbird.vn
       DB_PATH: /data/hardware-server.sqlite
+      DEVICE_TEMPLATES_PATH: /app/config/device-templates.yml
       ADMIN_USERNAME: admin
       ADMIN_PASSWORD: change-me
       SESSION_SECRET: change-me-session-secret
       TOKEN_HASH_SECRET: change-me-token-secret
-      AUTO_REGISTER_GATEWAYS: "false"
+      PROVISIONING_TOKEN: change-me-provisioning-token
+      AUTO_REGISTER_GATEWAYS: "true"
     logging:
       driver: json-file
       options:

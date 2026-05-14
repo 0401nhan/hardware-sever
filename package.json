@@ -12,6 +12,7 @@
     "node": ">=22"
   },
   "dependencies": {
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "yaml": "^2.9.0"
   }
 }

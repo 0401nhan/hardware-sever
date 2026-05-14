@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import http from "node:http";
 
 import { openDatabase } from "./db.js";
+import { readDeviceTemplateSeed } from "./deviceTemplates.js";
 import { createDefaultGatewayConfig, validateGatewayConfig } from "./validation.js";
 import { renderDashboardPage, renderLoginPage } from "./ui.js";
 
@@ -12,14 +13,18 @@ const config = {
   port: Number.parseInt(process.env.PORT || "8080", 10),
   publicUrl: process.env.PUBLIC_URL || "https://server.eletricbird.vn",
   dbPath: process.env.DB_PATH || "data/hardware-server.sqlite",
+  deviceTemplatesPath: process.env.DEVICE_TEMPLATES_PATH || "config/device-templates.yml",
   adminUsername: process.env.ADMIN_USERNAME || "admin",
   adminPassword: process.env.ADMIN_PASSWORD || "admin",
   sessionSecret: process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD || "development-session-secret",
   tokenHashSecret: process.env.TOKEN_HASH_SECRET || process.env.ADMIN_PASSWORD || "development-token-secret",
-  autoRegisterGateways: String(process.env.AUTO_REGISTER_GATEWAYS || "false").toLowerCase() === "true",
+  provisioningToken: process.env.PROVISIONING_TOKEN || "replace-me",
+  autoRegisterGateways: String(process.env.AUTO_REGISTER_GATEWAYS || "true").toLowerCase() === "true",
 };
 
 const store = openDatabase(config.dbPath, config.tokenHashSecret);
+const templateSeed = readDeviceTemplateSeed(config.deviceTemplatesPath);
+store.seedDeviceTemplates(templateSeed.templates);
 
 const server = http.createServer(async (req, res) => {
   try {
@@ -118,6 +123,18 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
+    if (req.method === "POST" && pathname === "/api/gateway/device-templates") {
+      const body = await readJsonBody(req);
+      authenticateGateway(req, body.gateway_id);
+      const templates = store.listDeviceTemplates();
+
+      return sendJson(res, 200, {
+        ok: true,
+        templates,
+        count: templates.length,
+      });
+    }
+
     if (req.method === "POST" && pathname === "/api/telemetry") {
       const body = await readJsonBody(req);
       authenticateGateway(req, body.gateway_id);
@@ -129,11 +146,13 @@ const server = http.createServer(async (req, res) => {
         });
       }
 
-      store.insertTelemetry(body.gateway_id, body.records);
+      const telemetryResult = store.insertTelemetry(body.gateway_id, body.records);
 
       return sendJson(res, 200, {
         ok: true,
         accepted: body.records.length,
+        inserted: telemetryResult.inserted,
+        ignored: telemetryResult.ignored,
       });
     }
 
@@ -150,6 +169,36 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && pathname === "/") {
       return sendHtml(res, renderDashboardPage({ publicUrl: config.publicUrl }));
+    }
+
+    if (req.method === "GET" && pathname === "/api/device-templates") {
+      const templates = store.listDeviceTemplates();
+
+      return sendJson(res, 200, {
+        ok: true,
+        seedPath: templateSeed.resolvedPath,
+        templates,
+        count: templates.length,
+      });
+    }
+
+    if (req.method === "PUT" && pathname === "/api/device-templates") {
+      const body = await readJsonBody(req);
+
+      if (!Array.isArray(body.templates)) {
+        return sendJson(res, 400, {
+          ok: false,
+          error: "Request body must include a templates array",
+        });
+      }
+
+      const templates = store.saveDeviceTemplates(body.templates);
+
+      return sendJson(res, 200, {
+        ok: true,
+        templates,
+        count: templates.length,
+      });
     }
 
     if (req.method === "GET" && pathname === "/api/gateways") {
@@ -273,14 +322,35 @@ function authenticateGateway(req, gatewayId) {
   const token = bearerToken(req);
   const existing = store.getGateway(gatewayId);
 
-  if (!existing && config.autoRegisterGateways && token) {
+  if (!existing && canAutoRegisterGateway(token)) {
     store.autoRegisterGateway(gatewayId, token);
+    ensureDefaultGatewayConfig(gatewayId, "auto-provision");
     return;
   }
 
   if (!store.verifyGatewayToken(gatewayId, token)) {
     throw httpError(401, "Invalid gateway token");
   }
+
+  ensureDefaultGatewayConfig(gatewayId, "server");
+}
+
+function canAutoRegisterGateway(token) {
+  if (!config.autoRegisterGateways || !token) return false;
+  if (!config.provisioningToken) return true;
+  return safeEqual(token, config.provisioningToken);
+}
+
+function ensureDefaultGatewayConfig(gatewayId, createdBy) {
+  if (store.getLatestConfig(gatewayId)) return;
+
+  const defaultConfig = createDefaultGatewayConfig(gatewayId, config.publicUrl);
+  store.addConfigVersion({
+    gatewayId,
+    config: defaultConfig,
+    restartRequired: true,
+    createdBy,
+  });
 }
 
 async function readJsonBody(req) {

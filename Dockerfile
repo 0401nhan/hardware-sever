@@ -9,6 +9,7 @@ RUN mkdir -p /data \
 COPY package*.json ./
 RUN npm ci --omit=dev
 
+COPY config ./config
 COPY src ./src
 
 USER node

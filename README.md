@@ -3,6 +3,7 @@
 Cloud server for Electric Bird hardware gateways. It provides:
 
 - Gateway registry with per-gateway bearer tokens.
+- Auto-provisioning for new gateways on first boot.
 - Remote config version management.
 - Gateway heartbeat and config apply status.
 - Telemetry ingest endpoint compatible with `Hardware-Gateway`.
@@ -29,7 +30,33 @@ ADMIN_USERNAME
 ADMIN_PASSWORD
 SESSION_SECRET
 TOKEN_HASH_SECRET
+PROVISIONING_TOKEN
 ```
+
+## Auto Provisioning
+
+`AUTO_REGISTER_GATEWAYS=true` lets a new hardware gateway create itself on the server the first time it connects.
+
+Production flow:
+
+```text
+gateway boots
+  -> gateway generates a stable ID such as EB-9A7C2D4F10B3
+  -> gateway calls /api/gateway/heartbeat with PROVISIONING_TOKEN
+  -> server creates the gateway registry row
+  -> server creates config version 1 for that gateway
+  -> gateway pulls config and reports applied/failed
+```
+
+Set the same initial token on the server and gateway image:
+
+```text
+PROVISIONING_TOKEN=<factory-token>
+SERVER_TOKEN=<factory-token>
+GATEWAY_TOKEN=<factory-token>
+```
+
+After the first connection, the dashboard will show the auto-created gateway. For stronger production security, replace the gateway token from the dashboard after commissioning.
 
 ## Production URL
 
@@ -72,12 +99,13 @@ GATEWAY_TOKEN=<gateway-token>
 
 ## Dashboard Flow
 
-1. Create a gateway in the dashboard.
-2. Set a strong token for that gateway.
-3. Edit `Setting Communication`.
-4. Save a new config version.
-5. Gateway polls `/api/gateway/config/check`.
-6. Gateway validates, saves to local SQLite, restarts, and reports status.
+1. Power on the hardware gateway.
+2. The server auto-creates a gateway record when it receives the first heartbeat.
+3. Open the dashboard and select the new gateway.
+4. Edit `Setting Communication`.
+5. Save a new config version.
+6. Gateway polls `/api/gateway/config/check`.
+7. Gateway validates, saves to local SQLite, restarts, and reports status.
 
 ## Docker Compose
 

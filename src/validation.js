@@ -1,3 +1,22 @@
+const SUPPORTED_PROTOCOLS = new Set(["modbus-rtu", "modbus-tcp"]);
+const SUPPORTED_PARITIES = new Set(["none", "even", "odd", "mark", "space"]);
+const SUPPORTED_REGISTER_FUNCTIONS = new Set(["holding", "input"]);
+const SUPPORTED_REGISTER_TYPES = new Set([
+  "uint16",
+  "int16",
+  "uint32",
+  "int32",
+  "uint64",
+  "int64",
+  "float32",
+  "string",
+  "str",
+  "bytes",
+  "bitfield16",
+  "bitfield32",
+]);
+const SUPPORTED_WORD_ORDERS = new Set(["be", "high-low", "le", "low-high"]);
+
 export function validateGatewayConfig(config, expectedGatewayId) {
   const missing = [];
 
@@ -17,25 +36,35 @@ export function validateGatewayConfig(config, expectedGatewayId) {
   if (config.remoteConfig?.enabled && !config.remoteConfig.url) {
     throw new Error("Invalid gateway config. remoteConfig.url is required when remoteConfig.enabled is true");
   }
+  validateStorage(config.storage);
+  validateInteger(config.gateway.pollLoopDelayMs, "gateway.pollLoopDelayMs", { min: 50, optional: true });
+  validateInteger(config.server.timeoutMs, "server.timeoutMs", { min: 100, optional: true });
+  validateInteger(config.server.batchSize, "server.batchSize", { min: 1, optional: true });
+  validateInteger(config.server.uploadIntervalMs, "server.uploadIntervalMs", { min: 500, optional: true });
+  validateRemoteConfig(config.remoteConfig);
 
   for (const [name, port] of Object.entries(config.ports || {})) {
     if (!port.path) throw new Error(`Invalid gateway config. ports.${name}.path is required`);
-    if (!port.baudRate) throw new Error(`Invalid gateway config. ports.${name}.baudRate is required`);
+    validateInteger(port.baudRate, `ports.${name}.baudRate`, { min: 1 });
+    validateEnum(port.parity, `ports.${name}.parity`, SUPPORTED_PARITIES, { optional: true });
+    validateInteger(port.dataBits, `ports.${name}.dataBits`, { min: 5, max: 8, optional: true });
+    validateInteger(port.stopBits, `ports.${name}.stopBits`, { min: 1, max: 2, optional: true });
+    validateInteger(port.timeoutMs, `ports.${name}.timeoutMs`, { min: 100, optional: true });
   }
 
   for (const device of config.devices) {
     const protocol = device.protocol ?? "modbus-rtu";
 
     if (!device.name) throw new Error("Invalid gateway config. device.name is required");
-    if (!["modbus-rtu", "modbus-tcp"].includes(protocol)) {
+    if (!SUPPORTED_PROTOCOLS.has(protocol)) {
       throw new Error(`Invalid gateway config. ${device.name}.protocol is unsupported`);
     }
+    validateInteger(device.pollIntervalMs, `${device.name}.pollIntervalMs`, { min: 500, optional: true });
 
     if (protocol === "modbus-tcp") {
       if (!device.host) throw new Error(`Invalid gateway config. ${device.name}.host is required`);
-      if (!Number.isInteger(device.unitId ?? device.slaveId)) {
-        throw new Error(`Invalid gateway config. ${device.name}.unitId must be an integer`);
-      }
+      validateInteger(device.tcpPort, `${device.name}.tcpPort`, { min: 1, max: 65535, optional: true });
+      validateInteger(device.unitId ?? device.slaveId, `${device.name}.unitId`, { min: 1, max: 247 });
     } else {
       if (!config?.ports || Object.keys(config.ports).length === 0) {
         throw new Error("Invalid gateway config. ports is required for Modbus RTU devices");
@@ -44,14 +73,16 @@ export function validateGatewayConfig(config, expectedGatewayId) {
       if (!config.ports[device.port]) {
         throw new Error(`Invalid gateway config. ${device.name}.port references unknown port ${device.port}`);
       }
-      if (!Number.isInteger(device.slaveId)) {
-        throw new Error(`Invalid gateway config. ${device.name}.slaveId must be an integer`);
-      }
+      validateInteger(device.slaveId, `${device.name}.slaveId`, { min: 1, max: 247 });
     }
 
     if (!Array.isArray(device.registers) || device.registers.length === 0) {
       throw new Error(`Invalid gateway config. ${device.name}.registers is required`);
     }
+
+    device.registers.forEach((register, index) => {
+      validateRegister(register, `${device.name}.registers[${index}]`);
+    });
   }
 }
 
@@ -78,8 +109,114 @@ export function createDefaultGatewayConfig(gatewayId, publicUrl) {
     },
     storage: {
       queuePath: "/data/queue.jsonl",
+      queue: {
+        maxRecords: 100000,
+        maxBytes: 52428800,
+        retentionMs: 604800000,
+        compactIntervalMs: 60000,
+        corruptPath: "/data/queue.jsonl.corrupt",
+      },
     },
     ports: {},
     devices: [],
   };
+}
+
+function validateStorage(storage) {
+  const queue = storage.queue || {};
+
+  validateInteger(queue.maxRecords ?? storage.queueMaxRecords, "storage.queue.maxRecords", { min: 1, optional: true });
+  validateInteger(queue.maxBytes ?? storage.queueMaxBytes, "storage.queue.maxBytes", { min: 1024, optional: true });
+  validateInteger(queue.retentionMs ?? storage.queueRetentionMs, "storage.queue.retentionMs", { min: 0, optional: true });
+  validateInteger(queue.compactIntervalMs ?? storage.queueCompactIntervalMs, "storage.queue.compactIntervalMs", { min: 0, optional: true });
+
+  const corruptPath = queue.corruptPath ?? storage.queueCorruptPath;
+  if (corruptPath !== undefined && !corruptPath) {
+    throw new Error("Invalid gateway config. storage.queue.corruptPath must not be empty");
+  }
+}
+
+function validateRemoteConfig(remoteConfig = {}) {
+  if (!remoteConfig.enabled) return;
+
+  validateInteger(remoteConfig.checkIntervalMs, "remoteConfig.checkIntervalMs", { min: 5000, optional: true });
+  validateInteger(remoteConfig.timeoutMs, "remoteConfig.timeoutMs", { min: 1000, optional: true });
+
+  if (remoteConfig.statePath !== undefined && !remoteConfig.statePath) {
+    throw new Error("Invalid gateway config. remoteConfig.statePath must not be empty");
+  }
+}
+
+function validateRegister(register, registerPath) {
+  if (!register || typeof register !== "object" || Array.isArray(register)) {
+    throw new Error(`Invalid gateway config. ${registerPath} must be an object`);
+  }
+
+  if (!register.name) {
+    throw new Error(`Invalid gateway config. ${registerPath}.name is required`);
+  }
+
+  validateEnum(register.function, `${registerPath}.function`, SUPPORTED_REGISTER_FUNCTIONS, { optional: true });
+  validateInteger(register.address, `${registerPath}.address`, { min: 0, max: 65535 });
+  validateInteger(register.length, `${registerPath}.length`, { min: 1, max: 125, optional: true });
+  validateEnum(register.type, `${registerPath}.type`, SUPPORTED_REGISTER_TYPES, { optional: true });
+  validateNumber(register.scale, `${registerPath}.scale`, { optional: true });
+  validateNumber(register.offset, `${registerPath}.offset`, { optional: true });
+  validateEnum(register.wordOrder, `${registerPath}.wordOrder`, SUPPORTED_WORD_ORDERS, { optional: true });
+  validateRegisterLengthForType(register, registerPath);
+}
+
+function validateRegisterLengthForType(register, registerPath) {
+  const type = register.type || "uint16";
+  const length = register.length ?? 1;
+  const minimumLengths = {
+    uint32: 2,
+    int32: 2,
+    float32: 2,
+    bitfield32: 2,
+    uint64: 4,
+    int64: 4,
+  };
+  const minimum = minimumLengths[type];
+
+  if (minimum && length < minimum) {
+    throw new Error(`Invalid gateway config. ${registerPath}.length must be >= ${minimum} for ${type}`);
+  }
+}
+
+function validateEnum(value, field, allowed, { optional = false } = {}) {
+  if (value === undefined || value === null || value === "") {
+    if (optional) return;
+    throw new Error(`Invalid gateway config. ${field} is required`);
+  }
+
+  if (!allowed.has(value)) {
+    throw new Error(`Invalid gateway config. ${field} is unsupported`);
+  }
+}
+
+function validateInteger(value, field, { min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER, optional = false } = {}) {
+  if (value === undefined || value === null || value === "") {
+    if (optional) return;
+    throw new Error(`Invalid gateway config. ${field} is required`);
+  }
+
+  if (!Number.isInteger(value)) {
+    throw new Error(`Invalid gateway config. ${field} must be an integer`);
+  }
+
+  if (value < min || value > max) {
+    throw new Error(`Invalid gateway config. ${field} must be between ${min} and ${max}`);
+  }
+}
+
+function validateNumber(value, field, { optional = false } = {}) {
+  if (value === undefined || value === null || value === "") {
+    if (optional) return;
+    throw new Error(`Invalid gateway config. ${field} is required`);
+  }
+
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`Invalid gateway config. ${field} must be a finite number`);
+  }
 }

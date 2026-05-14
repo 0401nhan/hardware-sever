@@ -51,11 +51,61 @@ export function openDatabase(dbPath, tokenHashSecret) {
       FOREIGN KEY (gateway_id) REFERENCES gateways(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS template_library_metadata (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS device_templates (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      manufacturer TEXT NOT NULL DEFAULT '',
+      model TEXT NOT NULL DEFAULT '',
+      category TEXT NOT NULL DEFAULT '',
+      type TEXT NOT NULL DEFAULT '',
+      protocol TEXT NOT NULL DEFAULT 'modbus-rtu',
+      poll_interval_ms INTEGER NOT NULL DEFAULT 5000,
+      notes TEXT NOT NULL DEFAULT '',
+      sort_order INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS template_registers (
+      template_id TEXT NOT NULL,
+      register_index INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      function TEXT NOT NULL DEFAULT 'holding',
+      address INTEGER NOT NULL DEFAULT 0,
+      length INTEGER NOT NULL DEFAULT 1,
+      type TEXT NOT NULL DEFAULT 'uint16',
+      scale REAL NOT NULL DEFAULT 1,
+      unit TEXT NOT NULL DEFAULT '',
+      word_order TEXT,
+      offset REAL,
+      PRIMARY KEY (template_id, register_index),
+      FOREIGN KEY (template_id) REFERENCES device_templates(id) ON DELETE CASCADE
+    );
+
     CREATE INDEX IF NOT EXISTS idx_config_versions_gateway_version
       ON config_versions(gateway_id, version DESC);
 
+    DELETE FROM telemetry_records
+    WHERE record_id IS NOT NULL
+      AND id NOT IN (
+        SELECT MIN(id)
+        FROM telemetry_records
+        WHERE record_id IS NOT NULL
+        GROUP BY gateway_id, record_id
+      );
+
     CREATE INDEX IF NOT EXISTS idx_telemetry_gateway_created
       ON telemetry_records(gateway_id, created_at DESC);
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_telemetry_gateway_record_unique
+      ON telemetry_records(gateway_id, record_id)
+      WHERE record_id IS NOT NULL;
+
+    CREATE INDEX IF NOT EXISTS idx_template_registers_template_index
+      ON template_registers(template_id, register_index);
   `);
 
   return new HardwareStore(db, tokenHashSecret);
@@ -201,7 +251,7 @@ export class HardwareStore {
   insertTelemetry(gatewayId, records) {
     const now = new Date().toISOString();
     const insert = this.db.prepare(`
-      INSERT INTO telemetry_records (gateway_id, record_id, record_json, created_at)
+      INSERT OR IGNORE INTO telemetry_records (gateway_id, record_id, record_json, created_at)
       VALUES (?, ?, ?, ?)
     `);
     const updateGateway = this.db.prepare(`
@@ -209,11 +259,13 @@ export class HardwareStore {
       SET last_seen_at = ?, status = 'online', updated_at = ?
       WHERE id = ?
     `);
+    let inserted = 0;
 
     try {
       this.db.exec("BEGIN");
       for (const record of records) {
-        insert.run(gatewayId, record.id ?? null, JSON.stringify(record), now);
+        const result = insert.run(gatewayId, record.id ?? null, JSON.stringify(record), now);
+        inserted += Number(result.changes ?? 0);
       }
       updateGateway.run(now, now, gatewayId);
       this.db.exec("COMMIT");
@@ -221,6 +273,12 @@ export class HardwareStore {
       this.db.exec("ROLLBACK");
       throw error;
     }
+
+    return {
+      received: records.length,
+      inserted,
+      ignored: records.length - inserted,
+    };
   }
 
   latestTelemetry(gatewayId, limit = 100) {
@@ -239,8 +297,141 @@ export class HardwareStore {
     }));
   }
 
+  seedDeviceTemplates(templates) {
+    if (this.#metadata("device_templates_initialized") === "1") {
+      return this.listDeviceTemplates();
+    }
+
+    const saved = this.saveDeviceTemplates(templates);
+    this.#setMetadata("device_templates_initialized", "1");
+
+    return saved;
+  }
+
+  listDeviceTemplates() {
+    const templateRows = this.db.prepare(`
+      SELECT
+        id,
+        label,
+        manufacturer,
+        model,
+        category,
+        type,
+        protocol,
+        poll_interval_ms AS pollIntervalMs,
+        notes
+      FROM device_templates
+      ORDER BY sort_order, id
+    `).all();
+    const registerStatement = this.db.prepare(`
+      SELECT
+        name,
+        function,
+        address,
+        length,
+        type,
+        scale,
+        unit,
+        word_order AS wordOrder,
+        offset
+      FROM template_registers
+      WHERE template_id = ?
+      ORDER BY register_index
+    `);
+
+    return templateRows.map((template) => ({
+      ...template,
+      type: normalizeDeviceTemplateType(template.type, template.category, template.label),
+      registers: registerStatement.all(template.id).map((register) => ({
+        name: register.name,
+        function: register.function,
+        address: register.address,
+        length: register.length,
+        type: register.type,
+        scale: register.scale,
+        unit: register.unit,
+        ...(register.wordOrder ? { wordOrder: register.wordOrder } : {}),
+        ...(register.offset !== null ? { offset: register.offset } : {}),
+      })),
+    }));
+  }
+
+  saveDeviceTemplates(templates) {
+    const normalized = normalizeTemplateLibrary(templates);
+    const insertTemplate = this.db.prepare(`
+      INSERT INTO device_templates (
+        id, label, manufacturer, model, category, type, protocol, poll_interval_ms, notes, sort_order
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertRegister = this.db.prepare(`
+      INSERT INTO template_registers (
+        template_id, register_index, name, function, address, length, type, scale, unit, word_order, offset
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    try {
+      this.db.exec("BEGIN IMMEDIATE");
+      this.db.exec("DELETE FROM template_registers; DELETE FROM device_templates;");
+
+      normalized.forEach((template, templateIndex) => {
+        insertTemplate.run(
+          template.id,
+          template.label,
+          template.manufacturer,
+          template.model,
+          template.category,
+          template.type,
+          template.protocol,
+          template.pollIntervalMs,
+          template.notes,
+          templateIndex,
+        );
+
+        template.registers.forEach((register, registerIndex) => {
+          insertRegister.run(
+            template.id,
+            registerIndex,
+            register.name,
+            register.function,
+            register.address,
+            register.length,
+            register.type,
+            register.scale,
+            register.unit,
+            register.wordOrder || null,
+            register.offset ?? null,
+          );
+        });
+      });
+
+      this.#setMetadata("device_templates_initialized", "1");
+      this.db.exec("COMMIT");
+    } catch (error) {
+      this.db.exec("ROLLBACK");
+      throw error;
+    }
+
+    return this.listDeviceTemplates();
+  }
+
   hashToken(token) {
     return crypto.createHmac("sha256", this.tokenHashSecret).update(token).digest("hex");
+  }
+
+  close() {
+    this.db.close();
+  }
+
+  #metadata(key) {
+    return this.db.prepare("SELECT value FROM template_library_metadata WHERE key = ?").get(key)?.value;
+  }
+
+  #setMetadata(key, value) {
+    this.db.prepare(`
+      INSERT INTO template_library_metadata (key, value)
+      VALUES (?, ?)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value
+    `).run(key, value);
   }
 }
 
@@ -299,4 +490,106 @@ function safeEqual(left, right) {
 
   if (leftBuffer.length !== rightBuffer.length) return false;
   return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function normalizeTemplateLibrary(templates) {
+  if (!Array.isArray(templates)) {
+    throw new Error("Device template library must be an array");
+  }
+
+  const normalized = templates.map(normalizeTemplate);
+  const seen = new Set();
+
+  for (const template of normalized) {
+    if (seen.has(template.id)) {
+      throw new Error(`Duplicate device template id '${template.id}'`);
+    }
+
+    seen.add(template.id);
+  }
+
+  return normalized;
+}
+
+function normalizeTemplate(template, index) {
+  if (!template || typeof template !== "object") {
+    throw new Error(`Invalid device template at index ${index}`);
+  }
+
+  const manufacturer = stringValue(template.manufacturer);
+  const model = stringValue(template.model);
+  const label = stringValue(template.label) || [manufacturer, model].filter(Boolean).join(" - ");
+  const id = stringValue(template.id) || slug(label || `template_${index + 1}`);
+
+  if (!id) {
+    throw new Error(`Invalid device template at index ${index}. id or label is required`);
+  }
+
+  return {
+    id,
+    label: label || id,
+    manufacturer,
+    model,
+    category: stringValue(template.category),
+    type: normalizeDeviceTemplateType(template.type, stringValue(template.category), label || id),
+    protocol: stringValue(template.protocol) || "modbus-rtu",
+    pollIntervalMs: numberValue(template.pollIntervalMs ?? template.defaultPollIntervalMs, 5000),
+    notes: stringValue(template.notes),
+    registers: Array.isArray(template.registers)
+      ? template.registers.map(normalizeRegister)
+      : [],
+  };
+}
+
+function normalizeRegister(register) {
+  return {
+    name: stringValue(register.name),
+    function: stringValue(register.function) || "holding",
+    address: numberValue(register.address, 0),
+    length: numberValue(register.length, 1),
+    type: stringValue(register.type) || "uint16",
+    scale: numberValue(register.scale, 1),
+    unit: stringValue(register.unit),
+    ...(register.wordOrder ? { wordOrder: stringValue(register.wordOrder) } : {}),
+    ...(register.offset !== undefined ? { offset: numberValue(register.offset, 0) } : {}),
+  };
+}
+
+function normalizeDeviceTemplateType(type, category = "", fallback = "") {
+  const keys = [
+    compactType(type),
+    compactType(category),
+    compactType(fallback),
+  ];
+
+  for (const key of keys) {
+    if (["inverter", "meter", "weatherstation", "datalogger", "other"].includes(key)) return key;
+    if (key.includes("inverter")) return "inverter";
+    if (key.includes("meter")) return "meter";
+    if (key.includes("weather")) return "weatherstation";
+    if (key.includes("logger")) return "datalogger";
+  }
+
+  return "other";
+}
+
+function compactType(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function stringValue(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function numberValue(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function slug(value) {
+  return String(value)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
 }
