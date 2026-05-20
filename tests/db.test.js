@@ -5,6 +5,52 @@ import os from "node:os";
 import path from "node:path";
 
 import { openDatabase } from "../src/db.js";
+import { readDeviceTemplateSeed } from "../src/deviceTemplates.js";
+
+test("bundled Huawei seed includes writable control registers", () => {
+  const { templates } = readDeviceTemplateSeed("config/device-templates.yml");
+  const inverter = templates.find((template) => template.id === "huawei_sun2000");
+  const battery = templates.find((template) => template.id === "huawei_luna2000_battery");
+
+  assert.ok(inverter);
+  assert.ok(battery);
+  assert.equal(inverter.registers.length, 128);
+  assert.equal(battery.registers.length, 90);
+  assert.deepEqual(inverter.registers.filter((register) => (register.access || "ro") !== "ro").map((register) => register.address), [
+    40000,
+    40037,
+    40038,
+    40120,
+    40122,
+    40123,
+    40125,
+    40126,
+    40129,
+    40133,
+    40154,
+    40175,
+    40196,
+    40198,
+    40200,
+    40201,
+    42000,
+    42015,
+    42017,
+    42019,
+    42405,
+    43006,
+    45086,
+    47415,
+    47416,
+    47418,
+    47590,
+    47604,
+    47605,
+  ]);
+  assert.ok(battery.registers.some((register) => register.name === "energy_storage_forcible_charge_power_kw"));
+  assert.ok(battery.registers.some((register) => register.name === "energy_storage_tou_charge_discharge_periods_raw"));
+  assert.ok(battery.registers.filter((register) => (register.access || "ro") !== "ro").every((register) => register.poll === false));
+});
 
 test("persists device templates in server sqlite", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hardware-server-db-"));

@@ -7,7 +7,7 @@ templates:
     type: inverter
     protocol: modbus-rtu
     pollIntervalMs: 5000
-    notes: Based on Huawei Solar Inverter Modbus Interface Definitions Issue 04, 2023-01-10. Huawei addresses are direct Modbus PDU addresses, do not subtract 1. Includes identity, core read-only holding registers, PV1-PV24, adjustment readback, meter active power, optimizer counters, and inverter control registers. Control registers are marked access rw/wo and poll false so they are available for explicit writes but are not read during automatic polling.
+    notes: Based on Huawei Solar Inverter Modbus Interface Definitions Issue 04, 2023-01-10. Huawei addresses are direct Modbus PDU addresses, do not subtract 1. Includes identity, core read-only holding registers, PV1-PV24, adjustment readback, meter active power, optimizer counters, inverter control registers, and plant/backup control registers exposed in the battery equipment table. Control registers are marked access rw/wo and poll false so they are available for explicit writes but are not read during automatic polling.
     registers:
       - name: model
         function: holding
@@ -909,6 +909,60 @@ templates:
         type: uint16
         scale: 1
         unit: ""
+      - name: plant_active_power_control_mode
+        function: holding
+        access: rw
+        poll: false
+        address: 47415
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: plant_max_feed_grid_power_kw
+        function: holding
+        access: rw
+        poll: false
+        address: 47416
+        length: 2
+        type: int32
+        scale: 0.001
+        unit: kW
+      - name: plant_max_feed_grid_power_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 47418
+        length: 1
+        type: int16
+        scale: 0.1
+        unit: "%"
+      - name: plant_max_charge_from_grid_power_kw
+        function: holding
+        access: rw
+        poll: false
+        address: 47590
+        length: 2
+        type: uint32
+        scale: 0.001
+        unit: kW
+      - name: backup_switch_to_off_grid
+        function: holding
+        access: rw
+        poll: false
+        address: 47604
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: backup_independent_operation_voltage_v
+        function: holding
+        access: rw
+        poll: false
+        address: 47605
+        length: 1
+        type: uint16
+        scale: 1
+        unit: V
   - id: huawei_luna2000_battery
     label: Huawei - LUNA2000 Battery
     manufacturer: Huawei
@@ -917,7 +971,7 @@ templates:
     type: other
     protocol: modbus-rtu
     pollIntervalMs: 5000
-    notes: Read-only battery and energy storage registers from Huawei Solar Inverter Modbus Interface Definitions Issue 04. Excludes RW scheduling/control registers.
+    notes: Battery and energy storage registers from Huawei Solar Inverter Modbus Interface Definitions Issue 04. Includes writable storage, plant, and backup control registers from the battery equipment table; control registers are marked access rw and poll false so they are available for explicit writes but are not read during automatic polling.
     registers:
       - name: esu1_running_status
         function: holding
@@ -1283,6 +1337,348 @@ templates:
         type: uint16
         scale: 0.1
         unit: "%"
+      - name: esu1_product_model
+        function: holding
+        access: rw
+        poll: false
+        address: 47000
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: tou_electricity_price_periods_raw
+        function: holding
+        access: rw
+        poll: false
+        address: 47028
+        length: 41
+        type: bytes
+        scale: 1
+        unit: ""
+      - name: energy_storage_maximum_charging_power_w
+        function: holding
+        access: rw
+        poll: false
+        address: 47075
+        length: 2
+        type: uint32
+        scale: 1
+        unit: W
+      - name: energy_storage_maximum_discharging_power_w
+        function: holding
+        access: rw
+        poll: false
+        address: 47077
+        length: 2
+        type: uint32
+        scale: 1
+        unit: W
+      - name: energy_storage_charging_cutoff_capacity_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 47081
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: "%"
+      - name: energy_storage_discharge_cutoff_capacity_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 47082
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: "%"
+      - name: energy_storage_forced_charge_discharge_period_min
+        function: holding
+        access: rw
+        poll: false
+        address: 47083
+        length: 1
+        type: uint16
+        scale: 1
+        unit: min
+      - name: energy_storage_forced_charge_discharge_power_w
+        function: holding
+        access: rw
+        poll: false
+        address: 47084
+        length: 2
+        type: int32
+        scale: 1
+        unit: W
+      - name: energy_storage_working_mode_settings
+        function: holding
+        access: rw
+        poll: false
+        address: 47086
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: energy_storage_charge_from_grid_enabled
+        function: holding
+        access: rw
+        poll: false
+        address: 47087
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: energy_storage_grid_charge_cutoff_soc_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 47088
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: "%"
+      - name: esu2_product_model
+        function: holding
+        access: rw
+        poll: false
+        address: 47089
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: energy_storage_forcible_charge_discharge
+        function: holding
+        access: rw
+        poll: false
+        address: 47100
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: energy_storage_target_soc_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 47101
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: "%"
+      - name: energy_storage_backup_power_soc_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 47102
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: "%"
+      - name: energy_storage_product_model
+        function: holding
+        access: rw
+        poll: false
+        address: 47106
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: esu1_number
+        function: holding
+        access: rw
+        poll: false
+        address: 47107
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: esu2_number
+        function: holding
+        access: rw
+        poll: false
+        address: 47108
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: energy_storage_fixed_charge_discharge_periods_raw
+        function: holding
+        access: rw
+        poll: false
+        address: 47200
+        length: 41
+        type: bytes
+        scale: 1
+        unit: ""
+      - name: energy_storage_charge_from_grid_power_kw
+        function: holding
+        access: rw
+        poll: false
+        address: 47242
+        length: 2
+        type: uint32
+        scale: 0.001
+        unit: kW
+      - name: energy_storage_max_charge_from_grid_power_kw
+        function: holding
+        access: rw
+        poll: false
+        address: 47244
+        length: 2
+        type: uint32
+        scale: 0.001
+        unit: kW
+      - name: energy_storage_forcible_charge_discharge_setting_mode
+        function: holding
+        access: rw
+        poll: false
+        address: 47246
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: energy_storage_forcible_charge_power_kw
+        function: holding
+        access: rw
+        poll: false
+        address: 47247
+        length: 2
+        type: uint32
+        scale: 0.001
+        unit: kW
+      - name: energy_storage_forcible_discharge_power_kw
+        function: holding
+        access: rw
+        poll: false
+        address: 47249
+        length: 2
+        type: uint32
+        scale: 0.001
+        unit: kW
+      - name: energy_storage_tou_charge_discharge_periods_raw
+        function: holding
+        access: rw
+        poll: false
+        address: 47255
+        length: 43
+        type: bytes
+        scale: 1
+        unit: ""
+      - name: energy_storage_excess_pv_energy_use_in_tou
+        function: holding
+        access: rw
+        poll: false
+        address: 47299
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: plant_active_power_control_mode
+        function: holding
+        access: rw
+        poll: false
+        address: 47415
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: plant_max_feed_grid_power_kw
+        function: holding
+        access: rw
+        poll: false
+        address: 47416
+        length: 2
+        type: int32
+        scale: 0.001
+        unit: kW
+      - name: plant_max_feed_grid_power_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 47418
+        length: 1
+        type: int16
+        scale: 0.1
+        unit: "%"
+      - name: plant_max_charge_from_grid_power_kw
+        function: holding
+        access: rw
+        poll: false
+        address: 47590
+        length: 2
+        type: uint32
+        scale: 0.001
+        unit: kW
+      - name: backup_switch_to_off_grid
+        function: holding
+        access: rw
+        poll: false
+        address: 47604
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: backup_independent_operation_voltage_v
+        function: holding
+        access: rw
+        poll: false
+        address: 47605
+        length: 1
+        type: uint16
+        scale: 1
+        unit: V
+      - name: esu1_pack1_number
+        function: holding
+        access: rw
+        poll: false
+        address: 47750
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: esu1_pack2_number
+        function: holding
+        access: rw
+        poll: false
+        address: 47751
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: esu1_pack3_number
+        function: holding
+        access: rw
+        poll: false
+        address: 47752
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: esu2_pack1_number
+        function: holding
+        access: rw
+        poll: false
+        address: 47753
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: esu2_pack2_number
+        function: holding
+        access: rw
+        poll: false
+        address: 47754
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: esu2_pack3_number
+        function: holding
+        access: rw
+        poll: false
+        address: 47755
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
   - id: huawei_power_meter
     label: Huawei - Power Meter
     manufacturer: Huawei
