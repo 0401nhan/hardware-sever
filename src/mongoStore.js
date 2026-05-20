@@ -13,7 +13,7 @@ export async function openMongoStore({ uri, dbName, tokenHashSecret, options = {
   return store;
 }
 
-class MongoHardwareStore {
+export class MongoHardwareStore {
   constructor(client, dbName, tokenHashSecret, {
     offlineAfterMs = DEFAULT_GATEWAY_OFFLINE_AFTER_MS,
     now = () => Date.now(),
@@ -295,6 +295,13 @@ class MongoHardwareStore {
     if (await this.#metadata("device_templates_initialized") === "1") {
       await this.#mergeNewSeedTemplates(normalized);
       return this.listDeviceTemplates();
+    }
+
+    if (normalized.length === 0) {
+      const existing = await this.listDeviceTemplates();
+      await this.#setMetadata("device_templates_initialized", "1");
+      await this.#setSeedTemplateMetadata(normalized);
+      return existing;
     }
 
     const saved = await this.saveDeviceTemplates(normalized);
