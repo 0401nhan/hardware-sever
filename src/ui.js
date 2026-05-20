@@ -166,6 +166,11 @@ export function renderDashboardPage({ publicUrl }) {
     button.primary:hover { border-color: var(--accent-strong); background: var(--accent-strong); }
     button.subtle { background: #fff; }
     button.danger { border-color: #fda29b; color: var(--danger); background: var(--danger-soft); }
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      box-shadow: none;
+    }
     input, select, textarea {
       width: 100%;
       min-height: 38px;
@@ -458,6 +463,10 @@ export function renderDashboardPage({ publicUrl }) {
     }
     .badge.online { border-color: #8bd7a2; background: var(--ok-soft); color: var(--ok); }
     .badge.error { border-color: #fda29b; background: var(--danger-soft); color: var(--danger); }
+    .badge.queued { border-color: #bfdbfe; background: var(--blue-soft); color: var(--blue); }
+    .badge.delivered, .badge.running { border-color: #fed7aa; background: var(--accent-soft); color: var(--warning); }
+    .badge.applied { border-color: #8bd7a2; background: var(--ok-soft); color: var(--ok); }
+    .badge.failed { border-color: #fda29b; background: var(--danger-soft); color: var(--danger); }
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -565,6 +574,32 @@ export function renderDashboardPage({ publicUrl }) {
     .monitor-title span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; font-weight: 700; }
     .monitor-body { padding: 12px; }
     .monitor-table { min-width: 0; table-layout: auto; }
+    .control-layout {
+      display: grid;
+      grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);
+      gap: 14px;
+      align-items: end;
+    }
+    .control-stack {
+      display: grid;
+      gap: 14px;
+    }
+    .control-actions {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 8px;
+    }
+    .limit-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+    .command-detail {
+      overflow-wrap: anywhere;
+      color: var(--muted-strong);
+      font-weight: 700;
+    }
     .empty-state {
       padding: 22px;
       border: 1px dashed var(--line-strong);
@@ -588,6 +623,7 @@ export function renderDashboardPage({ publicUrl }) {
       header.topbar { align-items: stretch; flex-direction: column; gap: 10px; padding: 12px; }
       main.content { padding: 14px; }
       .status-chip { max-width: 100%; }
+      .control-layout, .limit-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 620px) {
       .overview, .grid, .gateway-grid { grid-template-columns: 1fr; }
@@ -596,6 +632,7 @@ export function renderDashboardPage({ publicUrl }) {
       .actions, .template-actions, .topbar-actions { width: 100%; }
       .actions button, .topbar-actions button { flex: 1 1 120px; }
       .inline-field { grid-template-columns: 1fr; }
+      .control-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
   </style>
 </head>
@@ -667,6 +704,7 @@ export function renderDashboardPage({ publicUrl }) {
           <a href="#stationDeviceOverviewSubtab" data-parent-tab="generalInformation" data-subtab-target="stationDeviceOverviewSubtab">Station Device Overview</a>
         </div>
         <button class="nav-link" type="button" data-tab-target="deviceMonitoringTab">Device Monitoring</button>
+        <button class="nav-link" type="button" data-tab-target="inverterControlTab">Inverter Control</button>
         <button class="nav-link" type="button" data-tab-target="settingCommunication">Setting Communication</button>
         <div class="nav-child" data-child-menu="settingCommunication">
           <a class="active" href="#gatewaySubtab" data-parent-tab="settingCommunication" data-subtab-target="gatewaySubtab">Gateway</a>
@@ -744,6 +782,62 @@ export function renderDashboardPage({ publicUrl }) {
               <div class="actions"><span id="monitoringUpdated" class="topbar-item">Last refresh: -</span></div>
             </div>
             <div id="monitoringDevices" class="monitor-grid"></div>
+          </section>
+        </div>
+
+        <div id="inverterControlTab" class="tab-panel" data-tab-panel>
+          <section class="home-panel">
+            <div class="panel-title-row">
+              <h2 class="panel-title">Inverter Control</h2>
+            </div>
+            <div class="control-layout">
+              <label>Device
+                <select id="controlDeviceName"></select>
+              </label>
+              <div class="control-stack">
+                <div class="control-actions">
+                  <button class="primary" type="button" data-control-action="start">Start</button>
+                  <button class="danger" type="button" data-control-action="stop">Stop</button>
+                  <button class="subtle" type="button" data-control-action="reboot">Reboot</button>
+                  <button class="subtle" type="button" data-control-action="clear_power_limit">Clear Limit</button>
+                </div>
+                <form id="powerLimitForm" class="limit-grid">
+                  <label>Limit Type
+                    <select id="powerLimitMode">
+                      <option value="percent">Percent</option>
+                      <option value="kw">kW</option>
+                      <option value="watts">W</option>
+                    </select>
+                  </label>
+                  <label>Limit Value<input id="powerLimitValue" type="number" min="0" step="0.1" value="60"></label>
+                  <label>Duration Minutes<input id="powerLimitDurationMinutes" type="number" min="1" max="1440" step="1" value="15"></label>
+                  <button class="primary" type="submit">Apply Limit</button>
+                </form>
+              </div>
+            </div>
+          </section>
+
+          <section class="home-panel">
+            <div class="panel-title-row">
+              <h2 class="panel-title">Command History</h2>
+              <div class="actions">
+                <button id="commandRefreshBtn" class="subtle" type="button">Refresh</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Created</th>
+                    <th>Action</th>
+                    <th>Status</th>
+                    <th>Details</th>
+                    <th>Updated</th>
+                  </tr>
+                </thead>
+                <tbody id="commandHistoryBody"></tbody>
+              </table>
+            </div>
           </section>
         </div>
 
@@ -860,11 +954,13 @@ export function renderDashboardPage({ publicUrl }) {
     let selectedConfigVersion = null;
     let state = null;
     let telemetry = { time: null, devices: [] };
+    let commands = [];
+    let selectedControlDevice = "";
     let templates = [];
     const expandedDeviceRegisters = new Set();
 
     const el = (id) => document.getElementById(id);
-    const tabIds = ["generalInformation", "deviceMonitoringTab", "settingCommunication"];
+    const tabIds = ["generalInformation", "deviceMonitoringTab", "inverterControlTab", "settingCommunication"];
     const defaultSubtabs = {
       generalInformation: "overviewSubtab",
       settingCommunication: "gatewaySubtab",
@@ -881,6 +977,7 @@ export function renderDashboardPage({ publicUrl }) {
       overviewSubtab: ["Overview", "Gateway status and configured capacity"],
       stationDeviceOverviewSubtab: ["Station Device Overview", "Connection state for every configured device"],
       deviceMonitoringTab: ["Device Monitoring", "Latest uploaded telemetry records"],
+      inverterControlTab: ["Inverter Control", "Queued actions and latest command state"],
       gatewaySubtab: ["Gateway", "Server upload, queue, and polling behavior"],
       rs485PortsSubtab: ["RS485 Ports", "Serial settings used by Modbus RTU devices"],
       modbusDevicesSubtab: ["Modbus Devices", "Device identity, connection mode, and register maps"],
@@ -958,9 +1055,10 @@ export function renderDashboardPage({ publicUrl }) {
       el("remoteView").classList.remove("hidden");
       setStatus("Loading...");
 
-      const [configPayload, telemetryPayload] = await Promise.all([
+      const [configPayload, telemetryPayload, commandPayload] = await Promise.all([
         requestJson("/api/gateways/" + encodeURIComponent(gatewayId) + "/config"),
         requestJson("/api/gateways/" + encodeURIComponent(gatewayId) + "/telemetry/latest"),
+        requestJson("/api/gateways/" + encodeURIComponent(gatewayId) + "/commands"),
       ]);
 
       selectedConfigVersion = configPayload.version;
@@ -969,6 +1067,7 @@ export function renderDashboardPage({ publicUrl }) {
         time: telemetryPayload.records?.[0]?.createdAt || null,
         devices: telemetryRecordsToDevices(telemetryPayload.records || []),
       };
+      commands = commandPayload.commands || [];
 
       el("topGatewayId").textContent = gatewayId;
       el("topConfigVersion").textContent = selectedConfigVersion || "-";
@@ -1042,6 +1141,7 @@ export function renderDashboardPage({ publicUrl }) {
       renderSummary();
       renderDashboard();
       renderMonitoring();
+      renderInverterControl();
       renderTemplatePicker();
       renderPorts();
       renderDevices();
@@ -1132,6 +1232,135 @@ export function renderDashboardPage({ publicUrl }) {
           </article>
         \`;
       }).join("");
+    }
+
+    function renderInverterControl() {
+      const deviceSelect = el("controlDeviceName");
+      const devices = inverterControlDevices();
+      const disabled = !devices.length;
+
+      if (disabled) {
+        deviceSelect.innerHTML = '<option value="">No inverter device</option>';
+        selectedControlDevice = "";
+      } else {
+        if (!devices.some((device) => device.name === selectedControlDevice)) {
+          selectedControlDevice = devices[0].name;
+        }
+        deviceSelect.innerHTML = devices.map((device) => option(device.name, selectedControlDevice, device.name + " | " + deviceSubtitle(device))).join("");
+        deviceSelect.value = selectedControlDevice;
+      }
+
+      document.querySelectorAll("[data-control-action], #powerLimitForm button").forEach((button) => {
+        button.disabled = disabled;
+      });
+      renderCommandHistory();
+    }
+
+    function inverterControlDevices() {
+      const devices = state.devices || [];
+      const inverters = devices.filter((device) => {
+        const text = [device.category, device.type, device.manufacturer, device.model, device.templateId].filter(Boolean).join(" ").toLowerCase();
+        return text.includes("inverter") || text.includes("sun2000") || text.includes("huawei");
+      });
+
+      return inverters.length ? inverters : devices;
+    }
+
+    function renderCommandHistory() {
+      const body = el("commandHistoryBody");
+      if (!commands.length) {
+        body.innerHTML = '<tr><td colspan="5">No commands yet</td></tr>';
+        return;
+      }
+
+      body.innerHTML = commands.map((command) => \`
+        <tr>
+          <td>\${escapeHtml(formatDateTime(command.createdAt))}</td>
+          <td>\${escapeHtml(actionLabel(command.action))}</td>
+          <td><span class="badge \${escapeHtml(command.status || "queued")}">\${escapeHtml(command.status || "queued")}</span></td>
+          <td class="command-detail">\${escapeHtml(commandDetail(command))}</td>
+          <td>\${escapeHtml(formatDateTime(command.completedAt || command.updatedAt || command.deliveredAt))}</td>
+        </tr>
+      \`).join("");
+    }
+
+    async function refreshCommands() {
+      if (!selectedId) return;
+      const payload = await requestJson("/api/gateways/" + encodeURIComponent(selectedId) + "/commands");
+      commands = payload.commands || [];
+      renderCommandHistory();
+      setStatus("Command history refreshed", "ok");
+    }
+
+    async function queueInverterControl(action, extra = {}) {
+      if (!selectedId) return;
+      const deviceName = el("controlDeviceName").value;
+      if (!deviceName) {
+        setStatus("No inverter device selected", "error");
+        return;
+      }
+
+      setStatus("Queueing " + actionLabel(action) + "...");
+      const payload = await requestJson("/api/gateways/" + encodeURIComponent(selectedId) + "/control", {
+        method: "POST",
+        body: JSON.stringify({
+          deviceName,
+          action,
+          ...extra,
+        }),
+      });
+
+      commands = [payload.command, ...commands.filter((command) => command.id !== payload.command.id)].slice(0, 100);
+      renderCommandHistory();
+      setStatus("Queued " + actionLabel(payload.command.action), "ok");
+    }
+
+    function submitPowerLimitForm() {
+      const mode = el("powerLimitMode").value;
+      const value = Number(el("powerLimitValue").value);
+      const durationMinutes = Number(el("powerLimitDurationMinutes").value);
+
+      if (!["percent", "kw", "watts"].includes(mode)) {
+        setStatus("Invalid limit type", "error");
+        return;
+      }
+      if (!Number.isFinite(value) || value < 0) {
+        setStatus("Limit value must be zero or higher", "error");
+        return;
+      }
+      if (!Number.isFinite(durationMinutes) || durationMinutes <= 0 || durationMinutes > 1440) {
+        setStatus("Duration must be between 1 and 1440 minutes", "error");
+        return;
+      }
+
+      queueInverterControl("limit_power", {
+        [mode]: value,
+        durationMinutes,
+      }).catch((error) => setStatus(error.message, "error"));
+    }
+
+    function actionLabel(action) {
+      const labels = {
+        start: "Start",
+        stop: "Stop",
+        reboot: "Reboot",
+        limit_power: "Limit Power",
+        clear_power_limit: "Clear Limit",
+      };
+      return labels[action] || action || "-";
+    }
+
+    function commandDetail(command) {
+      const payload = command.payload || {};
+      const parts = [payload.deviceName || payload.device].filter(Boolean);
+      if (payload.percent !== undefined) parts.push(payload.percent + "%");
+      if (payload.kw !== undefined) parts.push(payload.kw + " kW");
+      if (payload.watts !== undefined) parts.push(payload.watts + " W");
+      if (payload.durationMinutes !== undefined) parts.push(payload.durationMinutes + " min");
+      if (payload.durationSeconds !== undefined) parts.push(payload.durationSeconds + " sec");
+      if (payload.delayMs !== undefined) parts.push(payload.delayMs + " ms delay");
+      if (command.message) parts.push(command.message);
+      return parts.join(" | ") || "-";
     }
 
     function renderTemplatePicker() {
@@ -1689,9 +1918,15 @@ export function renderDashboardPage({ publicUrl }) {
       }
       if (target.id === "homeRefreshBtn") loadGateways().catch((error) => console.error(error));
       if (target.id === "remoteRefreshBtn" && selectedId) openRemote(selectedId).catch((error) => setStatus(error.message, "error"));
+      if (target.id === "commandRefreshBtn") refreshCommands().catch((error) => setStatus(error.message, "error"));
       if (target.id === "homeLogoutBtn" || target.id === "logoutBtn") logout().catch((error) => console.error(error));
       if (target.id === "addManualGatewayBtn") el("manualGatewayPanel").classList.toggle("hidden");
       if (target.dataset.saveConfig !== undefined) saveConfig().catch((error) => setStatus(error.message, "error"));
+      if (target.dataset.controlAction) {
+        const action = target.dataset.controlAction;
+        if (["stop", "reboot"].includes(action) && !confirm("Queue " + actionLabel(action) + " for " + (el("controlDeviceName").value || "selected inverter") + "?")) return;
+        queueInverterControl(action).catch((error) => setStatus(error.message, "error"));
+      }
       if (target.id === "addPortBtn") addPort();
       if (target.id === "addDeviceBtn") addDevice();
       if (target.dataset.applyTemplate) applyTemplate(Number(target.dataset.applyTemplate));
@@ -1704,6 +1939,10 @@ export function renderDashboardPage({ publicUrl }) {
 
     document.addEventListener("change", (event) => {
       const target = event.target;
+      if (target?.id === "controlDeviceName") {
+        selectedControlDevice = target.value;
+        return;
+      }
       if (!target?.matches?.("[data-device][data-field='protocol']")) return;
       const deviceCard = target.closest(".device");
       if (deviceCard) deviceCard.dataset.protocolMode = target.value || "modbus-rtu";
@@ -1724,6 +1963,11 @@ export function renderDashboardPage({ publicUrl }) {
       event.currentTarget.reset();
       el("manualGatewayPanel").classList.add("hidden");
       await loadGateways();
+    });
+
+    el("powerLimitForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      submitPowerLimitForm();
     });
 
     async function logout() {

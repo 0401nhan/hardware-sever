@@ -111,7 +111,7 @@ GATEWAY_TOKEN=<gateway-token>
 
 ## Remote Inverter Control
 
-Admins can queue inverter control commands for an online gateway:
+Admins can queue inverter control commands from the dashboard `Inverter Control` tab or through the API:
 
 ```bash
 curl -X POST https://server.electricbird.vn/api/gateways/GATEWAY_ID/control \
