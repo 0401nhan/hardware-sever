@@ -40,6 +40,16 @@ test("rejects invalid remote gateway port settings", () => {
   );
 });
 
+test("accepts RTU auto-discovery and register control metadata", () => {
+  const config = validRtuConfig();
+  config.ports.rs485_1.autoDiscover = true;
+  config.ports.rs485_1.pathCandidates = ["/host-dev/serial/by-id/*", "/host-dev/ttyUSB*"];
+  config.devices[0].registers[0].access = "rw";
+  config.devices[0].registers[0].poll = false;
+
+  assert.doesNotThrow(() => validateGatewayConfig(config, "EB-ANHUNG-001"));
+});
+
 test("rejects invalid remote gateway polling settings", () => {
   const config = validRtuConfig();
   config.devices[0].pollIntervalMs = 100;

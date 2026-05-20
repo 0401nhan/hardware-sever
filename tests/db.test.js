@@ -23,6 +23,15 @@ test("persists device templates in server sqlite", async () => {
             scale: 0.1,
             unit: "V",
           },
+          {
+            name: "active_power_limit",
+            access: "rw",
+            poll: false,
+            address: 40016,
+            type: "uint16",
+            scale: 0.1,
+            unit: "%",
+          },
         ],
       },
     ]);
@@ -41,6 +50,17 @@ test("persists device templates in server sqlite", async () => {
       type: "uint16",
       scale: 0.1,
       unit: "V",
+    });
+    assert.deepEqual(persisted[0].registers[1], {
+      name: "active_power_limit",
+      function: "holding",
+      access: "rw",
+      poll: false,
+      address: 40016,
+      length: 1,
+      type: "uint16",
+      scale: 0.1,
+      unit: "%",
     });
   } finally {
     store.close();

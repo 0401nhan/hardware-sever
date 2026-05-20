@@ -1,6 +1,7 @@
 const SUPPORTED_PROTOCOLS = new Set(["modbus-rtu", "modbus-tcp"]);
 const SUPPORTED_PARITIES = new Set(["none", "even", "odd", "mark", "space"]);
 const SUPPORTED_REGISTER_FUNCTIONS = new Set(["holding", "input"]);
+const SUPPORTED_REGISTER_ACCESS = new Set(["ro", "rw", "wo"]);
 const SUPPORTED_REGISTER_TYPES = new Set([
   "uint16",
   "int16",
@@ -50,6 +51,8 @@ export function validateGatewayConfig(config, expectedGatewayId) {
     validateInteger(port.dataBits, `ports.${name}.dataBits`, { min: 5, max: 8, optional: true });
     validateInteger(port.stopBits, `ports.${name}.stopBits`, { min: 1, max: 2, optional: true });
     validateInteger(port.timeoutMs, `ports.${name}.timeoutMs`, { min: 100, optional: true });
+    validateBoolean(port.autoDiscover, `ports.${name}.autoDiscover`, { optional: true });
+    validateStringArray(port.pathCandidates, `ports.${name}.pathCandidates`, { optional: true });
   }
 
   for (const device of config.devices) {
@@ -157,6 +160,8 @@ function validateRegister(register, registerPath) {
   }
 
   validateEnum(register.function, `${registerPath}.function`, SUPPORTED_REGISTER_FUNCTIONS, { optional: true });
+  validateEnum(register.access, `${registerPath}.access`, SUPPORTED_REGISTER_ACCESS, { optional: true });
+  validateBoolean(register.poll, `${registerPath}.poll`, { optional: true });
   validateInteger(register.address, `${registerPath}.address`, { min: 0, max: 65535 });
   validateInteger(register.length, `${registerPath}.length`, { min: 1, max: 125, optional: true });
   validateEnum(register.type, `${registerPath}.type`, SUPPORTED_REGISTER_TYPES, { optional: true });
@@ -218,5 +223,27 @@ function validateNumber(value, field, { optional = false } = {}) {
 
   if (typeof value !== "number" || !Number.isFinite(value)) {
     throw new Error(`Invalid gateway config. ${field} must be a finite number`);
+  }
+}
+
+function validateBoolean(value, field, { optional = false } = {}) {
+  if (value === undefined || value === null || value === "") {
+    if (optional) return;
+    throw new Error(`Invalid gateway config. ${field} is required`);
+  }
+
+  if (typeof value !== "boolean") {
+    throw new Error(`Invalid gateway config. ${field} must be a boolean`);
+  }
+}
+
+function validateStringArray(value, field, { optional = false } = {}) {
+  if (value === undefined || value === null) {
+    if (optional) return;
+    throw new Error(`Invalid gateway config. ${field} is required`);
+  }
+
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || item.trim() === "")) {
+    throw new Error(`Invalid gateway config. ${field} must be an array of strings`);
   }
 }

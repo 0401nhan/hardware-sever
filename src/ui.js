@@ -1227,6 +1227,8 @@ export function renderDashboardPage({ publicUrl }) {
               <tr>
                 <th>Name</th>
                 <th>Function</th>
+                <th>Access</th>
+                <th>Poll</th>
                 <th>Address</th>
                 <th>Length</th>
                 <th>Type</th>
@@ -1246,6 +1248,8 @@ export function renderDashboardPage({ publicUrl }) {
         <tr>
           <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="name" value="\${escapeHtml(register.name || "")}"></td>
           <td><select data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="function">\${["holding", "input"].map((item) => option(item, register.function || "holding")).join("")}</select></td>
+          <td><select data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="access">\${["ro", "rw", "wo"].map((item) => option(item, register.access || "ro")).join("")}</select></td>
+          <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="poll" type="checkbox" \${register.poll === false ? "" : "checked"}></td>
           <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="address" type="number" min="0" value="\${register.address || 0}"></td>
           <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="length" type="number" min="1" value="\${register.length || 1}"></td>
           <td><select data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="type">\${["uint16", "int16", "uint32", "int32", "uint64", "int64", "float32", "string", "bytes", "bitfield16", "bitfield32"].map((item) => option(item, register.type || "uint16")).join("")}</select></td>
@@ -1462,6 +1466,8 @@ export function renderDashboardPage({ publicUrl }) {
         type: "uint16",
         scale: 1,
         unit: "",
+        access: "ro",
+        poll: true,
       };
     }
 
@@ -1583,6 +1589,9 @@ export function renderDashboardPage({ publicUrl }) {
     }
 
     function coerceInput(input) {
+      if (input.type === "checkbox") {
+        return input.checked;
+      }
       if (input.type === "number") {
         const value = Number(input.value);
         return Number.isFinite(value) ? value : 0;

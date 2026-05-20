@@ -76,6 +76,8 @@ export async function openDatabase(dbPath, tokenHashSecret, options = {}) {
       register_index INTEGER NOT NULL,
       name TEXT NOT NULL,
       function TEXT NOT NULL DEFAULT 'holding',
+      access TEXT NOT NULL DEFAULT 'ro',
+      poll_enabled INTEGER NOT NULL DEFAULT 1,
       address INTEGER NOT NULL DEFAULT 0,
       length INTEGER NOT NULL DEFAULT 1,
       type TEXT NOT NULL DEFAULT 'uint16',
@@ -110,7 +112,23 @@ export async function openDatabase(dbPath, tokenHashSecret, options = {}) {
       ON template_registers(template_id, register_index);
   `);
 
+  ensureTemplateRegisterColumns(db);
+
   return new HardwareStore(db, tokenHashSecret, options);
+}
+
+function ensureTemplateRegisterColumns(db) {
+  const columns = new Set(
+    db.prepare("PRAGMA table_info(template_registers)").all().map((row) => row.name),
+  );
+
+  if (!columns.has("access")) {
+    db.exec("ALTER TABLE template_registers ADD COLUMN access TEXT NOT NULL DEFAULT 'ro'");
+  }
+
+  if (!columns.has("poll_enabled")) {
+    db.exec("ALTER TABLE template_registers ADD COLUMN poll_enabled INTEGER NOT NULL DEFAULT 1");
+  }
 }
 
 export class HardwareStore {
@@ -334,6 +352,8 @@ export class HardwareStore {
       SELECT
         name,
         function,
+        access,
+        poll_enabled AS poll,
         address,
         length,
         type,
@@ -352,6 +372,8 @@ export class HardwareStore {
       registers: registerStatement.all(template.id).map((register) => ({
         name: register.name,
         function: register.function,
+        ...(register.access && register.access !== "ro" ? { access: register.access } : {}),
+        ...(register.poll === 0 ? { poll: false } : {}),
         address: register.address,
         length: register.length,
         type: register.type,
@@ -372,8 +394,8 @@ export class HardwareStore {
     `);
     const insertRegister = this.db.prepare(`
       INSERT INTO template_registers (
-        template_id, register_index, name, function, address, length, type, scale, unit, word_order, offset
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        template_id, register_index, name, function, access, poll_enabled, address, length, type, scale, unit, word_order, offset
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     try {
@@ -400,6 +422,8 @@ export class HardwareStore {
             registerIndex,
             register.name,
             register.function,
+            register.access || "ro",
+            register.poll === false ? 0 : 1,
             register.address,
             register.length,
             register.type,
@@ -559,9 +583,14 @@ function normalizeTemplate(template, index) {
 }
 
 function normalizeRegister(register) {
+  const access = normalizeAccess(register.access);
+  const poll = register.poll === false ? false : true;
+
   return {
     name: stringValue(register.name),
     function: stringValue(register.function) || "holding",
+    ...(access !== "ro" ? { access } : {}),
+    ...(poll === false ? { poll } : {}),
     address: numberValue(register.address, 0),
     length: numberValue(register.length, 1),
     type: stringValue(register.type) || "uint16",
@@ -570,6 +599,12 @@ function normalizeRegister(register) {
     ...(register.wordOrder ? { wordOrder: stringValue(register.wordOrder) } : {}),
     ...(register.offset !== undefined ? { offset: numberValue(register.offset, 0) } : {}),
   };
+}
+
+function normalizeAccess(value) {
+  const key = stringValue(value).toLowerCase();
+
+  return ["ro", "rw", "wo"].includes(key) ? key : "ro";
 }
 
 function normalizeDeviceTemplateType(type, category = "", fallback = "") {
