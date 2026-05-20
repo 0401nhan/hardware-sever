@@ -174,6 +174,86 @@ test("gateway config check and status report use the latest admin config", async
   assert.equal(status.body.gateway.appVersion, "0.3.0");
 });
 
+test("admin can queue inverter control commands for gateway execution", async (t) => {
+  const app = await startTestServer(t);
+  const sessionCookie = await login(app);
+
+  await createGateway(app, sessionCookie, {
+    id: "GW-CMD-001",
+    token: "gateway-secret",
+  });
+
+  const queued = await requestJson(app.baseUrl, "/api/gateways/GW-CMD-001/control", {
+    method: "POST",
+    cookie: sessionCookie,
+    body: {
+      deviceName: "Huawei",
+      action: "limit_power",
+      percent: 60,
+      durationMinutes: 15,
+    },
+  });
+  assert.equal(queued.status, 200);
+  assert.equal(queued.body.command.action, "limit_power");
+  assert.equal(queued.body.command.status, "queued");
+  assert.deepEqual(queued.body.command.payload, {
+    deviceName: "Huawei",
+    action: "limit_power",
+    percent: 60,
+    durationMinutes: 15,
+  });
+
+  const check = await requestJson(app.baseUrl, "/api/gateway/commands/check", {
+    method: "POST",
+    token: "gateway-secret",
+    body: {
+      gateway_id: "GW-CMD-001",
+      app_version: "0.1.12",
+    },
+  });
+  assert.equal(check.status, 200);
+  assert.equal(check.body.command.id, queued.body.command.id);
+  assert.deepEqual(check.body.command.payload, queued.body.command.payload);
+
+  const running = await requestJson(app.baseUrl, "/api/gateway/commands/status", {
+    method: "POST",
+    token: "gateway-secret",
+    body: {
+      gateway_id: "GW-CMD-001",
+      command_id: queued.body.command.id,
+      status: "running",
+      app_version: "0.1.12",
+    },
+  });
+  assert.equal(running.status, 200);
+  assert.equal(running.body.command.status, "running");
+
+  const applied = await requestJson(app.baseUrl, "/api/gateway/commands/status", {
+    method: "POST",
+    token: "gateway-secret",
+    body: {
+      gateway_id: "GW-CMD-001",
+      command_id: queued.body.command.id,
+      status: "applied",
+      result: {
+        action: "limit_power",
+        writes: [{ register: "active_power_percentage_derating_percent", words: [600] }],
+      },
+      app_version: "0.1.12",
+    },
+  });
+  assert.equal(applied.status, 200);
+  assert.equal(applied.body.command.status, "applied");
+  assert.equal(applied.body.command.result.writes[0].register, "active_power_percentage_derating_percent");
+
+  const commands = await requestJson(app.baseUrl, "/api/gateways/GW-CMD-001/commands", {
+    cookie: sessionCookie,
+  });
+  assert.equal(commands.status, 200);
+  assert.equal(commands.body.commands.length, 1);
+  assert.equal(commands.body.commands[0].status, "applied");
+});
+
 test("telemetry ingest stores records and ignores duplicate record ids", async (t) => {
   const app = await startTestServer(t);
   const sessionCookie = await login(app);

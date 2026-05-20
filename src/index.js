@@ -136,6 +136,58 @@ server = http.createServer(async (req, res) => {
       });
     }
 
+    if (req.method === "POST" && pathname === "/api/gateway/commands/check") {
+      const body = await readJsonBody(req);
+      authenticateGateway(req, body.gateway_id);
+      const command = store.nextGatewayCommand(body.gateway_id);
+
+      return sendJson(res, 200, {
+        ok: true,
+        command: command ? gatewayCommandPayload(command) : null,
+      });
+    }
+
+    if (req.method === "POST" && pathname === "/api/gateway/commands/status") {
+      const body = await readJsonBody(req);
+      authenticateGateway(req, body.gateway_id);
+      const status = String(body.status || "").trim();
+
+      if (!body.command_id) {
+        return sendJson(res, 400, {
+          ok: false,
+          error: "command_id is required",
+        });
+      }
+
+      if (!["running", "applied", "failed"].includes(status)) {
+        return sendJson(res, 400, {
+          ok: false,
+          error: "status must be running, applied, or failed",
+        });
+      }
+
+      const command = store.updateGatewayCommandStatus({
+        gatewayId: body.gateway_id,
+        commandId: String(body.command_id),
+        status,
+        message: body.message || "",
+        result: body.result ?? null,
+        appVersion: body.app_version || "",
+      });
+
+      if (!command) {
+        return sendJson(res, 404, {
+          ok: false,
+          error: "Command not found",
+        });
+      }
+
+      return sendJson(res, 200, {
+        ok: true,
+        command,
+      });
+    }
+
     if (req.method === "POST" && pathname === "/api/gateway/device-templates") {
       const body = await readJsonBody(req);
       authenticateGateway(req, body.gateway_id);
@@ -299,6 +351,49 @@ server = http.createServer(async (req, res) => {
         version: latest.version,
         configHash: latest.configHash,
         restartRequired: latest.restartRequired,
+      });
+    }
+
+    const gatewayCommandsMatch = pathname.match(/^\/api\/gateways\/([^/]+)\/commands$/);
+    if (gatewayCommandsMatch && req.method === "GET") {
+      const gatewayId = decodeURIComponent(gatewayCommandsMatch[1]);
+
+      if (!store.getGateway(gatewayId)) {
+        return sendJson(res, 404, {
+          ok: false,
+          error: "Gateway not found",
+        });
+      }
+
+      return sendJson(res, 200, {
+        ok: true,
+        commands: store.listGatewayCommands(gatewayId, 100),
+      });
+    }
+
+    const gatewayControlMatch = pathname.match(/^\/api\/gateways\/([^/]+)\/control$/);
+    if (gatewayControlMatch && req.method === "POST") {
+      const gatewayId = decodeURIComponent(gatewayControlMatch[1]);
+      const body = await readJsonBody(req);
+
+      if (!store.getGateway(gatewayId)) {
+        return sendJson(res, 404, {
+          ok: false,
+          error: "Gateway not found",
+        });
+      }
+
+      const payload = normalizeInverterControlPayload(body);
+      const command = store.createGatewayCommand({
+        gatewayId,
+        action: payload.action,
+        payload,
+        createdBy: config.adminUsername,
+      });
+
+      return sendJson(res, 200, {
+        ok: true,
+        command,
       });
     }
 
@@ -488,6 +583,76 @@ function redactGatewaySecrets(gatewayOrGateways) {
   if (!gatewayOrGateways) return gatewayOrGateways;
   const { tokenHash, ...gateway } = gatewayOrGateways;
   return gateway;
+}
+
+function gatewayCommandPayload(command) {
+  return {
+    id: command.id,
+    action: command.action,
+    payload: command.payload,
+    createdAt: command.createdAt,
+  };
+}
+
+function normalizeInverterControlPayload(body) {
+  const deviceName = stringField(body.deviceName ?? body.device);
+  const action = normalizeControlAction(body.action);
+
+  if (!deviceName) throw httpError(400, "deviceName is required");
+  if (!action) throw httpError(400, "action is required");
+
+  const payload = {
+    deviceName,
+    action,
+  };
+
+  for (const field of ["value", "percent", "kw", "watts", "durationSeconds", "durationMinutes", "durationHours", "delayMs", "rebootDelayMs"]) {
+    if (body[field] !== undefined) {
+      payload[field] = finiteNumber(body[field], field);
+    }
+  }
+
+  return payload;
+}
+
+function normalizeControlAction(action) {
+  const normalized = stringField(action).toLowerCase().replace(/[\s-]+/g, "_");
+  const aliases = {
+    on: "start",
+    start: "start",
+    startup: "start",
+    boot: "start",
+    off: "stop",
+    stop: "stop",
+    shutdown: "stop",
+    restart: "reboot",
+    reboot: "reboot",
+    limit_power: "limit_power",
+    power_limit: "limit_power",
+    set_power_limit: "limit_power",
+    clear_power_limit: "clear_power_limit",
+    remove_power_limit: "clear_power_limit",
+    unlimit: "clear_power_limit",
+  };
+  const actionName = aliases[normalized] || normalized;
+
+  if (!["start", "stop", "reboot", "limit_power", "clear_power_limit"].includes(actionName)) {
+    throw httpError(400, `Unsupported inverter control action '${action}'`);
+  }
+
+  return actionName;
+}
+
+function finiteNumber(value, field) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw httpError(400, `${field} must be a finite number`);
+  }
+
+  return value;
+}
+
+function stringField(value) {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function httpError(statusCode, message) {

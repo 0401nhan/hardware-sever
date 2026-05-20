@@ -53,6 +53,22 @@ export async function openDatabase(dbPath, tokenHashSecret, options = {}) {
       FOREIGN KEY (gateway_id) REFERENCES gateways(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS gateway_commands (
+      id TEXT PRIMARY KEY,
+      gateway_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'queued',
+      message TEXT NOT NULL DEFAULT '',
+      result_json TEXT,
+      created_by TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      delivered_at TEXT,
+      completed_at TEXT,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (gateway_id) REFERENCES gateways(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS template_library_metadata (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
@@ -103,6 +119,9 @@ export async function openDatabase(dbPath, tokenHashSecret, options = {}) {
 
     CREATE INDEX IF NOT EXISTS idx_telemetry_gateway_created
       ON telemetry_records(gateway_id, created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_gateway_commands_gateway_status
+      ON gateway_commands(gateway_id, status, created_at);
 
     CREATE UNIQUE INDEX IF NOT EXISTS idx_telemetry_gateway_record_unique
       ON telemetry_records(gateway_id, record_id)
@@ -320,6 +339,96 @@ export class HardwareStore {
       createdAt: row.created_at,
       record: JSON.parse(row.record_json),
     }));
+  }
+
+  createGatewayCommand({ gatewayId, action, payload, createdBy = "admin" }) {
+    const now = new Date().toISOString();
+    const id = crypto.randomUUID();
+
+    this.db.prepare(`
+      INSERT INTO gateway_commands (
+        id,
+        gateway_id,
+        action,
+        payload_json,
+        status,
+        created_by,
+        created_at,
+        updated_at
+      )
+      VALUES (?, ?, ?, ?, 'queued', ?, ?, ?)
+    `).run(id, gatewayId, action, stableJson(payload), createdBy, now, now);
+
+    return this.getGatewayCommand(gatewayId, id);
+  }
+
+  getGatewayCommand(gatewayId, commandId) {
+    const row = this.db.prepare(`
+      SELECT *
+      FROM gateway_commands
+      WHERE gateway_id = ? AND id = ?
+    `).get(gatewayId, commandId);
+
+    return row ? mapCommandRow(row) : null;
+  }
+
+  listGatewayCommands(gatewayId, limit = 50) {
+    return this.db.prepare(`
+      SELECT *
+      FROM gateway_commands
+      WHERE gateway_id = ?
+      ORDER BY created_at DESC
+      LIMIT ?
+    `).all(gatewayId, limit).map(mapCommandRow);
+  }
+
+  nextGatewayCommand(gatewayId) {
+    const row = this.db.prepare(`
+      SELECT *
+      FROM gateway_commands
+      WHERE gateway_id = ? AND status = 'queued'
+      ORDER BY created_at ASC
+      LIMIT 1
+    `).get(gatewayId);
+
+    if (!row) return null;
+
+    const now = new Date().toISOString();
+    this.db.prepare(`
+      UPDATE gateway_commands
+      SET status = 'delivered',
+          delivered_at = COALESCE(delivered_at, ?),
+          updated_at = ?
+      WHERE id = ? AND status = 'queued'
+    `).run(now, now, row.id);
+
+    return this.getGatewayCommand(gatewayId, row.id);
+  }
+
+  updateGatewayCommandStatus({ gatewayId, commandId, status, message = "", result = null, appVersion = "" }) {
+    const now = new Date().toISOString();
+    const completedAt = ["applied", "failed", "cancelled"].includes(status) ? now : null;
+
+    this.db.prepare(`
+      UPDATE gateway_commands
+      SET status = ?,
+          message = ?,
+          result_json = ?,
+          completed_at = COALESCE(?, completed_at),
+          updated_at = ?
+      WHERE gateway_id = ? AND id = ?
+    `).run(status, message ?? "", result === null || result === undefined ? null : JSON.stringify(result), completedAt, now, gatewayId, commandId);
+
+    this.db.prepare(`
+      UPDATE gateways
+      SET app_version = COALESCE(NULLIF(?, ''), app_version),
+          last_seen_at = ?,
+          status = 'online',
+          updated_at = ?
+      WHERE id = ?
+    `).run(appVersion ?? "", now, now, gatewayId);
+
+    return this.getGatewayCommand(gatewayId, commandId);
   }
 
   seedDeviceTemplates(templates) {
@@ -703,6 +812,23 @@ function mapConfigRow(row) {
     restartRequired: Boolean(row.restart_required),
     createdBy: row.created_by,
     createdAt: row.created_at,
+  };
+}
+
+function mapCommandRow(row) {
+  return {
+    id: row.id,
+    gatewayId: row.gateway_id,
+    action: row.action,
+    payload: JSON.parse(row.payload_json),
+    status: row.status,
+    message: row.message,
+    result: row.result_json ? JSON.parse(row.result_json) : null,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    deliveredAt: row.delivered_at,
+    completedAt: row.completed_at,
+    updatedAt: row.updated_at,
   };
 }
 

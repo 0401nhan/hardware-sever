@@ -81,6 +81,8 @@ Gateway calls are outbound HTTPS from the IPC/Moxa device to the cloud:
 POST /api/gateway/heartbeat
 POST /api/gateway/config/check
 POST /api/gateway/config/status
+POST /api/gateway/commands/check
+POST /api/gateway/commands/status
 POST /api/telemetry
 ```
 
@@ -106,6 +108,19 @@ GATEWAY_TOKEN=<gateway-token>
 5. Save a new config version.
 6. Gateway polls `/api/gateway/config/check`.
 7. Gateway validates, saves to local SQLite, restarts, and reports status.
+
+## Remote Inverter Control
+
+Admins can queue inverter control commands for an online gateway:
+
+```bash
+curl -X POST https://server.electricbird.vn/api/gateways/GATEWAY_ID/control \
+  -H "Content-Type: application/json" \
+  -b "hardware_server_session=<session-cookie>" \
+  -d '{"deviceName":"Huawei","action":"limit_power","percent":60,"durationMinutes":30}'
+```
+
+Supported actions are `on`/`start`/`boot`, `off`/`stop`/`shutdown`, `reboot`/`restart`, `limit_power`, and `clear_power_limit`. The gateway polls `/api/gateway/commands/check`, executes the command locally through Modbus, then reports `/api/gateway/commands/status`.
 
 ## Docker Compose
 
