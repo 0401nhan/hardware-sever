@@ -84,6 +84,54 @@ test("rejects duplicate server device template ids", async () => {
   }
 });
 
+test("imports new seed registers into an initialized server template library", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hardware-server-db-seed-merge-"));
+  const store = await openDatabase(path.join(dir, "hardware-server.sqlite"), "test-secret");
+
+  try {
+    store.seedDeviceTemplates([
+      {
+        id: "huawei_sun2000",
+        label: "Huawei SUN2000",
+        registers: [
+          { name: "model_id", address: 30000 },
+        ],
+      },
+    ]);
+
+    const merged = store.seedDeviceTemplates([
+      {
+        id: "huawei_sun2000",
+        label: "Huawei SUN2000",
+        registers: [
+          { name: "model_id", address: 30000 },
+          {
+            name: "active_power_control_mode",
+            access: "rw",
+            poll: false,
+            address: 40000,
+          },
+        ],
+      },
+    ]);
+
+    assert.equal(merged[0].registers.length, 2);
+    assert.deepEqual(merged[0].registers[1], {
+      name: "active_power_control_mode",
+      function: "holding",
+      access: "rw",
+      poll: false,
+      address: 40000,
+      length: 1,
+      type: "uint16",
+      scale: 1,
+      unit: "",
+    });
+  } finally {
+    store.close();
+  }
+});
+
 test("ignores duplicate telemetry record ids for the same gateway", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hardware-server-telemetry-dedupe-"));
   const store = await openDatabase(path.join(dir, "hardware-server.sqlite"), "test-secret");

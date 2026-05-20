@@ -323,12 +323,16 @@ export class HardwareStore {
   }
 
   seedDeviceTemplates(templates) {
+    const normalized = normalizeTemplateLibrary(templates);
+
     if (this.#metadata("device_templates_initialized") === "1") {
+      this.#mergeNewSeedTemplates(normalized);
       return this.listDeviceTemplates();
     }
 
-    const saved = this.saveDeviceTemplates(templates);
+    const saved = this.saveDeviceTemplates(normalized);
     this.#setMetadata("device_templates_initialized", "1");
+    this.#setSeedTemplateMetadata(normalized);
 
     return saved;
   }
@@ -443,6 +447,183 @@ export class HardwareStore {
     }
 
     return this.listDeviceTemplates();
+  }
+
+  #mergeNewSeedTemplates(seedTemplates) {
+    if (seedTemplates.length === 0) return;
+
+    const previousSeedIds = this.#seedTemplateIds();
+    const existingIds = new Set(this.db.prepare("SELECT id FROM device_templates").all().map((row) => row.id));
+    const knownSeedIds = previousSeedIds ?? existingIds;
+    const existingRegisterNames = this.#existingTemplateRegisterNames();
+    const previousSeedRegisterNames = this.#seedTemplateRegisterNames() ?? existingRegisterNames;
+    const newSeedTemplates = seedTemplates.filter(
+      (template) => !knownSeedIds.has(template.id) && !existingIds.has(template.id),
+    );
+    const missingSeedRegisters = seedTemplates
+      .filter((template) => knownSeedIds.has(template.id) && existingIds.has(template.id))
+      .map((template) => {
+        const previousNames = previousSeedRegisterNames.get(template.id) ?? new Set();
+        const existingNames = existingRegisterNames.get(template.id) ?? new Set();
+
+        return {
+          templateId: template.id,
+          registers: template.registers.filter(
+            (register) => !previousNames.has(register.name) && !existingNames.has(register.name),
+          ),
+        };
+      })
+      .filter((template) => template.registers.length > 0);
+
+    if (newSeedTemplates.length === 0 && missingSeedRegisters.length === 0) {
+      this.#setSeedTemplateMetadata(seedTemplates);
+      return;
+    }
+
+    try {
+      this.db.exec("BEGIN IMMEDIATE");
+      this.#insertSeedTemplates(newSeedTemplates);
+      this.#insertMissingSeedRegisters(missingSeedRegisters);
+      this.#setSeedTemplateMetadata(seedTemplates);
+      this.db.exec("COMMIT");
+    } catch (error) {
+      this.db.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
+  #insertSeedTemplates(templates) {
+    if (templates.length === 0) return;
+
+    const nextSortOrder = this.db.prepare("SELECT COALESCE(MAX(sort_order) + 1, 0) AS value FROM device_templates").get().value;
+    const insertTemplate = this.db.prepare(`
+      INSERT INTO device_templates (
+        id, label, manufacturer, model, category, type, protocol, poll_interval_ms, notes, sort_order
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertRegister = this.#insertTemplateRegisterStatement();
+
+    templates.forEach((template, templateIndex) => {
+      insertTemplate.run(
+        template.id,
+        template.label,
+        template.manufacturer,
+        template.model,
+        template.category,
+        template.type,
+        template.protocol,
+        template.pollIntervalMs,
+        template.notes,
+        nextSortOrder + templateIndex,
+      );
+
+      template.registers.forEach((register, registerIndex) => {
+        this.#insertTemplateRegister(insertRegister, template.id, registerIndex, register);
+      });
+    });
+  }
+
+  #insertMissingSeedRegisters(templates) {
+    if (templates.length === 0) return;
+
+    const nextRegisterIndex = this.db.prepare(`
+      SELECT COALESCE(MAX(register_index) + 1, 0) AS value
+      FROM template_registers
+      WHERE template_id = ?
+    `);
+    const insertRegister = this.#insertTemplateRegisterStatement();
+
+    for (const template of templates) {
+      let registerIndex = nextRegisterIndex.get(template.templateId).value;
+
+      for (const register of template.registers) {
+        this.#insertTemplateRegister(insertRegister, template.templateId, registerIndex, register);
+        registerIndex += 1;
+      }
+    }
+  }
+
+  #insertTemplateRegisterStatement() {
+    return this.db.prepare(`
+      INSERT INTO template_registers (
+        template_id, register_index, name, function, access, poll_enabled, address, length, type, scale, unit, word_order, offset
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+  }
+
+  #insertTemplateRegister(insertRegister, templateId, registerIndex, register) {
+    insertRegister.run(
+      templateId,
+      registerIndex,
+      register.name,
+      register.function,
+      register.access || "ro",
+      register.poll === false ? 0 : 1,
+      register.address,
+      register.length,
+      register.type,
+      register.scale,
+      register.unit,
+      register.wordOrder || null,
+      register.offset ?? null,
+    );
+  }
+
+  #seedTemplateIds() {
+    const raw = this.#metadata("seed_template_ids");
+    if (!raw) return null;
+
+    try {
+      const ids = JSON.parse(raw);
+      return Array.isArray(ids) ? new Set(ids.map(String)) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  #seedTemplateRegisterNames() {
+    const raw = this.#metadata("seed_template_register_names");
+    if (!raw) return null;
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+
+      return new Map(
+        Object.entries(parsed).map(([templateId, names]) => [
+          templateId,
+          new Set(Array.isArray(names) ? names.map(String) : []),
+        ]),
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  #existingTemplateRegisterNames() {
+    const rows = this.db.prepare("SELECT template_id, name FROM template_registers ORDER BY register_index").all();
+    const namesByTemplate = new Map();
+
+    for (const row of rows) {
+      if (!namesByTemplate.has(row.template_id)) {
+        namesByTemplate.set(row.template_id, new Set());
+      }
+
+      namesByTemplate.get(row.template_id).add(row.name);
+    }
+
+    return namesByTemplate;
+  }
+
+  #setSeedTemplateMetadata(seedTemplates) {
+    this.#setMetadata("seed_template_ids", JSON.stringify(seedTemplates.map((template) => template.id)));
+    this.#setMetadata(
+      "seed_template_register_names",
+      JSON.stringify(Object.fromEntries(seedTemplates.map((template) => [
+        template.id,
+        template.registers.map((register) => register.name),
+      ]))),
+    );
   }
 
   hashToken(token) {
