@@ -33,6 +33,23 @@ test("admin login protects API and issues a usable session", async (t) => {
   assert.deepEqual(gateways.body.gateways, []);
 });
 
+test("admin session cookie is Secure when public URL is HTTPS", async (t) => {
+  const app = await startTestServer(t, {
+    PUBLIC_URL: "https://server.electricbird.vn",
+  });
+
+  const response = await requestJson(app.baseUrl, "/api/login", {
+    method: "POST",
+    body: {
+      username: "admin",
+      password: "admin-password",
+    },
+  });
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("set-cookie"), /;\s*Secure\b/);
+});
+
 test("gateway token auth rejects bad bearer tokens and accepts registered tokens", async (t) => {
   const app = await startTestServer(t);
   const sessionCookie = await login(app);
@@ -323,7 +340,7 @@ test("telemetry ingest stores records and ignores duplicate record ids", async (
   );
 });
 
-async function startTestServer(t) {
+async function startTestServer(t, envOverrides = {}) {
   const port = await getFreePort();
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hardware-server-integration-"));
   const dbPath = path.join(dir, "hardware-server.sqlite");
@@ -345,6 +362,7 @@ async function startTestServer(t) {
     TOKEN_HASH_SECRET: "test-token-secret",
     PROVISIONING_TOKEN: "provisioning-token",
     AUTO_REGISTER_GATEWAYS: "true",
+    ...envOverrides,
   };
 
   const child = spawn(process.execPath, ["src/index.js"], {

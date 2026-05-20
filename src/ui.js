@@ -1312,12 +1312,23 @@ export function renderDashboardPage({ publicUrl }) {
 
     function inverterControlDevices() {
       const devices = state.devices || [];
-      const inverters = devices.filter((device) => {
+      return devices.filter((device) => {
         const text = [device.category, device.type, device.manufacturer, device.model, device.templateId].filter(Boolean).join(" ").toLowerCase();
-        return text.includes("inverter") || text.includes("sun2000") || text.includes("huawei");
-      });
+        const hasControlRegister = (device.registers || []).some((register) => {
+          const name = String(register.name || "").toLowerCase();
+          const access = String(register.access || "ro").toLowerCase();
+          return access !== "ro" && [
+            "startup_command",
+            "shutdown_command",
+            "active_power_percentage_derating_percent",
+            "active_power_limit_kw",
+            "active_power_limit_w",
+            "schedule_instruction_valid_duration_s",
+          ].includes(name);
+        });
 
-      return inverters.length ? inverters : devices;
+        return text.includes("inverter") || text.includes("sun2000") || text.includes("huawei") || hasControlRegister;
+      });
     }
 
     function renderCommandHistory() {

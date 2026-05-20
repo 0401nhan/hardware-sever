@@ -68,7 +68,7 @@ server = http.createServer(async (req, res) => {
       return sendJson(res, 200, {
         ok: true,
       }, {
-        "Set-Cookie": buildSessionCookie(),
+        "Set-Cookie": buildSessionCookie(req),
       });
     }
 
@@ -76,7 +76,7 @@ server = http.createServer(async (req, res) => {
       return sendJson(res, 200, {
         ok: true,
       }, {
-        "Set-Cookie": clearSessionCookie(),
+        "Set-Cookie": clearSessionCookie(req),
       });
     }
 
@@ -505,12 +505,13 @@ function isAdminAuthenticated(req) {
   }
 }
 
-function buildSessionCookie() {
+function buildSessionCookie(req) {
   const payload = Buffer.from(JSON.stringify({
     username: config.adminUsername,
     expiresAt: Date.now() + 12 * 60 * 60 * 1000,
   })).toString("base64url");
   const token = `${payload}.${sign(payload, config.sessionSecret)}`;
+  const secure = secureCookieAttribute(req);
 
   return [
     `hardware_server_session=${token}`,
@@ -518,11 +519,27 @@ function buildSessionCookie() {
     "HttpOnly",
     "SameSite=Lax",
     "Max-Age=43200",
-  ].join("; ");
+    secure,
+  ].filter(Boolean).join("; ");
 }
 
-function clearSessionCookie() {
-  return "hardware_server_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0";
+function clearSessionCookie(req) {
+  return [
+    "hardware_server_session=",
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Lax",
+    "Max-Age=0",
+    secureCookieAttribute(req),
+  ].filter(Boolean).join("; ");
+}
+
+function secureCookieAttribute(req) {
+  if (String(process.env.COOKIE_SECURE || "").toLowerCase() === "false") return "";
+  if (String(process.env.COOKIE_SECURE || "").toLowerCase() === "true") return "Secure";
+  if (String(req?.headers?.["x-forwarded-proto"] || "").split(",")[0].trim() === "https") return "Secure";
+  if (String(req?.headers?.["x-forwarded-ssl"] || "").toLowerCase() === "on") return "Secure";
+  return config.publicUrl.startsWith("https://") ? "Secure" : "";
 }
 
 function sign(payload, secret) {

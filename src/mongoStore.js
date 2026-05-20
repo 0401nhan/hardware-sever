@@ -321,14 +321,24 @@ class MongoHardwareStore {
 
   async saveDeviceTemplates(templates) {
     const normalized = normalizeTemplateLibrary(templates);
-    await this.deviceTemplates.deleteMany({});
-    if (normalized.length > 0) {
-      await this.deviceTemplates.insertMany(normalized.map((template, index) => ({
-        _id: template.id,
-        ...template,
-        sortOrder: index,
-      })));
+
+    if (normalized.length === 0) {
+      throw new Error("Device template library must not be empty");
     }
+
+    const ids = normalized.map((template) => template.id);
+    await this.deviceTemplates.bulkWrite(normalized.map((template, index) => ({
+      replaceOne: {
+        filter: { _id: template.id },
+        replacement: {
+          _id: template.id,
+          ...template,
+          sortOrder: index,
+        },
+        upsert: true,
+      },
+    })), { ordered: true });
+    await this.deviceTemplates.deleteMany({ _id: { $nin: ids } });
     await this.#setMetadata("device_templates_initialized", "1");
     return this.listDeviceTemplates();
   }
