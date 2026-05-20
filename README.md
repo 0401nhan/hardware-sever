@@ -122,6 +122,18 @@ curl -X POST https://server.electricbird.vn/api/gateways/GATEWAY_ID/control \
 
 Supported actions are `on`/`start`/`boot`, `off`/`stop`/`shutdown`, `reboot`/`restart`, `limit_power`, and `clear_power_limit`. The gateway polls `/api/gateway/commands/check`, executes the command locally through Modbus, then reports `/api/gateway/commands/status`.
 
+## Cloud MongoDB Mode
+
+Set these on Hardware-Server to use Cloud MongoDB instead of local SQLite:
+
+```bash
+STORE_DRIVER=mongodb
+MONGODB_URI=mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/
+MONGODB_DB=hardware_gateway
+```
+
+Hardware-Server and Hardware-Gateway share these collections: `gateways`, `config_versions`, `telemetry_records`, `gateway_commands`, `device_templates`, and `template_library_metadata`. Use a restricted MongoDB user for gateways; do not place an Atlas admin credential on an IPC.
+
 ## Docker Compose
 
 ```bash

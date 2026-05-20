@@ -37,7 +37,7 @@ store = await openDatabase(config.dbPath, config.tokenHashSecret, {
   offlineAfterMs: config.gatewayOfflineAfterMs,
 });
 templateSeed = readDeviceTemplateSeed(config.deviceTemplatesPath);
-store.seedDeviceTemplates(templateSeed.templates);
+await store.seedDeviceTemplates(templateSeed.templates);
 
 server = http.createServer(async (req, res) => {
   try {
@@ -82,8 +82,8 @@ server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && pathname === "/api/gateway/heartbeat") {
       const body = await readJsonBody(req);
-      authenticateGateway(req, body.gateway_id);
-      const gateway = store.markHeartbeat(body.gateway_id, body.app_version || "");
+      await authenticateGateway(req, body.gateway_id);
+      const gateway = await store.markHeartbeat(body.gateway_id, body.app_version || "");
 
       return sendJson(res, 200, {
         ok: true,
@@ -93,8 +93,8 @@ server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && pathname === "/api/gateway/config/check") {
       const body = await readJsonBody(req);
-      authenticateGateway(req, body.gateway_id);
-      const latest = store.getLatestConfig(body.gateway_id);
+      await authenticateGateway(req, body.gateway_id);
+      const latest = await store.getLatestConfig(body.gateway_id);
 
       if (!latest) {
         return sendJson(res, 200, {
@@ -121,8 +121,8 @@ server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && pathname === "/api/gateway/config/status") {
       const body = await readJsonBody(req);
-      authenticateGateway(req, body.gateway_id);
-      const gateway = store.updateConfigStatus({
+      await authenticateGateway(req, body.gateway_id);
+      const gateway = await store.updateConfigStatus({
         gatewayId: body.gateway_id,
         version: Number.parseInt(body.config_version || "0", 10),
         status: String(body.status || ""),
@@ -138,8 +138,8 @@ server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && pathname === "/api/gateway/commands/check") {
       const body = await readJsonBody(req);
-      authenticateGateway(req, body.gateway_id);
-      const command = store.nextGatewayCommand(body.gateway_id);
+      await authenticateGateway(req, body.gateway_id);
+      const command = await store.nextGatewayCommand(body.gateway_id);
 
       return sendJson(res, 200, {
         ok: true,
@@ -149,7 +149,7 @@ server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && pathname === "/api/gateway/commands/status") {
       const body = await readJsonBody(req);
-      authenticateGateway(req, body.gateway_id);
+      await authenticateGateway(req, body.gateway_id);
       const status = String(body.status || "").trim();
 
       if (!body.command_id) {
@@ -166,7 +166,7 @@ server = http.createServer(async (req, res) => {
         });
       }
 
-      const command = store.updateGatewayCommandStatus({
+      const command = await store.updateGatewayCommandStatus({
         gatewayId: body.gateway_id,
         commandId: String(body.command_id),
         status,
@@ -190,8 +190,8 @@ server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && pathname === "/api/gateway/device-templates") {
       const body = await readJsonBody(req);
-      authenticateGateway(req, body.gateway_id);
-      const templates = store.listDeviceTemplates();
+      await authenticateGateway(req, body.gateway_id);
+      const templates = await store.listDeviceTemplates();
 
       return sendJson(res, 200, {
         ok: true,
@@ -202,7 +202,7 @@ server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && pathname === "/api/telemetry") {
       const body = await readJsonBody(req);
-      authenticateGateway(req, body.gateway_id);
+      await authenticateGateway(req, body.gateway_id);
 
       if (!Array.isArray(body.records)) {
         return sendJson(res, 400, {
@@ -211,7 +211,7 @@ server = http.createServer(async (req, res) => {
         });
       }
 
-      const telemetryResult = store.insertTelemetry(body.gateway_id, body.records);
+      const telemetryResult = await store.insertTelemetry(body.gateway_id, body.records);
 
       return sendJson(res, 200, {
         ok: true,
@@ -237,7 +237,7 @@ server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && pathname === "/api/device-templates") {
-      const templates = store.listDeviceTemplates();
+      const templates = await store.listDeviceTemplates();
 
       return sendJson(res, 200, {
         ok: true,
@@ -257,7 +257,7 @@ server = http.createServer(async (req, res) => {
         });
       }
 
-      const templates = store.saveDeviceTemplates(body.templates);
+      const templates = await store.saveDeviceTemplates(body.templates);
 
       return sendJson(res, 200, {
         ok: true,
@@ -269,7 +269,7 @@ server = http.createServer(async (req, res) => {
     if (req.method === "GET" && pathname === "/api/gateways") {
       return sendJson(res, 200, {
         ok: true,
-        gateways: redactGatewaySecrets(store.listGateways()),
+        gateways: redactGatewaySecrets(await store.listGateways()),
       });
     }
 
@@ -284,17 +284,17 @@ server = http.createServer(async (req, res) => {
         });
       }
 
-      const gateway = store.upsertGateway({
+      const gateway = await store.upsertGateway({
         id,
         name: String(body.name || id).trim(),
         site: String(body.site || "").trim(),
         token: String(body.token || ""),
       });
 
-      const latest = store.getLatestConfig(id);
+      const latest = await store.getLatestConfig(id);
       if (!latest) {
         const defaultConfig = createDefaultGatewayConfig(id, config.publicUrl);
-        store.addConfigVersion({
+        await store.addConfigVersion({
           gatewayId: id,
           config: defaultConfig,
           restartRequired: true,
@@ -311,7 +311,7 @@ server = http.createServer(async (req, res) => {
     const gatewayConfigMatch = pathname.match(/^\/api\/gateways\/([^/]+)\/config$/);
     if (gatewayConfigMatch && req.method === "GET") {
       const gatewayId = decodeURIComponent(gatewayConfigMatch[1]);
-      const latest = store.getLatestConfig(gatewayId);
+      const latest = await store.getLatestConfig(gatewayId);
 
       return sendJson(res, 200, {
         ok: true,
@@ -331,7 +331,7 @@ server = http.createServer(async (req, res) => {
       const gatewayId = decodeURIComponent(gatewayConfigMatch[1]);
       const body = await readJsonBody(req);
 
-      if (!store.getGateway(gatewayId)) {
+      if (!await store.getGateway(gatewayId)) {
         return sendJson(res, 404, {
           ok: false,
           error: "Gateway not found",
@@ -339,7 +339,7 @@ server = http.createServer(async (req, res) => {
       }
 
       validateGatewayConfig(body.config, gatewayId);
-      const latest = store.addConfigVersion({
+      const latest = await store.addConfigVersion({
         gatewayId,
         config: body.config,
         restartRequired: body.restart_required !== false,
@@ -358,7 +358,7 @@ server = http.createServer(async (req, res) => {
     if (gatewayCommandsMatch && req.method === "GET") {
       const gatewayId = decodeURIComponent(gatewayCommandsMatch[1]);
 
-      if (!store.getGateway(gatewayId)) {
+      if (!await store.getGateway(gatewayId)) {
         return sendJson(res, 404, {
           ok: false,
           error: "Gateway not found",
@@ -367,7 +367,7 @@ server = http.createServer(async (req, res) => {
 
       return sendJson(res, 200, {
         ok: true,
-        commands: store.listGatewayCommands(gatewayId, 100),
+        commands: await store.listGatewayCommands(gatewayId, 100),
       });
     }
 
@@ -376,7 +376,7 @@ server = http.createServer(async (req, res) => {
       const gatewayId = decodeURIComponent(gatewayControlMatch[1]);
       const body = await readJsonBody(req);
 
-      if (!store.getGateway(gatewayId)) {
+      if (!await store.getGateway(gatewayId)) {
         return sendJson(res, 404, {
           ok: false,
           error: "Gateway not found",
@@ -384,7 +384,7 @@ server = http.createServer(async (req, res) => {
       }
 
       const payload = normalizeInverterControlPayload(body);
-      const command = store.createGatewayCommand({
+      const command = await store.createGatewayCommand({
         gatewayId,
         action: payload.action,
         payload,
@@ -402,7 +402,7 @@ server = http.createServer(async (req, res) => {
       const gatewayId = decodeURIComponent(telemetryMatch[1]);
       return sendJson(res, 200, {
         ok: true,
-        records: store.latestTelemetry(gatewayId, 100),
+        records: await store.latestTelemetry(gatewayId, 100),
       });
     }
 
@@ -425,23 +425,23 @@ server.listen(config.port, config.host, () => {
 });
 }
 
-function authenticateGateway(req, gatewayId) {
+async function authenticateGateway(req, gatewayId) {
   if (!gatewayId) throw httpError(400, "gateway_id is required");
 
   const token = bearerToken(req);
-  const existing = store.getGateway(gatewayId);
+  const existing = await store.getGateway(gatewayId);
 
   if (!existing && canAutoRegisterGateway(token)) {
-    store.autoRegisterGateway(gatewayId, token);
-    ensureDefaultGatewayConfig(gatewayId, "auto-provision");
+    await store.autoRegisterGateway(gatewayId, token);
+    await ensureDefaultGatewayConfig(gatewayId, "auto-provision");
     return;
   }
 
-  if (!store.verifyGatewayToken(gatewayId, token)) {
+  if (!await store.verifyGatewayToken(gatewayId, token)) {
     throw httpError(401, "Invalid gateway token");
   }
 
-  ensureDefaultGatewayConfig(gatewayId, "server");
+  await ensureDefaultGatewayConfig(gatewayId, "server");
 }
 
 function canAutoRegisterGateway(token) {
@@ -450,11 +450,11 @@ function canAutoRegisterGateway(token) {
   return safeEqual(token, config.provisioningToken);
 }
 
-function ensureDefaultGatewayConfig(gatewayId, createdBy) {
-  if (store.getLatestConfig(gatewayId)) return;
+async function ensureDefaultGatewayConfig(gatewayId, createdBy) {
+  if (await store.getLatestConfig(gatewayId)) return;
 
   const defaultConfig = createDefaultGatewayConfig(gatewayId, config.publicUrl);
-  store.addConfigVersion({
+  await store.addConfigVersion({
     gatewayId,
     config: defaultConfig,
     restartRequired: true,

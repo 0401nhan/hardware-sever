@@ -875,6 +875,14 @@ export function renderDashboardPage({ publicUrl }) {
                 <label>Remote check ms <input id="remoteConfigCheckIntervalMs" type="number" min="5000" step="1000"></label>
                 <label>Remote timeout ms <input id="remoteConfigTimeoutMs" type="number" min="1000" step="1000"></label>
                 <label class="wide">Remote state path <input id="remoteConfigStatePath" autocomplete="off"></label>
+                <label>Mongo enabled <select id="mongoEnabled"><option value="false">false</option><option value="true">true</option></select></label>
+                <label>Mongo URI env <input id="mongoUriEnv" autocomplete="off"></label>
+                <label>Mongo DB env <input id="mongoDbNameEnv" autocomplete="off"></label>
+                <label>Mongo DB name <input id="mongoDbName" autocomplete="off"></label>
+                <label>Mongo check ms <input id="mongoCheckIntervalMs" type="number" min="5000" step="1000"></label>
+                <label>Mongo upload ms <input id="mongoUploadIntervalMs" type="number" min="500" step="500"></label>
+                <label>Mongo batch size <input id="mongoBatchSize" type="number" min="1"></label>
+                <label class="wide">Mongo state path <input id="mongoStatePath" autocomplete="off"></label>
                 <label class="wide">Queue path <input id="queuePath" autocomplete="off"></label>
               </div>
             </section>
@@ -1103,6 +1111,16 @@ export function renderDashboardPage({ publicUrl }) {
           timeoutMs: 10000,
           statePath: "/data/remote-config-state.json",
         },
+        mongo: {
+          enabled: false,
+          uriEnv: "MONGODB_URI",
+          dbNameEnv: "MONGODB_DB",
+          dbName: "hardware_gateway",
+          checkIntervalMs: 30000,
+          uploadIntervalMs: 5000,
+          batchSize: 100,
+          statePath: "/data/mongo-sync-state.json",
+        },
         storage: {
           queuePath: "/data/queue.jsonl",
           queue: {
@@ -1135,6 +1153,14 @@ export function renderDashboardPage({ publicUrl }) {
       el("remoteConfigCheckIntervalMs").value = state.remoteConfig?.checkIntervalMs ?? 30000;
       el("remoteConfigTimeoutMs").value = state.remoteConfig?.timeoutMs ?? 10000;
       el("remoteConfigStatePath").value = state.remoteConfig?.statePath || "/data/remote-config-state.json";
+      el("mongoEnabled").value = String(state.mongo?.enabled ?? false);
+      el("mongoUriEnv").value = state.mongo?.uriEnv || "MONGODB_URI";
+      el("mongoDbNameEnv").value = state.mongo?.dbNameEnv || "MONGODB_DB";
+      el("mongoDbName").value = state.mongo?.dbName || "hardware_gateway";
+      el("mongoCheckIntervalMs").value = state.mongo?.checkIntervalMs ?? 30000;
+      el("mongoUploadIntervalMs").value = state.mongo?.uploadIntervalMs ?? 5000;
+      el("mongoBatchSize").value = state.mongo?.batchSize ?? 100;
+      el("mongoStatePath").value = state.mongo?.statePath || "/data/mongo-sync-state.json";
       el("queuePath").value = state.storage?.queuePath || "/data/queue.jsonl";
       el("rawYaml").value = stringifyConfig(state);
 
@@ -1521,6 +1547,16 @@ export function renderDashboardPage({ publicUrl }) {
         checkIntervalMs: numberValue("remoteConfigCheckIntervalMs"),
         timeoutMs: numberValue("remoteConfigTimeoutMs"),
         statePath: el("remoteConfigStatePath").value.trim(),
+      };
+      state.mongo = {
+        enabled: el("mongoEnabled").value === "true",
+        uriEnv: el("mongoUriEnv").value.trim(),
+        dbNameEnv: el("mongoDbNameEnv").value.trim(),
+        dbName: el("mongoDbName").value.trim(),
+        checkIntervalMs: numberValue("mongoCheckIntervalMs"),
+        uploadIntervalMs: numberValue("mongoUploadIntervalMs"),
+        batchSize: numberValue("mongoBatchSize"),
+        statePath: el("mongoStatePath").value.trim(),
       };
       state.storage = {
         ...(state.storage || {}),
