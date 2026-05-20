@@ -16,3 +16,14 @@ test("dashboard renders inverter control actions", () => {
   assert.match(html, /\/api\/gateways\/" \+ encodeURIComponent\(selectedId\) \+ "\/control/);
   assert.match(html, /\/api\/gateways\/" \+ encodeURIComponent\(selectedId\) \+ "\/commands/);
 });
+
+test("dashboard renders shared template library editor", () => {
+  const html = renderDashboardPage({ publicUrl: "https://example.test" });
+
+  assert.match(html, /data-tab-target="libraryTab"/);
+  assert.match(html, /id="libraryTab"/);
+  assert.match(html, /id="templateLibrary"/);
+  assert.match(html, /id="addTemplateBtn"/);
+  assert.match(html, /id="saveTemplatesBtn"/);
+  assert.match(html, /\/api\/device-templates/);
+});

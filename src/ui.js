@@ -712,6 +712,7 @@ export function renderDashboardPage({ publicUrl }) {
           <a href="#modbusDevicesSubtab" data-parent-tab="settingCommunication" data-subtab-target="modbusDevicesSubtab">Modbus Devices</a>
           <a href="#rawYamlSubtab" data-parent-tab="settingCommunication" data-subtab-target="rawYamlSubtab">Raw YAML</a>
         </div>
+        <button class="nav-link" type="button" data-tab-target="libraryTab">Library</button>
       </nav>
     </aside>
 
@@ -950,6 +951,23 @@ export function renderDashboardPage({ publicUrl }) {
             </section>
           </div>
         </div>
+
+        <div id="libraryTab" class="tab-panel" data-tab-panel>
+          <section class="config-section">
+            <div class="section-header">
+              <div class="section-title">
+                <h2>Library</h2>
+                <p>Add, edit, and delete Modbus reading templates used by Modbus Devices.</p>
+              </div>
+              <div class="actions">
+                <button id="refreshTemplatesBtn" class="subtle" type="button">Refresh Library</button>
+                <button id="addTemplateBtn" class="subtle" type="button">Add Template</button>
+                <button id="saveTemplatesBtn" class="primary" type="button">Save Library</button>
+              </div>
+            </div>
+            <div id="templateLibrary"></div>
+          </section>
+        </div>
       </main>
     </div>
   </div>
@@ -966,9 +984,17 @@ export function renderDashboardPage({ publicUrl }) {
     let selectedControlDevice = "";
     let templates = [];
     const expandedDeviceRegisters = new Set();
+    const expandedTemplateRegisters = new Set();
 
     const el = (id) => document.getElementById(id);
-    const tabIds = ["generalInformation", "deviceMonitoringTab", "inverterControlTab", "settingCommunication"];
+    const templateTypeOptions = [
+      { value: "inverter", label: "Inverter" },
+      { value: "meter", label: "Meter" },
+      { value: "weatherstation", label: "WeatherStation" },
+      { value: "datalogger", label: "Datalogger" },
+      { value: "other", label: "Other" },
+    ];
+    const tabIds = ["generalInformation", "deviceMonitoringTab", "inverterControlTab", "settingCommunication", "libraryTab"];
     const defaultSubtabs = {
       generalInformation: "overviewSubtab",
       settingCommunication: "gatewaySubtab",
@@ -990,6 +1016,7 @@ export function renderDashboardPage({ publicUrl }) {
       rs485PortsSubtab: ["RS485 Ports", "Serial settings used by Modbus RTU devices"],
       modbusDevicesSubtab: ["Modbus Devices", "Device identity, connection mode, and register maps"],
       rawYamlSubtab: ["Raw YAML", "Current cloud config payload"],
+      libraryTab: ["Library", "Reusable Modbus device templates"],
     };
 
     function setStatus(message, type = "") {
@@ -1169,6 +1196,7 @@ export function renderDashboardPage({ publicUrl }) {
       renderMonitoring();
       renderInverterControl();
       renderTemplatePicker();
+      renderTemplateLibrary();
       renderPorts();
       renderDevices();
     }
@@ -1394,6 +1422,113 @@ export function renderDashboardPage({ publicUrl }) {
         templates.map((template) => option(template.id, template.id, template.label)).join("");
     }
 
+    function renderTemplateLibrary() {
+      const container = el("templateLibrary");
+      container.innerHTML = "";
+
+      if (!templates.length) {
+        container.innerHTML = '<div class="empty-state">No templates in library</div>';
+        return;
+      }
+
+      templates.forEach((template, index) => {
+        const registersExpanded = expandedTemplateRegisters.has(String(index));
+        const section = document.createElement("div");
+        section.className = "device";
+        section.innerHTML =
+          '<div class="device-head">' +
+            '<div class="device-title">' +
+              '<strong>' + escapeHtml(template.label || template.id || "Template " + (index + 1)) + '</strong>' +
+              '<p>' + escapeHtml(template.id || "-") + ' | ' + (template.registers || []).length + ' registers</p>' +
+            '</div>' +
+            '<button type="button" class="danger" data-remove-template="' + index + '">Remove Template</button>' +
+          '</div>' +
+          '<div class="grid">' +
+            '<label>ID <input data-template="' + index + '" data-field="id" value="' + escapeHtml(template.id || "") + '" autocomplete="off"></label>' +
+            '<label>Label <input data-template="' + index + '" data-field="label" value="' + escapeHtml(template.label || "") + '" autocomplete="off"></label>' +
+            '<label>Manufacturer <input data-template="' + index + '" data-field="manufacturer" value="' + escapeHtml(template.manufacturer || "") + '"></label>' +
+            '<label>Model <input data-template="' + index + '" data-field="model" value="' + escapeHtml(template.model || "") + '"></label>' +
+            '<label>Category <input data-template="' + index + '" data-field="category" value="' + escapeHtml(template.category || "") + '"></label>' +
+            '<label>Type <select data-template="' + index + '" data-field="type">' + templateTypeOptionsHtml(template.type, template.category) + '</select></label>' +
+            '<label>Protocol <input data-template="' + index + '" data-field="protocol" value="' + escapeHtml(template.protocol || "modbus-rtu") + '"></label>' +
+            '<label>Poll ms <input data-template="' + index + '" data-field="pollIntervalMs" type="number" min="500" value="' + (template.pollIntervalMs || 5000) + '"></label>' +
+            '<label class="wide">Notes <input data-template="' + index + '" data-field="notes" value="' + escapeHtml(template.notes || "") + '"></label>' +
+          '</div>' +
+          '<div class="registers-head">' +
+            '<span class="pill">' + (template.registers || []).length + ' registers</span>' +
+            '<div class="register-actions">' +
+              '<button class="subtle" type="button" data-toggle-template-registers="' + index + '">' + (registersExpanded ? "Hide Registers" : "Edit Registers") + '</button>' +
+              (registersExpanded ? '<button class="subtle" type="button" data-add-template-register="' + index + '">Add Register</button>' : "") +
+            '</div>' +
+          '</div>' +
+          (registersExpanded ? renderTemplateRegisterTable(index, template.registers || []) : renderRegisterPreview(template.registers || []));
+        container.appendChild(section);
+      });
+    }
+
+    function renderTemplateRegisterTable(templateIndex, registers) {
+      return '<div class="table-wrap register-editor" style="margin-top: 12px;">' +
+        '<table>' +
+          '<thead>' +
+            '<tr>' +
+              '<th>Name</th>' +
+              '<th>Function</th>' +
+              '<th>Access</th>' +
+              '<th>Poll</th>' +
+              '<th>Address</th>' +
+              '<th>Length</th>' +
+              '<th>Type</th>' +
+              '<th>Word</th>' +
+              '<th>Scale</th>' +
+              '<th>Offset</th>' +
+              '<th>Unit</th>' +
+              '<th></th>' +
+            '</tr>' +
+          '</thead>' +
+          '<tbody>' + registers.map((register, registerIndex) => renderTemplateRegisterRow(templateIndex, registerIndex, register)).join("") + '</tbody>' +
+        '</table>' +
+      '</div>';
+    }
+
+    function renderTemplateRegisterRow(templateIndex, registerIndex, register) {
+      return '<tr>' +
+        '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="name" value="' + escapeHtml(register.name || "") + '"></td>' +
+        '<td><select data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="function">' + ["holding", "input"].map((item) => option(item, register.function || "holding")).join("") + '</select></td>' +
+        '<td><select data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="access">' + ["ro", "rw", "wo"].map((item) => option(item, register.access || "ro")).join("") + '</select></td>' +
+        '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="poll" type="checkbox" ' + (register.poll === false ? "" : "checked") + '></td>' +
+        '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="address" type="number" min="0" value="' + (register.address || 0) + '"></td>' +
+        '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="length" type="number" min="1" value="' + (register.length || 1) + '"></td>' +
+        '<td><select data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="type">' + ["uint16", "int16", "uint32", "int32", "uint64", "int64", "float32", "string", "bytes", "bitfield16", "bitfield32"].map((item) => option(item, register.type || "uint16")).join("") + '</select></td>' +
+        '<td><select data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="wordOrder">' + ["", "big", "little"].map((item) => option(item, register.wordOrder || "", item || "default")).join("") + '</select></td>' +
+        '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="scale" type="number" step="any" value="' + (register.scale ?? 1) + '"></td>' +
+        '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="offset" type="number" step="any" value="' + (register.offset ?? "") + '"></td>' +
+        '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="unit" value="' + escapeHtml(register.unit || "") + '"></td>' +
+        '<td><button type="button" class="danger" data-remove-template-register="' + templateIndex + ':' + registerIndex + '">Remove</button></td>' +
+      '</tr>';
+    }
+
+    function templateTypeOptionsHtml(type, category = "") {
+      const selected = normalizedTemplateType(type, category);
+      return templateTypeOptions.map((item) => option(item.value, selected, item.label)).join("");
+    }
+
+    function normalizedTemplateType(type, category = "") {
+      const categoryKey = compactType(category);
+      const typeKey = compactType(type);
+      const known = ["inverter", "meter", "weatherstation", "datalogger", "other"];
+      if (known.includes(typeKey)) return typeKey;
+      if (known.includes(categoryKey)) return categoryKey;
+      if (typeKey.includes("inverter")) return "inverter";
+      if (typeKey.includes("meter")) return "meter";
+      if (typeKey.includes("weather")) return "weatherstation";
+      if (typeKey.includes("logger")) return "datalogger";
+      return "other";
+    }
+
+    function compactType(value) {
+      return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    }
+
     function renderPorts() {
       const body = el("portsBody");
       body.innerHTML = "";
@@ -1525,6 +1660,33 @@ export function renderDashboardPage({ publicUrl }) {
           \${remaining > 0 ? \`<span class="register-chip">+\${remaining} more</span>\` : ""}
         </div>
       \`;
+    }
+
+    function collectTemplateLibrary() {
+      document.querySelectorAll("[data-template][data-field]:not([data-template-register])").forEach((input) => {
+        const template = templates[Number(input.dataset.template)];
+        if (!template) return;
+        template[input.dataset.field] = coerceInput(input);
+      });
+
+      document.querySelectorAll("[data-template][data-template-register][data-field]").forEach((input) => {
+        const template = templates[Number(input.dataset.template)];
+        const register = template?.registers?.[Number(input.dataset.templateRegister)];
+        if (!register) return;
+
+        const field = input.dataset.field;
+        if (field === "wordOrder" && !input.value.trim()) {
+          delete register.wordOrder;
+          return;
+        }
+        if (field === "offset" && !input.value.trim()) {
+          delete register.offset;
+          return;
+        }
+        register[field] = coerceInput(input);
+      });
+
+      return templates;
     }
 
     function collectConfig() {
@@ -1683,6 +1845,85 @@ export function renderDashboardPage({ publicUrl }) {
       state.devices[deviceIndex] = deviceFromTemplate(template, deviceIndex + 1, ports, device);
       render();
       setStatus("Applied " + template.label, "ok");
+    }
+
+    function addTemplate() {
+      collectTemplateLibrary();
+      const index = templates.length + 1;
+      templates.push({
+        id: "template_" + index,
+        label: "New Template " + index,
+        manufacturer: "",
+        model: "",
+        category: "meter",
+        type: "meter",
+        protocol: "modbus-rtu",
+        pollIntervalMs: 5000,
+        notes: "",
+        registers: [defaultRegister()],
+      });
+      expandedTemplateRegisters.add(String(templates.length - 1));
+      renderTemplatePicker();
+      renderTemplateLibrary();
+      setStatus("Added template", "ok");
+    }
+
+    function removeTemplate(index) {
+      collectTemplateLibrary();
+      templates.splice(index, 1);
+      expandedTemplateRegisters.clear();
+      renderTemplatePicker();
+      renderTemplateLibrary();
+      setStatus("Removed template", "ok");
+    }
+
+    function toggleTemplateRegisters(index) {
+      collectTemplateLibrary();
+      const key = String(index);
+      if (expandedTemplateRegisters.has(key)) expandedTemplateRegisters.delete(key);
+      else expandedTemplateRegisters.add(key);
+      renderTemplatePicker();
+      renderTemplateLibrary();
+    }
+
+    function addTemplateRegister(templateIndex) {
+      collectTemplateLibrary();
+      templates[templateIndex].registers = templates[templateIndex].registers || [];
+      templates[templateIndex].registers.push(defaultRegister());
+      expandedTemplateRegisters.add(String(templateIndex));
+      renderTemplateLibrary();
+    }
+
+    function removeTemplateRegister(value) {
+      collectTemplateLibrary();
+      const [templateIndex, registerIndex] = value.split(":").map(Number);
+      templates[templateIndex]?.registers?.splice(registerIndex, 1);
+      expandedTemplateRegisters.add(String(templateIndex));
+      renderTemplateLibrary();
+    }
+
+    async function saveTemplateLibrary() {
+      setStatus("Saving template library...");
+      collectTemplateLibrary();
+      const payload = await requestJson("/api/device-templates", {
+        method: "PUT",
+        body: JSON.stringify({ templates }),
+      });
+      templates = payload.templates || [];
+      expandedTemplateRegisters.clear();
+      renderTemplatePicker();
+      renderTemplateLibrary();
+      setStatus("Template library saved" + (payload.path ? " to " + payload.path : ""), "ok");
+    }
+
+    async function refreshTemplateLibrary() {
+      setStatus("Refreshing template library...");
+      const payload = await requestJson("/api/device-templates");
+      templates = payload.templates || [];
+      expandedTemplateRegisters.clear();
+      renderTemplatePicker();
+      renderTemplateLibrary();
+      setStatus("Template library refreshed", "ok");
     }
 
     function removePort(name) {
@@ -1965,12 +2206,19 @@ export function renderDashboardPage({ publicUrl }) {
       }
       if (target.id === "addPortBtn") addPort();
       if (target.id === "addDeviceBtn") addDevice();
+      if (target.id === "addTemplateBtn") addTemplate();
+      if (target.id === "saveTemplatesBtn") saveTemplateLibrary().catch((error) => setStatus(error.message, "error"));
+      if (target.id === "refreshTemplatesBtn") refreshTemplateLibrary().catch((error) => setStatus(error.message, "error"));
       if (target.dataset.applyTemplate) applyTemplate(Number(target.dataset.applyTemplate));
       if (target.dataset.removePort) removePort(target.dataset.removePort);
       if (target.dataset.removeDevice) removeDevice(Number(target.dataset.removeDevice));
       if (target.dataset.toggleDeviceRegisters) toggleDeviceRegisters(Number(target.dataset.toggleDeviceRegisters));
       if (target.dataset.addRegister) addRegister(Number(target.dataset.addRegister));
       if (target.dataset.removeRegister) removeRegister(target.dataset.removeRegister);
+      if (target.dataset.removeTemplate) removeTemplate(Number(target.dataset.removeTemplate));
+      if (target.dataset.toggleTemplateRegisters) toggleTemplateRegisters(Number(target.dataset.toggleTemplateRegisters));
+      if (target.dataset.addTemplateRegister) addTemplateRegister(Number(target.dataset.addTemplateRegister));
+      if (target.dataset.removeTemplateRegister) removeTemplateRegister(target.dataset.removeTemplateRegister);
     });
 
     document.addEventListener("change", (event) => {
