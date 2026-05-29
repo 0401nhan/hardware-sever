@@ -18,6 +18,7 @@ export function renderLoginPage() {
       --danger: #b42318;
       --shadow: 0 10px 28px rgba(16, 24, 40, 0.08);
       --focus: #2563eb;
+      --sidebar: #1d242d;
     }
     * { box-sizing: border-box; }
     body {
@@ -27,8 +28,7 @@ export function renderLoginPage() {
       place-items: center;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: var(--text);
-      background: radial-gradient(circle at 20% 12%, rgba(249, 115, 22, 0.14), transparent 30%),
-        linear-gradient(135deg, #f4f6f8, #e8edf3);
+      background: linear-gradient(135deg, var(--sidebar) 0 38%, #eef2f6 38% 100%);
     }
     main {
       width: min(420px, calc(100vw - 32px));
@@ -38,8 +38,28 @@ export function renderLoginPage() {
       border-radius: 8px;
       box-shadow: var(--shadow);
     }
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(249, 115, 22, 0.42);
+      border-radius: 8px;
+      background: rgba(249, 115, 22, 0.12);
+      color: var(--accent-strong);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
     h1 { margin: 0 0 6px; font-size: 22px; letter-spacing: 0; }
     p { margin: 0 0 22px; color: var(--muted); font-weight: 600; }
+    .brand-row p { margin: 0; }
     label { display: grid; gap: 7px; margin-top: 14px; font-size: 13px; font-weight: 700; color: var(--muted-strong); }
     input {
       width: 100%;
@@ -74,8 +94,13 @@ export function renderLoginPage() {
 </head>
 <body>
   <main>
-    <h1>Hardware Server</h1>
-    <p>Electric Bird gateway fleet management</p>
+    <div class="brand-row">
+      <span class="brand-mark">EB</span>
+      <div>
+        <h1>Hardware Server</h1>
+        <p>Electric Bird gateway fleet management</p>
+      </div>
+    </div>
     <form id="loginForm">
       <label>Username<input name="username" autocomplete="username" required></label>
       <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
@@ -116,6 +141,7 @@ export function renderDashboardPage({ publicUrl }) {
   <title>Electric Bird Hardware Server</title>
   <style>
     :root {
+      color-scheme: light;
       --bg: #f4f6f8;
       --surface: #ffffff;
       --surface-soft: #f8fafc;
@@ -134,7 +160,10 @@ export function renderDashboardPage({ publicUrl }) {
       --ok: #16833a;
       --ok-soft: #ecfdf3;
       --warning: #a15c07;
-      --shadow: 0 10px 28px rgba(16, 24, 40, 0.08);
+      --sidebar: #1d242d;
+      --sidebar-strong: #111923;
+      --sidebar-soft: rgba(255, 255, 255, 0.08);
+      --shadow: 0 14px 34px rgba(16, 24, 40, 0.08);
       --focus: #2563eb;
     }
     * { box-sizing: border-box; }
@@ -143,11 +172,15 @@ export function renderDashboardPage({ publicUrl }) {
       min-height: 100vh;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: var(--text);
-      background: var(--bg);
+      background: linear-gradient(180deg, #f7f9fb 0%, var(--bg) 240px);
     }
     button, input, select, textarea { font: inherit; }
     button {
       min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 7px 10px;
@@ -155,6 +188,8 @@ export function renderDashboardPage({ publicUrl }) {
       background: #fff;
       cursor: pointer;
       font-weight: 700;
+      line-height: 1.2;
+      transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
     }
     button:hover { border-color: var(--line-strong); background: var(--surface-soft); }
     button.primary {
@@ -227,6 +262,22 @@ export function renderDashboardPage({ publicUrl }) {
       line-height: 1.45;
     }
     .hidden { display: none !important; }
+    .icon-sprite {
+      position: absolute;
+      width: 0;
+      height: 0;
+      overflow: hidden;
+    }
+    .app-icon {
+      width: 17px;
+      height: 17px;
+      flex: 0 0 auto;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
     .app-shell {
       min-height: 100vh;
       display: grid;
@@ -234,18 +285,38 @@ export function renderDashboardPage({ publicUrl }) {
       background: var(--bg);
     }
     .sidebar {
+      position: sticky;
+      top: 0;
       border-right: 1px solid rgba(255, 255, 255, 0.08);
-      background: #1f252d;
+      background: linear-gradient(180deg, var(--sidebar) 0%, var(--sidebar-strong) 100%);
       color: #d8dee8;
+      height: 100vh;
       min-height: 100vh;
     }
     .sidebar-brand {
       min-height: 72px;
       padding: 14px 18px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      display: grid;
-      align-content: center;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
     }
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border: 1px solid rgba(249, 115, 22, 0.42);
+      border-radius: 8px;
+      background: rgba(249, 115, 22, 0.14);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+    .sidebar-brand > span:last-child { min-width: 0; }
     .sidebar-brand strong { display: block; color: #fff; font-size: 15px; font-weight: 800; }
     .sidebar-brand small { display: block; margin-top: 4px; color: #aab4c2; font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
     .sidebar-nav {
@@ -256,6 +327,7 @@ export function renderDashboardPage({ publicUrl }) {
     .nav-link, .nav-section {
       width: 100%;
       min-height: 42px;
+      justify-content: flex-start;
       border-color: transparent;
       color: #c9d2df;
       background: transparent;
@@ -269,6 +341,15 @@ export function renderDashboardPage({ publicUrl }) {
       color: #fff;
       box-shadow: inset 3px 0 0 var(--accent);
     }
+    .nav-icon {
+      width: 24px;
+      height: 24px;
+      display: inline-grid;
+      place-items: center;
+      flex: 0 0 auto;
+      color: #cfd7e3;
+    }
+    .nav-link.active .nav-icon { color: #fff; }
     .nav-child {
       display: none;
       gap: 2px;
@@ -289,6 +370,9 @@ export function renderDashboardPage({ publicUrl }) {
     .nav-child a:hover, .nav-child a.active { background: rgba(255, 255, 255, 0.08); color: #fff; }
     .workspace { min-width: 0; }
     header.topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
       min-height: 68px;
       display: flex;
       align-items: center;
@@ -300,7 +384,7 @@ export function renderDashboardPage({ publicUrl }) {
       box-shadow: 0 1px 0 rgba(16, 24, 40, 0.04);
       backdrop-filter: blur(10px);
     }
-    .topbar-title { min-width: 180px; margin-right: auto; }
+    .topbar-title { min-width: 0; margin-right: auto; }
     .topbar-title strong {
       display: block;
       overflow: hidden;
@@ -380,6 +464,12 @@ export function renderDashboardPage({ publicUrl }) {
       background: var(--surface);
       box-shadow: var(--shadow);
     }
+    .home-panel > p, .panel-title-row p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-weight: 600;
+      line-height: 1.45;
+    }
     .panel-title-row, .section-header, .device-head {
       display: flex;
       align-items: flex-start;
@@ -426,7 +516,22 @@ export function renderDashboardPage({ publicUrl }) {
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 14px;
     }
-    .gateway-card { display: grid; gap: 12px; }
+    .gateway-card {
+      position: relative;
+      display: grid;
+      gap: 14px;
+      overflow: hidden;
+    }
+    .gateway-card::before {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      background: var(--line-strong);
+      content: "";
+    }
+    .gateway-card.is-online::before { background: var(--ok); }
+    .gateway-card.is-offline::before { background: #94a3b8; }
+    .gateway-card.is-error::before { background: var(--danger); }
     .gateway-card-head {
       display: flex;
       align-items: flex-start;
@@ -441,6 +546,30 @@ export function renderDashboardPage({ publicUrl }) {
       overflow-wrap: anywhere;
     }
     .gateway-card p { margin: 4px 0 0; color: var(--muted); font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }
+    .gateway-stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .gateway-stat {
+      min-height: 76px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+    .gateway-stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .gateway-stat strong {
+      margin-top: 8px;
+      font-size: 14px;
+      line-height: 1.35;
+    }
+    .gateway-card-actions { justify-content: flex-end; }
     .badge {
       display: inline-flex;
       align-items: center;
@@ -614,13 +743,15 @@ export function renderDashboardPage({ publicUrl }) {
     }
     @media (max-width: 820px) {
       .app-shell { display: block; }
-      .sidebar { position: sticky; top: 0; z-index: 30; min-height: auto; }
-      .sidebar-brand { min-height: 56px; }
+      .sidebar { position: sticky; top: 0; z-index: 30; height: auto; min-height: auto; }
+      .sidebar-brand { min-height: 58px; padding: 10px 12px; }
+      .brand-mark { width: 34px; height: 34px; }
       .sidebar-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 8px; }
+      .nav-link { min-height: 40px; padding: 7px 8px; }
       .nav-child { grid-column: 1 / -1; padding: 0; }
       .nav-child.active { display: flex; gap: 6px; overflow-x: auto; }
       .nav-child a { flex: 0 0 auto; border: 1px solid rgba(255, 255, 255, 0.08); }
-      header.topbar { align-items: stretch; flex-direction: column; gap: 10px; padding: 12px; }
+      header.topbar { position: static; align-items: stretch; flex-direction: column; gap: 10px; padding: 12px; }
       main.content { padding: 14px; }
       .status-chip { max-width: 100%; }
       .control-layout, .limit-grid { grid-template-columns: 1fr; }
@@ -628,6 +759,7 @@ export function renderDashboardPage({ publicUrl }) {
     @media (max-width: 620px) {
       .overview, .grid, .gateway-grid { grid-template-columns: 1fr; }
       .wide { grid-column: span 1; }
+      .gateway-stats { grid-template-columns: 1fr; }
       .section-header, .device-head, .panel-title-row { flex-direction: column; }
       .actions, .template-actions, .topbar-actions { width: 100%; }
       .actions button, .topbar-actions button { flex: 1 1 120px; }
@@ -637,14 +769,29 @@ export function renderDashboardPage({ publicUrl }) {
   </style>
 </head>
 <body>
+  <svg class="icon-sprite" aria-hidden="true">
+    <symbol id="icon-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 10v10h14V10"></path><path d="M9 20v-6h6v6"></path></symbol>
+    <symbol id="icon-server" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="6" rx="2"></rect><rect x="4" y="14" width="16" height="6" rx="2"></rect><path d="M8 7h.01M8 17h.01"></path></symbol>
+    <symbol id="icon-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8M12 16v4"></path></symbol>
+    <symbol id="icon-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"></path><path d="M2 14h4M10 8h4M18 16h4"></path></symbol>
+    <symbol id="icon-activity" viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"></path></symbol>
+    <symbol id="icon-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="7" ry="3"></ellipse><path d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"></path></symbol>
+    <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.7-4.4L3 9"></path><path d="M3 4v5h5"></path><path d="M4 13a8 8 0 0 0 14.7 4.4L21 15"></path><path d="M21 20v-5h-5"></path></symbol>
+    <symbol id="icon-log-out" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path><path d="M21 19V5a2 2 0 0 0-2-2h-4"></path></symbol>
+    <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></symbol>
+    <symbol id="icon-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></symbol>
+  </svg>
   <div id="homeView" class="app-shell">
     <aside class="sidebar" aria-label="Fleet navigation">
       <div class="sidebar-brand">
-        <strong>Hardware Server</strong>
-        <small>${escapeHtml(publicUrl)}</small>
+        <span class="brand-mark">EB</span>
+        <span>
+          <strong>Hardware Server</strong>
+          <small>${escapeHtml(publicUrl)}</small>
+        </span>
       </div>
       <nav class="sidebar-nav">
-        <button class="nav-link active" type="button">Gateway Home</button>
+        <button class="nav-link active" type="button"><span class="nav-icon"><svg class="app-icon"><use href="#icon-home"></use></svg></span>Gateway Home</button>
       </nav>
     </aside>
     <div class="workspace">
@@ -654,8 +801,8 @@ export function renderDashboardPage({ publicUrl }) {
           <span>Select a gateway to open the remote config workspace</span>
         </div>
         <div class="topbar-meta">
-          <button id="homeRefreshBtn" class="subtle" type="button">Refresh</button>
-          <button id="homeLogoutBtn" class="subtle" type="button">Logout</button>
+          <button id="homeRefreshBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-refresh"></use></svg>Refresh</button>
+          <button id="homeLogoutBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-log-out"></use></svg>Logout</button>
         </div>
       </header>
       <main class="content">
@@ -666,7 +813,7 @@ export function renderDashboardPage({ publicUrl }) {
               <p>Auto-provisioned hardware appears here after the first heartbeat.</p>
             </div>
             <div class="actions">
-              <button id="addManualGatewayBtn" class="subtle" type="button">Add Manual Gateway</button>
+              <button id="addManualGatewayBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-plus"></use></svg>Add Manual Gateway</button>
             </div>
           </div>
           <div id="gatewayHomeGrid" class="gateway-grid"></div>
@@ -693,26 +840,29 @@ export function renderDashboardPage({ publicUrl }) {
   <div id="remoteView" class="app-shell hidden">
     <aside class="sidebar" aria-label="Remote gateway navigation">
       <div class="sidebar-brand">
-        <strong>Monitoring Device</strong>
-        <small>Electricbird Remote</small>
+        <span class="brand-mark">MD</span>
+        <span>
+          <strong>Monitoring Device</strong>
+          <small>Electricbird Remote</small>
+        </span>
       </div>
       <nav class="sidebar-nav">
-        <button id="backHomeBtn" class="nav-link" type="button">Gateway Home</button>
-        <button class="nav-link active" type="button" data-tab-target="generalInformation">General Information</button>
+        <button id="backHomeBtn" class="nav-link" type="button"><span class="nav-icon"><svg class="app-icon"><use href="#icon-arrow-left"></use></svg></span>Gateway Home</button>
+        <button class="nav-link active" type="button" data-tab-target="generalInformation"><span class="nav-icon"><svg class="app-icon"><use href="#icon-home"></use></svg></span>General Information</button>
         <div class="nav-child active" data-child-menu="generalInformation">
           <a class="active" href="#overviewSubtab" data-parent-tab="generalInformation" data-subtab-target="overviewSubtab">Overview</a>
           <a href="#stationDeviceOverviewSubtab" data-parent-tab="generalInformation" data-subtab-target="stationDeviceOverviewSubtab">Station Device Overview</a>
         </div>
-        <button class="nav-link" type="button" data-tab-target="deviceMonitoringTab">Device Monitoring</button>
-        <button class="nav-link" type="button" data-tab-target="inverterControlTab">Inverter Control</button>
-        <button class="nav-link" type="button" data-tab-target="settingCommunication">Setting Communication</button>
+        <button class="nav-link" type="button" data-tab-target="deviceMonitoringTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-monitor"></use></svg></span>Device Monitoring</button>
+        <button class="nav-link" type="button" data-tab-target="inverterControlTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-activity"></use></svg></span>Inverter Control</button>
+        <button class="nav-link" type="button" data-tab-target="settingCommunication"><span class="nav-icon"><svg class="app-icon"><use href="#icon-sliders"></use></svg></span>Setting Communication</button>
         <div class="nav-child" data-child-menu="settingCommunication">
           <a class="active" href="#gatewaySubtab" data-parent-tab="settingCommunication" data-subtab-target="gatewaySubtab">Gateway</a>
           <a href="#rs485PortsSubtab" data-parent-tab="settingCommunication" data-subtab-target="rs485PortsSubtab">RS485 Ports</a>
           <a href="#modbusDevicesSubtab" data-parent-tab="settingCommunication" data-subtab-target="modbusDevicesSubtab">Modbus Devices</a>
           <a href="#rawYamlSubtab" data-parent-tab="settingCommunication" data-subtab-target="rawYamlSubtab">Raw YAML</a>
         </div>
-        <button class="nav-link" type="button" data-tab-target="libraryTab">Library</button>
+        <button class="nav-link" type="button" data-tab-target="libraryTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-database"></use></svg></span>Library</button>
       </nav>
     </aside>
 
@@ -723,11 +873,11 @@ export function renderDashboardPage({ publicUrl }) {
           <span id="activePageSubtitle">Gateway status and configured capacity</span>
         </div>
         <div class="topbar-meta">
-          <span class="topbar-item">Gateway <span id="topGatewayId">-</span></span>
+          <span class="topbar-item"><svg class="app-icon"><use href="#icon-server"></use></svg>Gateway <span id="topGatewayId">-</span></span>
           <span class="topbar-item">Version <span id="topConfigVersion">-</span></span>
           <div class="topbar-actions">
-            <button id="remoteRefreshBtn" class="subtle" type="button">Refresh</button>
-            <button id="logoutBtn" class="subtle" type="button">Logout</button>
+            <button id="remoteRefreshBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-refresh"></use></svg>Refresh</button>
+            <button id="logoutBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-log-out"></use></svg>Logout</button>
           </div>
           <div class="status-chip">
             <span id="statusDot" class="status-dot"></span>
@@ -822,7 +972,7 @@ export function renderDashboardPage({ publicUrl }) {
             <div class="panel-title-row">
               <h2 class="panel-title">Command History</h2>
               <div class="actions">
-                <button id="commandRefreshBtn" class="subtle" type="button">Refresh</button>
+                <button id="commandRefreshBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-refresh"></use></svg>Refresh</button>
               </div>
             </div>
             <div class="table-wrap">
@@ -897,7 +1047,7 @@ export function renderDashboardPage({ publicUrl }) {
                   <p>Serial port and Modbus RTU connection settings.</p>
                 </div>
                 <div class="actions">
-                  <button id="addPortBtn" class="subtle" type="button">Add Port</button>
+                  <button id="addPortBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-plus"></use></svg>Add Port</button>
                   <button class="primary" type="button" data-save-config>Save New Version</button>
                 </div>
               </div>
@@ -930,7 +1080,7 @@ export function renderDashboardPage({ publicUrl }) {
                 </div>
                 <div class="actions template-actions">
                   <select id="newDeviceTemplate" aria-label="Device template"><option value="">Blank device</option></select>
-                  <button id="addDeviceBtn" class="subtle" type="button">Add Device</button>
+                  <button id="addDeviceBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-plus"></use></svg>Add Device</button>
                   <button class="primary" type="button" data-save-config>Save New Version</button>
                 </div>
               </div>
@@ -960,8 +1110,8 @@ export function renderDashboardPage({ publicUrl }) {
                 <p>Add, edit, and delete Modbus reading templates used by Modbus Devices.</p>
               </div>
               <div class="actions">
-                <button id="refreshTemplatesBtn" class="subtle" type="button">Refresh Library</button>
-                <button id="addTemplateBtn" class="subtle" type="button">Add Template</button>
+                <button id="refreshTemplatesBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-refresh"></use></svg>Refresh Library</button>
+                <button id="addTemplateBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-plus"></use></svg>Add Template</button>
                 <button id="saveTemplatesBtn" class="primary" type="button">Save Library</button>
               </div>
             </div>
@@ -1063,7 +1213,7 @@ export function renderDashboardPage({ publicUrl }) {
       grid.innerHTML = gateways.map((gateway) => {
         const status = gateway.status || "offline";
         return \`
-          <article class="gateway-card">
+          <article class="gateway-card is-\${escapeHtml(status)}">
             <div class="gateway-card-head">
               <div>
                 <strong>\${escapeHtml(gateway.name || gateway.id)}</strong>
@@ -1071,12 +1221,12 @@ export function renderDashboardPage({ publicUrl }) {
               </div>
               <span class="badge \${escapeHtml(status)}">\${escapeHtml(status)}</span>
             </div>
-            <div class="overview" style="grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0;">
-              <div class="metric"><span>Last seen</span><strong style="font-size: 14px;">\${escapeHtml(formatDateTime(gateway.lastSeenAt))}</strong></div>
-              <div class="metric"><span>Config</span><strong style="font-size: 14px;">\${escapeHtml((gateway.appliedConfigVersion || "-") + " / " + (gateway.desiredConfigVersion || gateway.latestConfigVersion || "-"))}</strong></div>
+            <div class="gateway-stats">
+              <div class="gateway-stat"><span>Last seen</span><strong>\${escapeHtml(formatDateTime(gateway.lastSeenAt))}</strong></div>
+              <div class="gateway-stat"><span>Config</span><strong>\${escapeHtml((gateway.appliedConfigVersion || "-") + " / " + (gateway.desiredConfigVersion || gateway.latestConfigVersion || "-"))}</strong></div>
             </div>
-            <div class="actions">
-              <button class="primary" type="button" data-remote-gateway="\${escapeHtml(gateway.id)}">Remote</button>
+            <div class="actions gateway-card-actions">
+              <button class="primary" type="button" data-remote-gateway="\${escapeHtml(gateway.id)}"><svg class="app-icon"><use href="#icon-monitor"></use></svg>Remote</button>
             </div>
           </article>
         \`;
