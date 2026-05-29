@@ -20,7 +20,7 @@ npm start
 Open:
 
 ```text
-http://localhost:8080/
+http://localhost:7000/
 ```
 
 Default admin values come from `.env`. Change these before production:
@@ -132,6 +132,14 @@ MONGODB_URI=mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/
 MONGODB_DB=hardware_gateway
 ```
 
+If the host reports `querySrv ECONNREFUSED _mongodb._tcp...`, its DNS resolver is refusing
+MongoDB Atlas SRV lookups. Either change the host DNS resolver to one that supports SRV records,
+or replace the `mongodb+srv://` URI with a standard seed-list URI:
+
+```bash
+MONGODB_URI=mongodb://USER:PASSWORD@HOST1:27017,HOST2:27017,HOST3:27017/hardware_gateway?tls=true&replicaSet=REPLICA_SET&authSource=admin&retryWrites=true&w=majority
+```
+
 Hardware-Server and Hardware-Gateway share these collections: `gateways`, `config_versions`, `telemetry_records`, `gateway_commands`, `device_templates`, and `template_library_metadata`. Use a restricted MongoDB user for gateways; do not place an Atlas admin credential on an IPC.
 
 ## Docker Compose
@@ -141,10 +149,10 @@ docker compose up -d --build
 docker compose logs -f hardware-server
 ```
 
-The container listens on port `8080`. Put Nginx/Caddy in front of it for TLS:
+The container listens on port `7000`. Put Nginx/Caddy in front of it for TLS:
 
 ```text
-https://server.electricbird.vn -> http://127.0.0.1:8080
+https://server.electricbird.vn -> http://127.0.0.1:7000
 ```
 
 ## Data
