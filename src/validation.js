@@ -2,6 +2,8 @@ const SUPPORTED_PROTOCOLS = new Set(["modbus-rtu", "modbus-tcp"]);
 const SUPPORTED_PARITIES = new Set(["none", "even", "odd", "mark", "space"]);
 const SUPPORTED_REGISTER_FUNCTIONS = new Set(["holding", "input"]);
 const SUPPORTED_REGISTER_ACCESS = new Set(["ro", "rw", "wo"]);
+const SUPPORTED_IEC104_MODES = new Set(["client", "server"]);
+const SUPPORTED_IEC104_POINT_TYPES = new Set(["float", "single"]);
 const SUPPORTED_REGISTER_TYPES = new Set([
   "uint16",
   "int16",
@@ -10,6 +12,7 @@ const SUPPORTED_REGISTER_TYPES = new Set([
   "uint64",
   "int64",
   "float32",
+  "float64",
   "string",
   "str",
   "bytes",
@@ -44,6 +47,7 @@ export function validateGatewayConfig(config, expectedGatewayId) {
   validateInteger(config.server.uploadIntervalMs, "server.uploadIntervalMs", { min: 500, optional: true });
   validateRemoteConfig(config.remoteConfig);
   validateMongo(config.mongo);
+  validateIec104(config.iec104);
 
   for (const [name, port] of Object.entries(config.ports || {})) {
     if (!port.path) throw new Error(`Invalid gateway config. ports.${name}.path is required`);
@@ -121,6 +125,25 @@ export function createDefaultGatewayConfig(gatewayId, publicUrl) {
       batchSize: 100,
       statePath: "/data/mongo-sync-state.json",
     },
+    iec104: {
+      enabled: false,
+      mode: "client",
+      remoteHost: "",
+      remotePort: 2404,
+      localAddress: "",
+      localPort: 0,
+      host: "0.0.0.0",
+      port: 2404,
+      commonAddress: 1,
+      originatorAddress: 0,
+      staleAfterMs: 60000,
+      maxClientConnections: 4,
+      reconnectMs: 5000,
+      keepAliveMs: 30000,
+      periodicMs: 0,
+      spontaneous: true,
+      points: [],
+    },
     storage: {
       queuePath: "/data/queue.jsonl",
       queue: {
@@ -134,6 +157,56 @@ export function createDefaultGatewayConfig(gatewayId, publicUrl) {
     ports: {},
     devices: [],
   };
+}
+
+function validateIec104(iec104 = {}) {
+  validateBoolean(iec104.enabled, "iec104.enabled", { optional: true });
+
+  if (!iec104.enabled) return;
+
+  const mode = iec104.mode ?? "client";
+
+  validateEnum(mode, "iec104.mode", SUPPORTED_IEC104_MODES);
+
+  if (mode === "client") {
+    validateString(iec104.remoteHost, "iec104.remoteHost");
+    validateInteger(iec104.remotePort ?? iec104.port, "iec104.remotePort", { min: 1, max: 65535, optional: true });
+    validateString(iec104.localAddress, "iec104.localAddress", { optional: true });
+    validateInteger(iec104.localPort, "iec104.localPort", { min: 0, max: 65535, optional: true });
+    validateInteger(iec104.reconnectMs, "iec104.reconnectMs", { min: 1000, optional: true });
+    validateInteger(iec104.keepAliveMs, "iec104.keepAliveMs", { min: 0, optional: true });
+  } else {
+    validateString(iec104.host, "iec104.host", { optional: true });
+    validateInteger(iec104.port, "iec104.port", { min: 1, max: 65535, optional: true });
+    validateInteger(iec104.maxClientConnections, "iec104.maxClientConnections", { min: 1, max: 32, optional: true });
+  }
+
+  validateInteger(iec104.commonAddress, "iec104.commonAddress", { min: 1, max: 65535, optional: true });
+  validateInteger(iec104.originatorAddress, "iec104.originatorAddress", { min: 0, max: 255, optional: true });
+  validateInteger(iec104.staleAfterMs, "iec104.staleAfterMs", { min: 0, optional: true });
+  validateInteger(iec104.periodicMs, "iec104.periodicMs", { min: 0, optional: true });
+  validateBoolean(iec104.spontaneous, "iec104.spontaneous", { optional: true });
+
+  if (iec104.points !== undefined && !Array.isArray(iec104.points)) {
+    throw new Error("Invalid gateway config. iec104.points must be an array");
+  }
+
+  (iec104.points || []).forEach((point, index) => {
+    validateIec104Point(point, `iec104.points[${index}]`);
+  });
+}
+
+function validateIec104Point(point, pointPath) {
+  if (!point || typeof point !== "object" || Array.isArray(point)) {
+    throw new Error(`Invalid gateway config. ${pointPath} must be an object`);
+  }
+
+  validateInteger(point.ioa, `${pointPath}.ioa`, { min: 1, max: 16777215 });
+  validateString(point.device, `${pointPath}.device`);
+  validateString(point.measurement, `${pointPath}.measurement`);
+  validateEnum(point.type, `${pointPath}.type`, SUPPORTED_IEC104_POINT_TYPES, { optional: true });
+  validateBoolean(point.inverted, `${pointPath}.inverted`, { optional: true });
+  validateString(point.name, `${pointPath}.name`, { optional: true });
 }
 
 function validateStorage(storage) {
@@ -209,6 +282,7 @@ function validateRegisterLengthForType(register, registerPath) {
     bitfield32: 2,
     uint64: 4,
     int64: 4,
+    float64: 4,
   };
   const minimum = minimumLengths[type];
 
@@ -273,5 +347,16 @@ function validateStringArray(value, field, { optional = false } = {}) {
 
   if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || item.trim() === "")) {
     throw new Error(`Invalid gateway config. ${field} must be an array of strings`);
+  }
+}
+
+function validateString(value, field, { optional = false } = {}) {
+  if (value === undefined || value === null || value === "") {
+    if (optional) return;
+    throw new Error(`Invalid gateway config. ${field} is required`);
+  }
+
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error(`Invalid gateway config. ${field} must be a non-empty string`);
   }
 }

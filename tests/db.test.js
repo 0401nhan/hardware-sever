@@ -52,6 +52,66 @@ test("bundled Huawei seed includes writable control registers", () => {
   assert.ok(battery.registers.filter((register) => (register.access || "ro") !== "ro").every((register) => register.poll === false));
 });
 
+test("bundled server seed includes shared meter and weatherstation templates", () => {
+  const { templates } = readDeviceTemplateSeed("config/device-templates.yml");
+  const byId = new Map(templates.map((template) => [template.id, template]));
+  const expectedMeterIds = [
+    "huawei_power_meter",
+    "huawei_dtsu666_h",
+    "schneider_pm5560",
+    "siemens_pac2200",
+    "eastron_sdm630",
+    "eastron_sdm120_sdm230",
+    "goodwe_gm1000_gm3000",
+    "growatt_spm_tpm_e",
+    "fronius_smart_meter_ts",
+    "solaredge_modbus_meter",
+    "gelex_emic_me_41mg",
+    "acrel_acr330",
+    "carlo_gavazzi_em340",
+    "janitza_umg96rm",
+    "socomec_diris_a40",
+    "chint_dtsu666",
+    "genus_samagra_abt_2a",
+    "genus_samagra_abt_10a",
+    "genus_samarth_panel_meter",
+    "edmi_genius_mk6_mk6e",
+    "edmi_atlas_mk10",
+  ];
+
+  for (const id of expectedMeterIds) {
+    const template = byId.get(id);
+    assert.ok(template, id);
+    assert.equal(template.category, "meter");
+    assert.equal(template.type, "meter");
+  }
+
+  const weatherstation = byId.get("kipp_zonen_rt1");
+  assert.ok(weatherstation);
+  assert.equal(weatherstation.category, "weatherstation");
+  assert.equal(weatherstation.type, "weatherstation");
+
+  const register = (templateId, name) => new Map(byId.get(templateId).registers.map((item) => [item.name, item])).get(name);
+  assert.deepEqual(register("siemens_pac2200", "import_active_energy_t1_wh"), {
+    name: "import_active_energy_t1_wh",
+    function: "holding",
+    address: 801,
+    length: 4,
+    type: "float64",
+    scale: 1,
+    unit: "Wh",
+  });
+  assert.deepEqual(register("kipp_zonen_rt1", "irradiance_w_m2"), {
+    name: "irradiance_w_m2",
+    function: "input",
+    address: 5,
+    length: 1,
+    type: "int16",
+    scale: 0.1,
+    unit: "W/m2",
+  });
+});
+
 test("persists device templates in server sqlite", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hardware-server-db-"));
   const store = await openDatabase(path.join(dir, "hardware-server.sqlite"), "test-secret");

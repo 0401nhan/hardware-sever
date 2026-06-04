@@ -50,6 +50,47 @@ test("accepts RTU auto-discovery and register control metadata", () => {
   assert.doesNotThrow(() => validateGatewayConfig(config, "EB-ANHUNG-001"));
 });
 
+test("accepts IEC 60870-5-104 remote config mappings", () => {
+  const config = validRtuConfig();
+  config.iec104 = {
+    enabled: true,
+    mode: "client",
+    remoteHost: "10.0.0.10",
+    remotePort: 2404,
+    host: "0.0.0.0",
+    port: 2404,
+    commonAddress: 1,
+    originatorAddress: 0,
+    staleAfterMs: 60000,
+    maxClientConnections: 4,
+    reconnectMs: 5000,
+    keepAliveMs: 30000,
+    spontaneous: true,
+    points: [
+      {
+        ioa: 1001,
+        device: "meter_01",
+        measurement: "voltage_v",
+        type: "float",
+      },
+      {
+        ioa: 1002,
+        device: "meter_01",
+        measurement: "online",
+        type: "single",
+      },
+    ],
+  };
+
+  assert.doesNotThrow(() => validateGatewayConfig(config, "EB-ANHUNG-001"));
+
+  config.iec104.points[0].measurement = "";
+  assert.throws(
+    () => validateGatewayConfig(config, "EB-ANHUNG-001"),
+    /iec104\.points\[0\]\.measurement is required/,
+  );
+});
+
 test("rejects invalid remote gateway polling settings", () => {
   const config = validRtuConfig();
   config.devices[0].pollIntervalMs = 100;
@@ -96,6 +137,20 @@ test("rejects remote gateway register length that is too short for the type", ()
   assert.throws(
     () => validateGatewayConfig(config, "EB-ANHUNG-001"),
     /meter_01\.registers\[0\]\.length must be >= 2 for float32/,
+  );
+});
+
+test("accepts float64 registers used by shared meter templates", () => {
+  const config = validRtuConfig();
+  config.devices[0].registers[0].type = "float64";
+  config.devices[0].registers[0].length = 4;
+
+  assert.doesNotThrow(() => validateGatewayConfig(config, "EB-ANHUNG-001"));
+
+  config.devices[0].registers[0].length = 2;
+  assert.throws(
+    () => validateGatewayConfig(config, "EB-ANHUNG-001"),
+    /meter_01\.registers\[0\]\.length must be >= 4 for float64/,
   );
 });
 

@@ -11,8 +11,11 @@ RUN npm ci --omit=dev
 
 COPY app.js ./app.js
 COPY config ./config
+COPY public ./public
 COPY src ./src
 
 USER node
+
+EXPOSE 7000
 
 CMD ["node", "app.js"]

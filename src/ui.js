@@ -1,109 +1,297 @@
 export function renderLoginPage() {
   return `<!doctype html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Electric Bird Hardware Server</title>
   <style>
     :root {
-      --bg: #f4f6f8;
-      --surface: #ffffff;
-      --line: #d9e1ea;
-      --text: #16202a;
-      --muted: #617084;
-      --muted-strong: #344256;
-      --accent: #f97316;
-      --accent-strong: #ea580c;
-      --danger: #b42318;
-      --shadow: 0 10px 28px rgba(16, 24, 40, 0.08);
-      --focus: #2563eb;
-      --sidebar: #1d242d;
+      color-scheme: light;
+      --ink: #151c23;
+      --panel: rgba(195, 201, 200, 0.5);
+      --panel-edge: rgba(255, 255, 255, 0.64);
+      --line: rgba(94, 99, 98, 0.28);
+      --muted: #837a6c;
+      --muted-strong: #6e685f;
+      --accent: #b25b2c;
+      --accent-light: #cf7b41;
+      --accent-dark: #763112;
+      --danger: #9f2d20;
+      --shadow: 20px 26px 34px rgba(21, 24, 25, 0.27);
+      --focus: #c86f38;
     }
+
     * { box-sizing: border-box; }
+
     body {
+      position: relative;
       margin: 0;
+      width: 100%;
       min-height: 100vh;
       display: grid;
       place-items: center;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--text);
-      background: linear-gradient(135deg, var(--sidebar) 0 38%, #eef2f6 38% 100%);
+      color: var(--ink);
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, #1c2630 0 39.6%, transparent 39.72%),
+        linear-gradient(135deg, transparent 0 39.6%, #e8ebe8 39.72% 100%);
     }
+
+    body::before {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background:
+        linear-gradient(118deg, transparent 0 49.7%, rgba(142, 146, 143, 0.22) 49.8%, transparent 50.05%) 62% 0 / 46% 100% no-repeat,
+        linear-gradient(118deg, transparent 0 49.5%, rgba(168, 170, 164, 0.22) 49.62%, transparent 49.88%) 70% 0 / 47% 100% no-repeat,
+        linear-gradient(118deg, transparent 0 50%, rgba(100, 104, 101, 0.14) 50.1%, transparent 50.26%) 58% 0 / 55% 100% no-repeat,
+        radial-gradient(circle at 45% 44%, rgba(255, 255, 255, 0.36), transparent 23%),
+        linear-gradient(135deg, transparent 0 39.6%, rgba(255, 255, 255, 0.48) 39.72%, rgba(198, 203, 200, 0.62) 100%);
+      content: "";
+      pointer-events: none;
+    }
+
+    body::after {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background:
+        linear-gradient(135deg, transparent 0 39.6%, rgba(255, 255, 255, 0.12) 39.72%, transparent 78%),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 3px);
+      opacity: 0.22;
+      content: "";
+      pointer-events: none;
+    }
+
     main {
-      width: min(420px, calc(100vw - 32px));
-      padding: 28px;
-      background: rgba(255, 255, 255, 0.97);
-      border: 1px solid var(--line);
-      border-radius: 8px;
+      position: relative;
+      z-index: 1;
+      width: min(406px, calc(100vw - 32px));
+      max-width: calc(100vw - 32px);
+      min-height: 320px;
+      padding: 20px 29px 23px;
+      border: 1px solid var(--panel-edge);
+      border-radius: 13px;
+      background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.35), rgba(171, 179, 178, 0.2)),
+        var(--panel);
       box-shadow: var(--shadow);
+      backdrop-filter: blur(10px) saturate(86%);
+      -webkit-backdrop-filter: blur(10px) saturate(86%);
     }
+
+    main::before,
+    main::after {
+      position: absolute;
+      inset: 8px;
+      border-radius: 10px;
+      pointer-events: none;
+      content: "";
+    }
+
+    main::before {
+      border-top: 1px solid rgba(255, 255, 255, 0.5);
+      border-left: 1px solid rgba(255, 255, 255, 0.38);
+      box-shadow:
+        inset -18px -20px 34px rgba(38, 44, 45, 0.1),
+        inset 10px 12px 24px rgba(255, 255, 255, 0.18);
+    }
+
+    main::after {
+      inset: auto 15px 10px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(34, 37, 38, 0.24);
+      filter: blur(10px);
+      transform: translateY(26px);
+      z-index: -1;
+    }
+
     .brand-row {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 22px;
+      justify-content: center;
+      margin-bottom: 16px;
     }
-    .brand-mark {
-      width: 42px;
-      height: 42px;
+
+    .brand-logo {
+      display: block;
+      width: min(306px, 100%);
+      height: auto;
+      filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.13));
+    }
+
+    form {
       display: grid;
-      place-items: center;
-      border: 1px solid rgba(249, 115, 22, 0.42);
-      border-radius: 8px;
-      background: rgba(249, 115, 22, 0.12);
-      color: var(--accent-strong);
-      font-size: 13px;
-      font-weight: 900;
-      letter-spacing: 0;
+      gap: 12px;
     }
-    h1 { margin: 0 0 6px; font-size: 22px; letter-spacing: 0; }
-    p { margin: 0 0 22px; color: var(--muted); font-weight: 600; }
-    .brand-row p { margin: 0; }
-    label { display: grid; gap: 7px; margin-top: 14px; font-size: 13px; font-weight: 700; color: var(--muted-strong); }
+
+    label {
+      display: grid;
+      gap: 4px;
+      color: var(--muted-strong);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 20px minmax(0, 1fr);
+      align-items: center;
+      min-height: 30px;
+      border-bottom: 1px solid var(--line);
+      color: #a18d74;
+    }
+
+    .input-row svg {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
     input {
       width: 100%;
-      height: 42px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 0 12px;
+      min-width: 0;
+      height: 29px;
+      border: 0;
+      padding: 0;
       font: inherit;
-      color: var(--text);
-      background: var(--surface);
+      color: #57504a;
+      background: transparent;
+      outline: none;
     }
+
+    input::placeholder {
+      color: rgba(112, 103, 93, 0.58);
+    }
+
     input:focus {
-      outline: 3px solid rgba(37, 99, 235, 0.14);
-      border-color: var(--focus);
+      color: var(--ink);
     }
+
+    label:focus-within .input-row {
+      border-color: var(--focus);
+      box-shadow: 0 1px 0 rgba(200, 111, 56, 0.42);
+    }
+
+    .form-links {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .form-links span {
+      min-width: 0;
+    }
+
     button {
       width: 100%;
-      height: 42px;
-      margin-top: 20px;
-      border: 0;
-      border-radius: 8px;
-      background: var(--accent);
-      color: #ffffff;
+      height: 36px;
+      border: 1px solid rgba(127, 54, 18, 0.28);
+      border-radius: 15px;
+      background:
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 3px),
+        linear-gradient(180deg, var(--accent-light), var(--accent));
+      color: #f8eee8;
       font: inherit;
-      font-weight: 700;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0;
       cursor: pointer;
-      box-shadow: 0 8px 18px rgba(249, 115, 22, 0.22);
+      text-transform: uppercase;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.24),
+        inset 0 -3px 0 rgba(91, 35, 11, 0.34),
+        0 7px 10px rgba(66, 34, 20, 0.28);
+      transition: transform 0.15s ease, filter 0.15s ease;
     }
-    button:hover { background: var(--accent-strong); }
-    .error { min-height: 20px; margin-top: 12px; color: var(--danger); font-size: 13px; font-weight: 700; }
+
+    button:hover {
+      filter: brightness(1.04);
+      transform: translateY(-1px);
+    }
+
+    button:focus-visible {
+      outline: 3px solid rgba(200, 111, 56, 0.26);
+      outline-offset: 4px;
+    }
+
+    .error {
+      min-height: 18px;
+      color: var(--danger);
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    @media (max-width: 620px) {
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        background:
+          linear-gradient(135deg, #1c2630 0 30%, transparent 30.15%),
+          linear-gradient(135deg, transparent 0 30%, #e8ebe8 30.15% 100%);
+      }
+
+      main {
+        flex: 0 1 365px;
+        width: calc(100vw - 32px);
+        max-width: 365px;
+        min-height: 318px;
+        padding: 20px 22px 24px;
+      }
+
+      .brand-logo {
+        width: min(286px, 100%);
+      }
+    }
   </style>
 </head>
 <body>
   <main>
     <div class="brand-row">
-      <span class="brand-mark">EB</span>
-      <div>
-        <h1>Hardware Server</h1>
-        <p>Electric Bird gateway fleet management</p>
-      </div>
+      <img class="brand-logo" src="/logo/logo-login-full.png" alt="electric bird">
     </div>
     <form id="loginForm">
-      <label>Username<input name="username" autocomplete="username" required></label>
-      <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+      <label>
+        Username
+        <span class="input-row">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 21a8 8 0 0 0-16 0" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          <input name="username" autocomplete="username" placeholder="admin" required>
+        </span>
+      </label>
+      <label>
+        Password
+        <span class="input-row">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="7.5" cy="14" r="3.5" />
+            <path d="M11 14h10" />
+            <path d="M17 14v-3" />
+            <path d="M20 14v-2" />
+          </svg>
+          <input name="password" type="password" autocomplete="current-password" placeholder="......." required>
+        </span>
+      </label>
+      <div class="form-links">
+        <span>Forgot password?</span>
+        <span>Request access</span>
+      </div>
       <button type="submit">Sign in</button>
       <div class="error" id="error"></div>
     </form>
@@ -1659,8 +1847,8 @@ export function renderDashboardPage({ publicUrl }) {
         '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="poll" type="checkbox" ' + (register.poll === false ? "" : "checked") + '></td>' +
         '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="address" type="number" min="0" value="' + (register.address || 0) + '"></td>' +
         '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="length" type="number" min="1" value="' + (register.length || 1) + '"></td>' +
-        '<td><select data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="type">' + ["uint16", "int16", "uint32", "int32", "uint64", "int64", "float32", "string", "bytes", "bitfield16", "bitfield32"].map((item) => option(item, register.type || "uint16")).join("") + '</select></td>' +
-        '<td><select data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="wordOrder">' + ["", "big", "little"].map((item) => option(item, register.wordOrder || "", item || "default")).join("") + '</select></td>' +
+        '<td><select data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="type">' + ["uint16", "int16", "uint32", "int32", "uint64", "int64", "float32", "float64", "string", "bytes", "bitfield16", "bitfield32"].map((item) => option(item, register.type || "uint16")).join("") + '</select></td>' +
+        '<td><select data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="wordOrder">' + ["", "be", "le", "high-low", "low-high"].map((item) => option(item, register.wordOrder || "", item || "default")).join("") + '</select></td>' +
         '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="scale" type="number" step="any" value="' + (register.scale ?? 1) + '"></td>' +
         '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="offset" type="number" step="any" value="' + (register.offset ?? "") + '"></td>' +
         '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="unit" value="' + escapeHtml(register.unit || "") + '"></td>' +
@@ -1803,7 +1991,7 @@ export function renderDashboardPage({ publicUrl }) {
           <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="poll" type="checkbox" \${register.poll === false ? "" : "checked"}></td>
           <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="address" type="number" min="0" value="\${register.address || 0}"></td>
           <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="length" type="number" min="1" value="\${register.length || 1}"></td>
-          <td><select data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="type">\${["uint16", "int16", "uint32", "int32", "uint64", "int64", "float32", "string", "bytes", "bitfield16", "bitfield32"].map((item) => option(item, register.type || "uint16")).join("")}</select></td>
+          <td><select data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="type">\${["uint16", "int16", "uint32", "int32", "uint64", "int64", "float32", "float64", "string", "bytes", "bitfield16", "bitfield32"].map((item) => option(item, register.type || "uint16")).join("")}</select></td>
           <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="scale" type="number" step="any" value="\${register.scale ?? 1}"></td>
           <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="unit" value="\${escapeHtml(register.unit || "")}"></td>
           <td><button type="button" class="danger" data-remove-register="\${deviceIndex}:\${registerIndex}">Remove</button></td>
