@@ -80,6 +80,17 @@ test("accepts IEC 60870-5-104 remote config mappings", () => {
         type: "single",
       },
     ],
+    controls: [
+      {
+        ioa: 12,
+        name: "setpoint_p_out_percent",
+        type: "setpoint",
+        device: "meter_01",
+        action: "limit_power",
+        valueField: "percent",
+        durationSeconds: 86400,
+      },
+    ],
   };
 
   assert.doesNotThrow(() => validateGatewayConfig(config, "EB-ANHUNG-001"));
@@ -88,6 +99,13 @@ test("accepts IEC 60870-5-104 remote config mappings", () => {
   assert.throws(
     () => validateGatewayConfig(config, "EB-ANHUNG-001"),
     /iec104\.points\[0\]\.measurement is required/,
+  );
+
+  config.iec104.points[0].measurement = "voltage_v";
+  config.iec104.controls[0].valueField = "megawatts";
+  assert.throws(
+    () => validateGatewayConfig(config, "EB-ANHUNG-001"),
+    /iec104\.controls\[0\]\.valueField is unsupported/,
   );
 });
 
