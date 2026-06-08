@@ -66,6 +66,11 @@ test("accepts IEC 60870-5-104 remote config mappings", () => {
     reconnectMs: 5000,
     keepAliveMs: 30000,
     spontaneous: true,
+    simulator: {
+      enabled: true,
+      mode: "fallback",
+      intervalMs: 1000,
+    },
     points: [
       {
         ioa: 1001,
@@ -106,6 +111,13 @@ test("accepts IEC 60870-5-104 remote config mappings", () => {
   assert.throws(
     () => validateGatewayConfig(config, "EB-ANHUNG-001"),
     /iec104\.controls\[0\]\.valueField is unsupported/,
+  );
+
+  config.iec104.controls[0].valueField = "percent";
+  config.iec104.simulator.mode = "manual";
+  assert.throws(
+    () => validateGatewayConfig(config, "EB-ANHUNG-001"),
+    /iec104\.simulator\.mode is unsupported/,
   );
 });
 

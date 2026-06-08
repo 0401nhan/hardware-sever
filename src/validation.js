@@ -6,6 +6,7 @@ const SUPPORTED_IEC104_MODES = new Set(["client", "server"]);
 const SUPPORTED_IEC104_POINT_TYPES = new Set(["float", "single"]);
 const SUPPORTED_IEC104_CONTROL_TYPES = new Set(["single", "setpoint"]);
 const SUPPORTED_IEC104_CONTROL_VALUE_FIELDS = new Set(["value", "percent", "kw", "watts"]);
+const SUPPORTED_IEC104_SIMULATOR_MODES = new Set(["fallback", "always"]);
 const SUPPORTED_INVERTER_CONTROL_ACTIONS = new Set(["start", "stop", "reboot", "limit_power", "clear_power_limit"]);
 const SUPPORTED_REGISTER_TYPES = new Set([
   "uint16",
@@ -146,6 +147,11 @@ export function createDefaultGatewayConfig(gatewayId, publicUrl) {
       selectTimeoutMs: 30000,
       periodicMs: 0,
       spontaneous: true,
+      simulator: {
+        enabled: false,
+        mode: "fallback",
+        intervalMs: 1000,
+      },
       points: [],
       controls: [],
     },
@@ -192,6 +198,7 @@ function validateIec104(iec104 = {}) {
   validateInteger(iec104.periodicMs, "iec104.periodicMs", { min: 0, optional: true });
   validateInteger(iec104.selectTimeoutMs, "iec104.selectTimeoutMs", { min: 0, optional: true });
   validateBoolean(iec104.spontaneous, "iec104.spontaneous", { optional: true });
+  validateIec104Simulator(iec104.simulator);
 
   if (iec104.points !== undefined && !Array.isArray(iec104.points)) {
     throw new Error("Invalid gateway config. iec104.points must be an array");
@@ -208,6 +215,18 @@ function validateIec104(iec104 = {}) {
   (iec104.controls || []).forEach((control, index) => {
     validateIec104Control(control, `iec104.controls[${index}]`);
   });
+}
+
+function validateIec104Simulator(simulator) {
+  if (simulator === undefined || simulator === null) return;
+
+  if (typeof simulator !== "object" || Array.isArray(simulator)) {
+    throw new Error("Invalid gateway config. iec104.simulator must be an object");
+  }
+
+  validateBoolean(simulator.enabled, "iec104.simulator.enabled", { optional: true });
+  validateEnum(simulator.mode, "iec104.simulator.mode", SUPPORTED_IEC104_SIMULATOR_MODES, { optional: true });
+  validateInteger(simulator.intervalMs, "iec104.simulator.intervalMs", { min: 100, optional: true });
 }
 
 function validateIec104Point(point, pointPath) {
