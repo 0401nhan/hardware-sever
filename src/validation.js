@@ -3,6 +3,7 @@ const SUPPORTED_PARITIES = new Set(["none", "even", "odd", "mark", "space"]);
 const SUPPORTED_REGISTER_FUNCTIONS = new Set(["holding", "input"]);
 const SUPPORTED_REGISTER_ACCESS = new Set(["ro", "rw", "wo"]);
 const SUPPORTED_IEC104_MODES = new Set(["client", "server"]);
+const SUPPORTED_IEC104_POINT_SOURCES = new Set(["device", "station"]);
 const SUPPORTED_IEC104_POINT_TYPES = new Set(["float", "single"]);
 const SUPPORTED_IEC104_CONTROL_TYPES = new Set(["single", "setpoint"]);
 const SUPPORTED_IEC104_CONTROL_VALUE_FIELDS = new Set(["value", "percent", "kw", "watts"]);
@@ -52,6 +53,7 @@ export function validateGatewayConfig(config, expectedGatewayId) {
   validateRemoteConfig(config.remoteConfig);
   validateMongo(config.mongo);
   validateIec104(config.iec104);
+  validateStations(config.stations, config.devices);
 
   for (const [name, port] of Object.entries(config.ports || {})) {
     if (!port.path) throw new Error(`Invalid gateway config. ports.${name}.path is required`);
@@ -72,6 +74,11 @@ export function validateGatewayConfig(config, expectedGatewayId) {
       throw new Error(`Invalid gateway config. ${device.name}.protocol is unsupported`);
     }
     validateInteger(device.pollIntervalMs, `${device.name}.pollIntervalMs`, { min: 500, optional: true });
+    validateString(device.stationId, `${device.name}.stationId`, { optional: true });
+    validateNumber(device.capacityKw, `${device.name}.capacityKw`, { optional: true });
+    if (device.capacityKw !== undefined && device.capacityKw < 0) {
+      throw new Error(`Invalid gateway config. ${device.name}.capacityKw must be greater than or equal to 0`);
+    }
 
     if (protocol === "modbus-tcp") {
       if (!device.host) throw new Error(`Invalid gateway config. ${device.name}.host is required`);
@@ -165,6 +172,7 @@ export function createDefaultGatewayConfig(gatewayId, publicUrl) {
         corruptPath: "/data/queue.jsonl.corrupt",
       },
     },
+    stations: [],
     ports: {},
     devices: [],
   };
@@ -229,13 +237,76 @@ function validateIec104Simulator(simulator) {
   validateInteger(simulator.intervalMs, "iec104.simulator.intervalMs", { min: 100, optional: true });
 }
 
+function validateStations(stations = [], devices = []) {
+  if (stations !== undefined && !Array.isArray(stations)) {
+    throw new Error("Invalid gateway config. stations must be an array");
+  }
+
+  const stationIds = new Set();
+  const deviceNames = new Set((devices || []).map((device) => device.name).filter(Boolean));
+
+  (stations || []).forEach((station, index) => {
+    const stationPath = `stations[${index}]`;
+
+    if (!station || typeof station !== "object" || Array.isArray(station)) {
+      throw new Error(`Invalid gateway config. ${stationPath} must be an object`);
+    }
+
+    validateString(station.id, `${stationPath}.id`);
+    validateString(station.name, `${stationPath}.name`, { optional: true });
+    validateNumber(station.capacityKw, `${stationPath}.capacityKw`, { optional: true });
+    if (station.capacityKw !== undefined && station.capacityKw < 0) {
+      throw new Error(`Invalid gateway config. ${stationPath}.capacityKw must be greater than or equal to 0`);
+    }
+
+    if (stationIds.has(station.id)) {
+      throw new Error(`Invalid gateway config. ${stationPath}.id must be unique`);
+    }
+    stationIds.add(station.id);
+
+    validateStringArray(station.devices, `${stationPath}.devices`, { optional: true });
+    for (const deviceName of station.devices || []) {
+      if (!deviceNames.has(deviceName)) {
+        throw new Error(`Invalid gateway config. ${stationPath}.devices references unknown device ${deviceName}`);
+      }
+    }
+
+    validateStationEvnProfile(station.evnProfile, `${stationPath}.evnProfile`);
+  });
+
+  for (const device of devices || []) {
+    if (device.stationId && stationIds.size > 0 && !stationIds.has(device.stationId)) {
+      throw new Error(`Invalid gateway config. ${device.name}.stationId references unknown station ${device.stationId}`);
+    }
+  }
+}
+
+function validateStationEvnProfile(evnProfile, profilePath) {
+  if (evnProfile === undefined || evnProfile === null) return;
+
+  if (typeof evnProfile !== "object" || Array.isArray(evnProfile)) {
+    throw new Error(`Invalid gateway config. ${profilePath} must be an object`);
+  }
+
+  validateBoolean(evnProfile.enabled, `${profilePath}.enabled`, { optional: true });
+  validateBoolean(evnProfile.autoGenerateIoa, `${profilePath}.autoGenerateIoa`, { optional: true });
+  validateEnum(evnProfile.simulator, `${profilePath}.simulator`, SUPPORTED_IEC104_SIMULATOR_MODES, { optional: true });
+}
+
 function validateIec104Point(point, pointPath) {
   if (!point || typeof point !== "object" || Array.isArray(point)) {
     throw new Error(`Invalid gateway config. ${pointPath} must be an object`);
   }
 
+  const source = point.source ?? (point.station || point.stationId ? "station" : "device");
+
   validateInteger(point.ioa, `${pointPath}.ioa`, { min: 1, max: 16777215 });
-  validateString(point.device, `${pointPath}.device`);
+  validateEnum(source, `${pointPath}.source`, SUPPORTED_IEC104_POINT_SOURCES, { optional: true });
+  if (source === "station") {
+    validateString(point.station ?? point.stationId, `${pointPath}.station`);
+  } else {
+    validateString(point.device, `${pointPath}.device`);
+  }
   validateString(point.measurement, `${pointPath}.measurement`);
   validateEnum(point.type, `${pointPath}.type`, SUPPORTED_IEC104_POINT_TYPES, { optional: true });
   validateBoolean(point.inverted, `${pointPath}.inverted`, { optional: true });
@@ -251,6 +322,7 @@ function validateIec104Control(control, controlPath) {
   validateEnum(control.type, `${controlPath}.type`, SUPPORTED_IEC104_CONTROL_TYPES);
   validateString(control.name, `${controlPath}.name`, { optional: true });
   validateString(control.device ?? control.deviceName, `${controlPath}.device`, { optional: true });
+  validateString(control.station ?? control.stationId, `${controlPath}.station`, { optional: true });
   validateBoolean(control.selectBeforeExecute, `${controlPath}.selectBeforeExecute`, { optional: true });
   validateEnum(control.action, `${controlPath}.action`, SUPPORTED_INVERTER_CONTROL_ACTIONS, { optional: true });
   validateEnum(control.actionOn, `${controlPath}.actionOn`, SUPPORTED_INVERTER_CONTROL_ACTIONS, { optional: true });
@@ -262,8 +334,8 @@ function validateIec104Control(control, controlPath) {
   validateInteger(control.delayMs, `${controlPath}.delayMs`, { min: 0, max: 300000, optional: true });
   validateInteger(control.rebootDelayMs, `${controlPath}.rebootDelayMs`, { min: 0, max: 300000, optional: true });
 
-  if ((control.action || control.actionOn || control.actionOff) && !(control.device || control.deviceName)) {
-    throw new Error(`Invalid gateway config. ${controlPath}.device is required when an action is configured`);
+  if ((control.action || control.actionOn || control.actionOff) && !(control.device || control.deviceName || control.station || control.stationId)) {
+    throw new Error(`Invalid gateway config. ${controlPath}.device or ${controlPath}.station is required when an action is configured`);
   }
 }
 

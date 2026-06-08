@@ -121,6 +121,58 @@ test("accepts IEC 60870-5-104 remote config mappings", () => {
   );
 });
 
+test("accepts station model and station IEC104 mappings in remote config", () => {
+  const config = validRtuConfig();
+  config.stations = [
+    {
+      id: "station_1",
+      name: "Station 1",
+      capacityKw: 100,
+      devices: ["meter_01"],
+      evnProfile: {
+        enabled: true,
+        autoGenerateIoa: true,
+        simulator: "fallback",
+      },
+    },
+  ];
+  config.devices[0].stationId = "station_1";
+  config.devices[0].capacityKw = 100;
+  config.iec104 = {
+    enabled: true,
+    mode: "server",
+    host: "0.0.0.0",
+    port: 2404,
+    points: [
+      {
+        ioa: 1,
+        source: "station",
+        station: "station_1",
+        measurement: "active_power_kw",
+        type: "float",
+      },
+    ],
+    controls: [
+      {
+        ioa: 12,
+        name: "setpoint_p_out_percent",
+        type: "setpoint",
+        station: "station_1",
+        action: "limit_power",
+        valueField: "percent",
+      },
+    ],
+  };
+
+  assert.doesNotThrow(() => validateGatewayConfig(config, "EB-ANHUNG-001"));
+
+  config.devices[0].stationId = "missing";
+  assert.throws(
+    () => validateGatewayConfig(config, "EB-ANHUNG-001"),
+    /meter_01\.stationId references unknown station missing/,
+  );
+});
+
 test("rejects invalid remote gateway polling settings", () => {
   const config = validRtuConfig();
   config.devices[0].pollIntervalMs = 100;
