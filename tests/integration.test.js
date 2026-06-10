@@ -117,6 +117,38 @@ test("auto provisioning creates the gateway and default config", async (t) => {
   assert.equal(latestConfig.body.config.server.url, `${app.baseUrl}/api/telemetry`);
 });
 
+test("admin can delete a gateway and its site from the server list", async (t) => {
+  const app = await startTestServer(t);
+  const sessionCookie = await login(app);
+
+  await createGateway(app, sessionCookie, {
+    id: "GW-DELETE-001",
+    name: "Station delete test",
+    site: "Station delete test",
+    token: "gateway-secret",
+  });
+
+  const deleted = await requestJson(app.baseUrl, "/api/gateways/GW-DELETE-001", {
+    method: "DELETE",
+    cookie: sessionCookie,
+  });
+  assert.equal(deleted.status, 200);
+  assert.equal(deleted.body.ok, true);
+  assert.equal(deleted.body.gateway.id, "GW-DELETE-001");
+
+  const gateways = await requestJson(app.baseUrl, "/api/gateways", {
+    cookie: sessionCookie,
+  });
+  assert.equal(gateways.status, 200);
+  assert.deepEqual(gateways.body.gateways, []);
+
+  const missing = await requestJson(app.baseUrl, "/api/gateways/GW-DELETE-001", {
+    method: "DELETE",
+    cookie: sessionCookie,
+  });
+  assert.equal(missing.status, 404);
+});
+
 test("gateway config check and status report use the latest admin config", async (t) => {
   const app = await startTestServer(t);
   const sessionCookie = await login(app);

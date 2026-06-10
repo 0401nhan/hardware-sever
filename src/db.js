@@ -201,6 +201,13 @@ export class HardwareStore {
     return row ? mapGatewayRow(row, this.offlineAfterMs, this.now) : null;
   }
 
+  deleteGateway(id) {
+    const gateway = this.getGateway(id);
+    if (!gateway) return null;
+    this.db.prepare("DELETE FROM gateways WHERE id = ?").run(id);
+    return gateway;
+  }
+
   upsertGateway({ id, name = "", site = "", token = "" }) {
     const now = new Date().toISOString();
     const existing = this.getGateway(id);

@@ -330,14 +330,14 @@ export function renderDashboardPage({ publicUrl }) {
   <style>
     :root {
       color-scheme: light;
-      --bg: #f4f6f8;
+      --bg: #f5f6f8;
       --surface: #ffffff;
-      --surface-soft: #f8fafc;
-      --line: #d9e1ea;
-      --line-strong: #aeb8c5;
-      --text: #16202a;
-      --muted: #617084;
-      --muted-strong: #344256;
+      --surface-soft: #fafbfc;
+      --line: #e5e8ed;
+      --line-strong: #b7c0cc;
+      --text: #111827;
+      --muted: #6b7280;
+      --muted-strong: #374151;
       --accent: #f97316;
       --accent-strong: #ea580c;
       --accent-soft: #fff7ed;
@@ -347,11 +347,12 @@ export function renderDashboardPage({ publicUrl }) {
       --danger-soft: #fff1f0;
       --ok: #16833a;
       --ok-soft: #ecfdf3;
-      --warning: #a15c07;
-      --sidebar: #1d242d;
-      --sidebar-strong: #111923;
+      --warning: #b45309;
+      --warning-soft: #fff7ed;
+      --sidebar: #111820;
+      --sidebar-strong: #071016;
       --sidebar-soft: rgba(255, 255, 255, 0.08);
-      --shadow: 0 14px 34px rgba(16, 24, 40, 0.08);
+      --shadow: 0 10px 24px rgba(16, 24, 40, 0.06);
       --focus: #2563eb;
     }
     * { box-sizing: border-box; }
@@ -360,7 +361,7 @@ export function renderDashboardPage({ publicUrl }) {
       min-height: 100vh;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: var(--text);
-      background: linear-gradient(180deg, #f7f9fb 0%, var(--bg) 240px);
+      background: var(--bg);
     }
     button, input, select, textarea { font: inherit; }
     button {
@@ -370,7 +371,7 @@ export function renderDashboardPage({ publicUrl }) {
       justify-content: center;
       gap: 8px;
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: 6px;
       padding: 7px 10px;
       color: var(--muted-strong);
       background: #fff;
@@ -398,7 +399,7 @@ export function renderDashboardPage({ publicUrl }) {
       width: 100%;
       min-height: 38px;
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: 6px;
       padding: 0 10px;
       color: var(--text);
       background: #fff;
@@ -443,7 +444,7 @@ export function renderDashboardPage({ publicUrl }) {
       overflow: auto;
       padding: 14px;
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: 6px;
       background: #fbfcfd;
       font-family: "Cascadia Code", Consolas, monospace;
       font-size: 12px;
@@ -469,12 +470,14 @@ export function renderDashboardPage({ publicUrl }) {
     .app-shell {
       min-height: 100vh;
       display: grid;
-      grid-template-columns: 248px minmax(0, 1fr);
+      grid-template-columns: 178px minmax(0, 1fr);
       background: var(--bg);
     }
     .sidebar {
       position: sticky;
       top: 0;
+      display: flex;
+      flex-direction: column;
       border-right: 1px solid rgba(255, 255, 255, 0.08);
       background: linear-gradient(180deg, var(--sidebar) 0%, var(--sidebar-strong) 100%);
       color: #d8dee8;
@@ -482,39 +485,48 @@ export function renderDashboardPage({ publicUrl }) {
       min-height: 100vh;
     }
     .sidebar-brand {
-      min-height: 72px;
-      padding: 14px 18px;
+      min-height: 58px;
+      padding: 10px 14px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       display: flex;
       align-items: center;
       gap: 12px;
       min-width: 0;
     }
+    .sidebar-logo,
     .brand-mark {
-      width: 38px;
-      height: 38px;
+      width: 34px;
+      height: 34px;
       display: grid;
       place-items: center;
       flex: 0 0 auto;
       border: 1px solid rgba(249, 115, 22, 0.42);
       border-radius: 8px;
-      background: rgba(249, 115, 22, 0.14);
+      background: #fff;
       color: #fff;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 900;
       letter-spacing: 0;
     }
+    .sidebar-logo img,
+    .brand-mark img {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+    }
     .sidebar-brand > span:last-child { min-width: 0; }
-    .sidebar-brand strong { display: block; color: #fff; font-size: 15px; font-weight: 800; }
-    .sidebar-brand small { display: block; margin-top: 4px; color: #aab4c2; font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+    .sidebar-brand strong { display: block; color: #fff; font-size: 13px; font-weight: 850; }
+    .sidebar-brand small { display: block; margin-top: 2px; color: #aab4c2; font-size: 11px; font-weight: 650; overflow-wrap: anywhere; }
     .sidebar-nav {
       display: grid;
-      gap: 4px;
-      padding: 12px 10px;
+      gap: 2px;
+      padding: 8px;
+      flex: 1 1 auto;
+      align-content: start;
     }
     .nav-link, .nav-section {
       width: 100%;
-      min-height: 42px;
+      min-height: 36px;
       justify-content: flex-start;
       border-color: transparent;
       color: #c9d2df;
@@ -530,8 +542,8 @@ export function renderDashboardPage({ publicUrl }) {
       box-shadow: inset 3px 0 0 var(--accent);
     }
     .nav-icon {
-      width: 24px;
-      height: 24px;
+      width: 22px;
+      height: 22px;
       display: inline-grid;
       place-items: center;
       flex: 0 0 auto;
@@ -556,21 +568,57 @@ export function renderDashboardPage({ publicUrl }) {
       text-decoration: none;
     }
     .nav-child a:hover, .nav-child a.active { background: rgba(255, 255, 255, 0.08); color: #fff; }
+    .sidebar-footer {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      color: #aab4c2;
+    }
+    .sidebar-footer span {
+      width: 32px;
+      height: 32px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+    }
     .workspace { min-width: 0; }
     header.topbar {
       position: sticky;
       top: 0;
       z-index: 20;
-      min-height: 68px;
+      min-height: 58px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      padding: 12px 22px;
+      padding: 10px 14px;
       border-bottom: 1px solid var(--line);
       background: rgba(255, 255, 255, 0.94);
       box-shadow: 0 1px 0 rgba(16, 24, 40, 0.04);
       backdrop-filter: blur(10px);
+    }
+    .menu-button {
+      display: inline-grid;
+      width: 42px;
+      min-height: 42px;
+      place-items: center;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      box-shadow: none;
+    }
+    .menu-button .app-icon {
+      width: 24px;
+      height: 24px;
+    }
+    .menu-button:hover {
+      border: 0;
+      background: var(--surface-soft);
+      box-shadow: none;
+      transform: none;
     }
     .topbar-title { min-width: 0; margin-right: auto; }
     .topbar-title strong {
@@ -593,12 +641,22 @@ export function renderDashboardPage({ publicUrl }) {
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .topbar-meta, .topbar-actions, .status-chip {
+    .topbar-meta, .topbar-system, .topbar-actions, .status-chip {
       display: flex;
       align-items: center;
       flex-wrap: wrap;
       gap: 8px;
       min-width: 0;
+    }
+    .topbar-system { justify-content: flex-end; }
+    .admin-language-select {
+      display: block;
+      width: 150px;
+    }
+    .admin-language-select select {
+      min-height: 34px;
+      font-size: 12px;
+      font-weight: 800;
     }
     .topbar-item {
       min-height: 34px;
@@ -630,6 +688,40 @@ export function renderDashboardPage({ publicUrl }) {
     }
     .status-dot.ok { background: var(--ok); }
     .status-dot.error { background: var(--danger); }
+    .status {
+      width: 20px;
+      min-width: 20px;
+      min-height: 20px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: #98a2b3;
+      box-shadow: 0 0 0 4px rgba(152, 162, 179, 0.16);
+    }
+    .status.ok {
+      background: var(--ok);
+      box-shadow: 0 0 0 4px rgba(22, 131, 58, 0.16);
+    }
+    .status.error {
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(180, 35, 24, 0.16);
+    }
+    .badge-dot {
+      display: inline-grid;
+      width: 22px;
+      height: 22px;
+      place-items: center;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .badge-dot .app-icon { width: 14px; height: 14px; stroke-width: 3; }
+    .badge-dot.green { background: #16a34a; }
+    .badge-dot.red { background: #f04438; }
+    .badge-dot.orange { background: #ff8a00; }
+    .badge-dot.gray { background: #98a2b3; }
     .status-text {
       min-width: 0;
       overflow: hidden;
@@ -640,15 +732,18 @@ export function renderDashboardPage({ publicUrl }) {
       white-space: nowrap;
     }
     main.content {
-      max-width: 1480px;
-      margin: 0 auto;
-      padding: 22px;
+      width: 100%;
+      max-width: none;
+      margin: 0;
+      padding: 10px;
     }
+    .home-page { display: none; }
+    .home-page.active { display: block; }
     .home-panel, .config-section {
-      margin-bottom: 16px;
-      padding: 20px;
+      margin-bottom: 8px;
+      padding: 14px;
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: 6px;
       background: var(--surface);
       box-shadow: var(--shadow);
     }
@@ -662,13 +757,13 @@ export function renderDashboardPage({ publicUrl }) {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      gap: 14px;
-      margin-bottom: 16px;
+      gap: 10px;
+      margin-bottom: 12px;
     }
     .panel-title, h2 {
       margin: 0;
       color: var(--text);
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 800;
     }
     .section-title p, .panel-title span {
@@ -677,6 +772,7 @@ export function renderDashboardPage({ publicUrl }) {
       font-size: 13px;
       font-weight: 700;
     }
+    .danger-text { color: var(--danger); }
     .actions, .template-actions, .register-actions {
       display: flex;
       align-items: center;
@@ -687,18 +783,331 @@ export function renderDashboardPage({ publicUrl }) {
     .overview {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-      margin-bottom: 16px;
+      gap: 8px;
+      margin-bottom: 8px;
     }
     .metric, .gateway-card {
       border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 14px;
-      background: linear-gradient(180deg, #fff 0%, #fbfcfd 100%);
-      box-shadow: 0 6px 18px rgba(16, 24, 40, 0.05);
+      border-radius: 6px;
+      padding: 12px;
+      background: #fff;
+      box-shadow: 0 5px 16px rgba(16, 24, 40, 0.04);
     }
     .metric span, .gateway-card span { display: block; color: var(--muted); font-size: 12px; font-weight: 700; }
     .metric strong { display: block; margin-top: 6px; color: var(--text); font-size: 22px; font-weight: 800; overflow-wrap: anywhere; }
+    .dashboard-board {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(320px, 0.92fr);
+      gap: 8px;
+      align-items: start;
+    }
+    .realtime-panel .panel-title-row {
+      align-items: flex-start;
+    }
+    .status-legend {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 0 0 14px;
+      color: var(--muted-strong);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .status-legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .topology-tree {
+      display: grid;
+      gap: 12px;
+    }
+    .topology-station {
+      display: grid;
+      gap: 10px;
+      min-width: 0;
+    }
+    .topology-level {
+      display: grid;
+      gap: 10px;
+      margin-left: 18px;
+      padding-left: 22px;
+      border-left: 1px dashed var(--line-strong);
+    }
+    .topology-node {
+      min-height: 64px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 5px 16px rgba(16, 24, 40, 0.04);
+    }
+    .topology-node.good { border-left: 4px solid #16a34a; }
+    .topology-node.warning { border-left: 4px solid #f59e0b; }
+    .topology-node.bad { border-left: 4px solid #dc2626; }
+    .topology-node.loss { border-left: 4px solid #98a2b3; }
+    .topology-icon {
+      width: 36px;
+      height: 36px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--surface-soft);
+      color: var(--muted-strong);
+    }
+    .topology-copy { min-width: 0; }
+    .topology-kicker {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 850;
+      text-transform: uppercase;
+    }
+    .topology-copy strong {
+      display: block;
+      overflow: hidden;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 850;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .topology-copy p {
+      overflow: hidden;
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .topology-state {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 30px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted-strong);
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+    .topology-state.good { border-color: #8bd7a2; background: var(--ok-soft); color: var(--ok); }
+    .topology-state.warning { border-color: #fed7aa; background: var(--warning-soft); color: var(--warning); }
+    .topology-state.bad { border-color: #fda29b; background: var(--danger-soft); color: var(--danger); }
+    .topology-state.loss { border-color: #cbd5e1; background: #f8fafc; color: #64748b; }
+    .topology-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: #98a2b3;
+      box-shadow: 0 0 0 3px rgba(152, 162, 179, 0.18);
+    }
+    .topology-dot.good { background: #16a34a; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.16); }
+    .topology-dot.warning { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18); }
+    .topology-dot.bad { background: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.16); }
+    .topology-dot.loss { background: #98a2b3; box-shadow: 0 0 0 3px rgba(152, 162, 179, 0.18); }
+    .topology-empty {
+      padding: 13px 14px;
+      border: 1px dashed var(--line-strong);
+      border-radius: 8px;
+      background: #fbfcfd;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(142px, 1fr));
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .metric-tile {
+      min-height: 94px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      box-shadow: 0 5px 16px rgba(16, 24, 40, 0.04);
+    }
+    .metric-tile.wide { grid-column: span 2; }
+    .metric-tile span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .metric-tile strong {
+      display: block;
+      margin-top: 8px;
+      color: var(--text);
+      font-size: 28px;
+      font-weight: 850;
+      line-height: 1;
+      overflow-wrap: anywhere;
+    }
+    .metric-tile small {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 650;
+    }
+    .metric-tile .ok { color: var(--ok); }
+    .metric-tile .warn { color: var(--warning); }
+    .metric-tile .danger { color: var(--danger); }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warning); }
+    .danger { color: var(--danger); }
+    .metric-icon {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 6px;
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .metric-icon.ok { background: var(--ok-soft); color: var(--ok); }
+    .metric-icon.warn { background: var(--warning-soft); color: var(--warning); }
+    .metric-icon.info { background: var(--blue-soft); color: var(--blue); }
+    .fleet-table {
+      min-width: 900px;
+      table-layout: auto;
+    }
+    .fleet-table th,
+    .fleet-table td {
+      padding: 8px 10px;
+      font-size: 12px;
+      vertical-align: middle;
+    }
+    .fleet-table th {
+      background: #fbfcfd;
+      font-size: 11px;
+      text-transform: none;
+    }
+    .id-link {
+      color: var(--accent-strong);
+      font-weight: 850;
+      text-decoration: none;
+    }
+    .id-link:hover { text-decoration: underline; }
+    .detail-grid {
+      display: grid;
+      gap: 8px;
+    }
+    .detail-card {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      box-shadow: 0 5px 16px rgba(16, 24, 40, 0.04);
+    }
+    .detail-card h3 {
+      margin: 0 0 10px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 850;
+    }
+    .detail-row {
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr);
+      gap: 10px;
+      padding: 6px 0;
+      border-bottom: 1px solid #f1f3f6;
+      font-size: 12px;
+    }
+    .detail-row:last-child { border-bottom: 0; }
+    .detail-row span:first-child {
+      color: var(--muted);
+      font-weight: 750;
+    }
+    .detail-row span:last-child {
+      color: var(--text);
+      font-weight: 750;
+      overflow-wrap: anywhere;
+    }
+    .status-strip {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .status-item {
+      min-height: 70px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+    }
+    .status-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+    }
+    .status-item strong {
+      display: block;
+      margin-top: 8px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 850;
+      overflow-wrap: anywhere;
+    }
+    .health-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .health-item {
+      min-height: 78px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+    }
+    .health-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+    }
+    .health-item strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 14px;
+      font-weight: 850;
+    }
+    .health-item small {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 650;
+    }
+    .evn-layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
+      gap: 8px;
+      align-items: start;
+    }
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 8px;
+    }
     .gateway-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -779,6 +1188,8 @@ export function renderDashboardPage({ publicUrl }) {
       content: "";
     }
     .badge.online { border-color: #8bd7a2; background: var(--ok-soft); color: var(--ok); }
+    .badge.offline, .badge.waiting { border-color: #d1d5db; background: #f9fafb; color: #6b7280; }
+    .badge.warning, .badge.warn { border-color: #fed7aa; background: var(--warning-soft); color: var(--warning); }
     .badge.error { border-color: #fda29b; background: var(--danger-soft); color: var(--danger); }
     .badge.queued { border-color: #bfdbfe; background: var(--blue-soft); color: var(--blue); }
     .badge.delivered, .badge.running { border-color: #fed7aa; background: var(--accent-soft); color: var(--warning); }
@@ -890,7 +1301,72 @@ export function renderDashboardPage({ publicUrl }) {
     .monitor-title strong { display: block; font-size: 14px; font-weight: 800; }
     .monitor-title span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; font-weight: 700; }
     .monitor-body { padding: 12px; }
+    .monitor-status {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface-soft);
+      color: var(--muted-strong);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .monitor-meta {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    .monitor-meta div, .monitor-key-item {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+    .monitor-meta span, .monitor-key-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+    }
+    .monitor-meta strong, .monitor-key-item strong {
+      display: block;
+      margin-top: 4px;
+      overflow: hidden;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 850;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .monitor-key-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+    .monitor-key-item.power strong { color: var(--accent-strong); }
+    .monitor-key-item.status strong { color: var(--ok); }
     .monitor-table { min-width: 0; table-layout: auto; }
+    .monitor-value { font-size: 16px; font-weight: 850; }
+    .monitor-unit, .monitor-raw { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .monitor-error {
+      margin: 12px;
+      padding: 10px;
+      border: 1px solid #fda29b;
+      border-radius: 8px;
+      background: var(--danger-soft);
+      color: var(--danger);
+      font-size: 12px;
+      font-weight: 800;
+    }
     .control-layout {
       display: grid;
       grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);
@@ -928,12 +1404,15 @@ export function renderDashboardPage({ publicUrl }) {
     @media (max-width: 1100px) {
       .app-shell { grid-template-columns: 220px minmax(0, 1fr); }
       .overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .dashboard-board, .evn-layout { grid-template-columns: 1fr; }
+      .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .status-strip, .health-grid, .metric-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 820px) {
       .app-shell { display: block; }
       .sidebar { position: sticky; top: 0; z-index: 30; height: auto; min-height: auto; }
       .sidebar-brand { min-height: 58px; padding: 10px 12px; }
-      .brand-mark { width: 34px; height: 34px; }
+      .sidebar-logo, .brand-mark { width: 34px; height: 34px; }
       .sidebar-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 8px; }
       .nav-link { min-height: 40px; padding: 7px 8px; }
       .nav-child { grid-column: 1 / -1; padding: 0; }
@@ -943,6 +1422,7 @@ export function renderDashboardPage({ publicUrl }) {
       main.content { padding: 14px; }
       .status-chip { max-width: 100%; }
       .control-layout, .limit-grid { grid-template-columns: 1fr; }
+      .kpi-grid, .status-strip, .health-grid, .metric-row { grid-template-columns: 1fr; }
     }
     @media (max-width: 620px) {
       .overview, .grid, .gateway-grid { grid-template-columns: 1fr; }
@@ -954,171 +1434,927 @@ export function renderDashboardPage({ publicUrl }) {
       .inline-field { grid-template-columns: 1fr; }
       .control-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
+    #remoteView {
+      --bg: #f3f5f7;
+      --surface: #ffffff;
+      --surface-soft: #f8fafb;
+      --line: #dde3ea;
+      --line-strong: #b7c0cc;
+      --text: #111827;
+      --muted: #6b7280;
+      --muted-strong: #374151;
+      --accent: #ff7a00;
+      --accent-strong: #e56e00;
+      --accent-soft: #fff2e5;
+      --blue: #ff7a00;
+      --blue-soft: #fff2e5;
+      --danger: #b42318;
+      --danger-soft: #fff1f0;
+      --ok: #16833a;
+      --ok-soft: #ecfdf3;
+      --ok-line: #8bd7a2;
+      --warning: #a15c07;
+      --warning-soft: #fff7ed;
+      --shadow: 0 10px 28px rgba(16, 24, 40, 0.08);
+      --focus: #2563eb;
+      grid-template-columns: 190px minmax(0, 1fr);
+      background: var(--bg);
+      color: var(--text);
+    }
+    #remoteView .sidebar {
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      background: #111820;
+      color: #d8dee8;
+    }
+    #remoteView .sidebar-brand {
+      min-height: 58px;
+      padding: 0 14px;
+      gap: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    #remoteView .sidebar-brand strong,
+    #remoteView .sidebar-brand small {
+      display: block;
+      line-height: 1.2;
+    }
+    #remoteView .sidebar-brand small {
+      margin-top: 3px;
+      color: #aab4c2;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    #remoteView .sidebar-logo {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      overflow: hidden;
+      padding: 3px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      background: #fff;
+      flex: 0 0 auto;
+    }
+    #remoteView .sidebar-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    #remoteView .sidebar-nav {
+      gap: 2px;
+      padding: 8px;
+    }
+    #remoteView .nav-link,
+    #remoteView .nav-section {
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+      margin: 0;
+      padding: 0 12px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      color: #c9d2df;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: left;
+      text-decoration: none;
+      box-shadow: none;
+    }
+    #remoteView .nav-link:hover,
+    #remoteView .nav-section:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+    #remoteView .nav-link.active,
+    #remoteView .nav-section.active {
+      border-color: transparent;
+      background: rgba(249, 115, 22, 0.13);
+      color: #fff;
+      box-shadow: inset 3px 0 0 var(--accent);
+    }
+    #remoteView .nav-child {
+      gap: 2px;
+      padding: 2px 0 8px 39px;
+      background: transparent;
+    }
+    #remoteView .nav-child a {
+      min-height: 32px;
+      padding: 0 10px;
+      border-radius: 6px;
+      color: #aeb9c8;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    #remoteView .nav-child a:hover,
+    #remoteView .nav-child a.active {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+    #remoteView .sidebar-footer {
+      display: none;
+    }
+    #remoteView header.topbar {
+      z-index: 10;
+      min-height: 68px;
+      padding: 12px 22px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 1px 0 rgba(16, 24, 40, 0.04);
+      backdrop-filter: blur(10px);
+    }
+    #remoteView .menu-button {
+      display: none;
+    }
+    #remoteView .topbar-title {
+      display: grid;
+      min-width: 180px;
+      gap: 2px;
+      margin-right: auto;
+    }
+    #remoteView .topbar-title strong {
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+    #remoteView .topbar-title span {
+      margin-top: 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    #remoteView .topbar-meta {
+      flex-wrap: wrap;
+      gap: 10px;
+      color: #333;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: normal;
+    }
+    #remoteView .topbar-system,
+    #remoteView .topbar-actions,
+    #remoteView .status-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    #remoteView .topbar-item {
+      min-height: 34px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-soft);
+      color: var(--muted-strong);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    #remoteView .topbar-actions button {
+      min-height: 34px;
+      padding: 7px 10px;
+    }
+    #remoteView .admin-language-select {
+      display: block;
+      min-width: 126px;
+      width: auto;
+      color: var(--muted-strong);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    #remoteView .admin-language-select select {
+      min-height: 34px;
+      border-radius: 8px;
+      background: #fff;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    #remoteView .status-chip {
+      min-height: 34px;
+      max-width: min(360px, 38vw);
+      padding: 0 10px 0 0;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+    }
+    #remoteView .status {
+      position: relative;
+      display: inline-grid;
+      width: 38px;
+      min-width: 38px;
+      min-height: 38px;
+      place-items: center;
+      overflow: visible;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface-soft);
+      color: var(--muted);
+      box-shadow: none;
+    }
+    #remoteView .status::before {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--line-strong);
+      box-shadow: 0 0 0 4px rgba(183, 192, 204, 0.2);
+      content: "";
+    }
+    #remoteView .status::after {
+      position: absolute;
+      top: calc(100% + 9px);
+      left: 0;
+      z-index: 20;
+      width: max-content;
+      max-width: min(520px, calc(100vw - 32px));
+      padding: 8px 10px;
+      border: 1px solid rgba(18, 32, 46, 0.16);
+      border-radius: 6px;
+      background: #17202a;
+      box-shadow: 0 12px 26px rgba(18, 32, 46, 0.18);
+      color: #fff;
+      content: attr(data-message);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.35;
+      opacity: 0;
+      overflow-wrap: anywhere;
+      pointer-events: none;
+      text-align: left;
+      transform: translateY(-3px);
+      transition: opacity 120ms ease, transform 120ms ease;
+      white-space: normal;
+    }
+    #remoteView .status:hover::after,
+    #remoteView .status:focus-visible::after {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    #remoteView .status.ok {
+      border-color: var(--ok-line);
+      background: var(--ok-soft);
+    }
+    #remoteView .status.ok::before {
+      background: var(--ok);
+      box-shadow: 0 0 0 4px rgba(22, 131, 58, 0.16);
+    }
+    #remoteView .status.error {
+      border-color: #f4b7ae;
+      background: var(--danger-soft);
+    }
+    #remoteView .status.error::before {
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(180, 35, 24, 0.16);
+    }
+    #remoteView .status-chip .status {
+      width: 32px;
+      min-width: 32px;
+      min-height: 32px;
+      border: 0;
+      background: transparent;
+    }
+    #remoteView .status-text,
+    #remoteView #statusText {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--muted-strong);
+      font-size: 12px;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #remoteView main.content {
+      width: 100%;
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 22px;
+    }
+    #remoteView .home-panel,
+    #remoteView .config-section {
+      margin-bottom: 16px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    #remoteView .panel-title-row,
+    #remoteView .section-header,
+    #remoteView .device-head {
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    #remoteView .panel-title,
+    #remoteView h2 {
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 800;
+    }
+    #remoteView .panel-title span {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    #remoteView .panel-title::before {
+      top: 3px;
+      bottom: 3px;
+      border-radius: 999px;
+    }
+    #remoteView .overview.config-overview {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 0 0 16px;
+    }
+    #remoteView .metric {
+      padding: 14px;
+      border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(16, 24, 40, 0.05);
+    }
+    #remoteView .grid {
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    #remoteView .wide {
+      grid-column: span 2;
+    }
+    #remoteView label {
+      color: var(--muted-strong);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    #remoteView input,
+    #remoteView select,
+    #remoteView textarea {
+      min-height: 38px;
+      border-radius: 8px;
+      background: #fff;
+    }
+    #remoteView button {
+      border-radius: 8px;
+    }
+    #remoteView button.primary {
+      box-shadow: 0 8px 18px rgba(249, 115, 22, 0.22);
+    }
+    #remoteView button.subtle {
+      background: #fff;
+    }
+    #remoteView .table-wrap {
+      border-radius: 8px;
+      box-shadow: inset 0 0 0 1px rgba(16, 24, 40, 0.02);
+    }
+    #remoteView .table-wrap table {
+      min-width: 860px;
+    }
+    #remoteView th,
+    #remoteView td {
+      padding: 10px;
+    }
+    #remoteView th {
+      background: #f8fafc;
+      color: var(--muted-strong);
+      font-weight: 800;
+    }
+    #remoteView tbody tr:hover td {
+      background: #fbfdff;
+    }
+    #remoteView .device {
+      margin-top: 14px;
+      padding: 16px;
+      border-color: var(--line);
+      border-radius: 8px;
+      background: #fbfcfd;
+    }
+    #remoteView .device-head {
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    #remoteView .device-title strong {
+      font-size: 16px;
+    }
+    #remoteView .registers-head {
+      margin-top: 18px;
+    }
+    #remoteView .pill {
+      border: 1px solid #bfdbfe;
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+    #remoteView .evn-iec104-note {
+      display: grid;
+      gap: 6px;
+      margin: 0 0 16px;
+      padding: 12px 14px;
+      border: 1px solid #d8e2ee;
+      border-left: 4px solid var(--accent);
+      border-radius: 8px;
+      background: #fbfcfd;
+      color: var(--muted-strong);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    #remoteView .evn-iec104-note strong {
+      color: var(--text);
+      font-size: 14px;
+    }
+    #remoteView .toggle-field {
+      align-content: start;
+    }
+    #remoteView .toggle-switch {
+      display: inline-grid;
+      grid-template-columns: auto auto auto;
+      gap: 10px;
+      align-items: center;
+      width: fit-content;
+      min-height: 38px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface-soft);
+      color: var(--muted-strong);
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      user-select: none;
+    }
+    #remoteView .toggle-switch input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+    #remoteView .toggle-track {
+      position: relative;
+      width: 46px;
+      height: 24px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      transition: background 120ms ease;
+    }
+    #remoteView .toggle-track::after {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(16, 24, 40, 0.2);
+      content: "";
+      transition: transform 120ms ease;
+    }
+    #remoteView .toggle-switch input:checked + .toggle-track {
+      background: var(--ok);
+    }
+    #remoteView .toggle-switch input:checked + .toggle-track::after {
+      transform: translateX(22px);
+    }
+    #remoteView .toggle-off {
+      color: var(--muted);
+    }
+    #remoteView .toggle-switch input:checked ~ .toggle-on {
+      color: var(--ok);
+    }
+    #remoteView .toggle-switch input:not(:checked) ~ .toggle-off {
+      color: var(--danger);
+    }
+    #remoteView .section-footnote {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+    #remoteView .register-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    #remoteView .register-preview {
+      margin-top: 0;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    #remoteView .dashboard-table-wrap {
+      margin: 0;
+    }
+    #remoteView table.dashboard-table {
+      min-width: 760px;
+    }
+    #remoteView .dashboard-table th,
+    #remoteView .dashboard-table td {
+      padding: 12px 14px;
+      font-size: 13px;
+    }
+    #remoteView .monitor-grid {
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 14px;
+    }
+    #remoteView .monitoring-panel .panel-title-row {
+      align-items: center;
+    }
+    #remoteView .monitor-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    #remoteView .icon-text {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #remoteView .icon-text .app-icon {
+      width: 17px;
+      height: 17px;
+    }
+    #remoteView .monitor-card {
+      border-radius: 8px;
+      box-shadow: 0 8px 20px rgba(16, 24, 40, 0.06);
+    }
+    #remoteView .monitor-head {
+      background: #fbfcfd;
+    }
+    #remoteView .monitor-status {
+      gap: 6px;
+      border-radius: 999px;
+    }
+    #remoteView .monitor-status::before {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      content: "";
+    }
+    #remoteView .monitor-status.good,
+    #remoteView .monitor-status.online {
+      border-color: var(--ok-line);
+      background: var(--ok-soft);
+      color: var(--ok);
+    }
+    #remoteView .monitor-status.warning,
+    #remoteView .monitor-status.waiting {
+      border-color: #fcd34d;
+      background: #fffbeb;
+      color: #92400e;
+    }
+    #remoteView .monitor-status.bad,
+    #remoteView .monitor-status.error {
+      border-color: #fda29b;
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+    #remoteView .monitor-status.loss {
+      border-color: #cbd5e1;
+      background: #f8fafc;
+      color: #64748b;
+    }
+    #remoteView .monitor-table {
+      min-width: 0;
+    }
+    #remoteView .monitor-table th,
+    #remoteView .monitor-table td {
+      font-size: 12px;
+    }
+    #remoteView .monitor-value {
+      font-size: 16px;
+    }
+    #remoteView .empty-state {
+      border-radius: 8px;
+      background: #fbfcfd;
+    }
+    #remoteView .topology-tree-compact {
+      margin-bottom: 16px;
+    }
+    @media (max-width: 1100px) {
+      #remoteView {
+        grid-template-columns: 220px minmax(0, 1fr);
+      }
+      #remoteView .overview.config-overview,
+      #remoteView .index-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      #remoteView .topology-node {
+        grid-template-columns: 38px minmax(0, 1fr);
+      }
+      #remoteView .monitor-meta {
+        grid-template-columns: 1fr;
+      }
+      #remoteView .monitor-key-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      #remoteView .topology-state {
+        grid-column: 2;
+        justify-self: start;
+      }
+      #remoteView .topbar-title span {
+        display: none;
+      }
+    }
+    @media (max-width: 820px) {
+      #remoteView {
+        display: block;
+      }
+      #remoteView .sidebar {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        height: auto;
+        min-height: auto;
+      }
+      #remoteView .sidebar-brand {
+        min-height: 56px;
+      }
+      #remoteView .sidebar-nav {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+        padding: 8px;
+      }
+      #remoteView .nav-link {
+        min-height: 38px;
+      }
+      #remoteView .nav-child {
+        grid-column: 1 / -1;
+        padding: 0;
+      }
+      #remoteView .nav-child.active {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+      }
+      #remoteView .nav-child a {
+        flex: 0 0 auto;
+        min-height: 32px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      #remoteView .topology-level {
+        margin-left: 10px;
+        padding-left: 12px;
+      }
+      #remoteView header.topbar {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px;
+      }
+      #remoteView .topbar-title {
+        margin-right: 0;
+      }
+      #remoteView .topbar-meta {
+        justify-content: space-between;
+      }
+      #remoteView .topbar-actions {
+        flex-wrap: wrap;
+      }
+      #remoteView .status-chip {
+        max-width: 100%;
+      }
+      #remoteView main.content {
+        padding: 14px;
+      }
+    }
+    @media (max-width: 620px) {
+      #remoteView .overview.config-overview,
+      #remoteView .index-grid {
+        grid-template-columns: 1fr;
+      }
+      #remoteView .wide {
+        grid-column: span 1;
+      }
+      #remoteView .section-header,
+      #remoteView .device-head,
+      #remoteView .panel-title-row {
+        flex-direction: column;
+      }
+      #remoteView .actions,
+      #remoteView .template-actions,
+      #remoteView .topbar-actions {
+        width: 100%;
+      }
+      #remoteView .actions button,
+      #remoteView .topbar-actions button {
+        flex: 1 1 120px;
+      }
+      #remoteView .topbar-system,
+      #remoteView .status-chip {
+        width: 100%;
+      }
+      #remoteView .topbar-item {
+        flex: 1 1 0;
+        justify-content: center;
+      }
+      #remoteView .monitor-grid {
+        grid-template-columns: 1fr;
+      }
+      #remoteView .control-layout,
+      #remoteView .limit-grid {
+        grid-template-columns: 1fr;
+      }
+      #remoteView .control-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
   </style>
 </head>
 <body>
   <svg class="icon-sprite" aria-hidden="true">
     <symbol id="icon-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 10v10h14V10"></path><path d="M9 20v-6h6v6"></path></symbol>
+    <symbol id="icon-menu" viewBox="0 0 24 24"><path d="M3 6h18"></path><path d="M3 12h18"></path><path d="M3 18h18"></path></symbol>
+    <symbol id="icon-overview" viewBox="0 0 24 24"><path d="M3 13h8V3H3z"></path><path d="M13 21h8V11h-8z"></path><path d="M13 9h8V3h-8z"></path><path d="M3 21h8v-6H3z"></path></symbol>
     <symbol id="icon-server" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="6" rx="2"></rect><rect x="4" y="14" width="16" height="6" rx="2"></rect><path d="M8 7h.01M8 17h.01"></path></symbol>
     <symbol id="icon-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8M12 16v4"></path></symbol>
     <symbol id="icon-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"></path><path d="M2 14h4M10 8h4M18 16h4"></path></symbol>
+    <symbol id="icon-rs485" viewBox="0 0 24 24"><path d="M6 3v18"></path><path d="M18 3v18"></path><path d="M6 7h12"></path><path d="M6 12h12"></path><path d="M6 17h12"></path><circle cx="6" cy="7" r="2"></circle><circle cx="18" cy="17" r="2"></circle></symbol>
     <symbol id="icon-activity" viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"></path></symbol>
+    <symbol id="icon-maintenance" viewBox="0 0 24 24"><path d="m14.7 6.3 2 2"></path><path d="M18 2l-4 4 3 3 4-4"></path><path d="m2 22 8.5-8.5"></path><path d="M10 14 8 12l-6 6v4h4z"></path></symbol>
+    <symbol id="icon-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></symbol>
     <symbol id="icon-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="7" ry="3"></ellipse><path d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"></path></symbol>
     <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.7-4.4L3 9"></path><path d="M3 4v5h5"></path><path d="M4 13a8 8 0 0 0 14.7 4.4L21 15"></path><path d="M21 20v-5h-5"></path></symbol>
     <symbol id="icon-log-out" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path><path d="M21 19V5a2 2 0 0 0-2-2h-4"></path></symbol>
     <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></symbol>
     <symbol id="icon-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></symbol>
+    <symbol id="icon-zap" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"></path></symbol>
+    <symbol id="icon-alert" viewBox="0 0 24 24"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="m10.3 3.9-8.2 14.2A2 2 0 0 0 3.8 21h16.4a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0z"></path></symbol>
+    <symbol id="icon-check-circle" viewBox="0 0 24 24"><path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"></path><path d="m9 11 3 3L22 4"></path></symbol>
+    <symbol id="icon-alert-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></symbol>
+    <symbol id="icon-alert-triangle" viewBox="0 0 24 24"><path d="m10.3 3.9-8.2 14.2A2 2 0 0 0 3.8 21h16.4a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></symbol>
+    <symbol id="icon-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M9.1 9a3 3 0 1 1 5.8 1c-.4.8-1.1 1.2-1.8 1.7-.7.5-1.1 1-1.1 2.3"></path><path d="M12 17h.01"></path></symbol>
+    <symbol id="icon-user" viewBox="0 0 24 24"><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="7" r="4"></circle></symbol>
+    <symbol id="icon-settings" viewBox="0 0 24 24"><path d="M12.2 2h-.4l-.8 3a7.8 7.8 0 0 0-1.8.8L6.4 4.3l-.3.3-2 3.5.3.3 2.4.7a8 8 0 0 0 0 2L4.4 12l-.3.3 2 3.5.3.3 2.8-1.5a7.8 7.8 0 0 0 1.8.8l.8 3h.4l.8-3a7.8 7.8 0 0 0 1.8-.8l2.8 1.5.3-.3 2-3.5-.3-.3-2.4-.8a8 8 0 0 0 0-2l2.4-.7.3-.3-2-3.5-.3-.3-2.8 1.5a7.8 7.8 0 0 0-1.8-.8L12.2 2z"></path><circle cx="12" cy="12" r="3"></circle></symbol>
+    <symbol id="icon-cloud" viewBox="0 0 24 24"><path d="M17.5 19H7a5 5 0 0 1-.6-10A7 7 0 0 1 20 11.5 3.8 3.8 0 0 1 17.5 19z"></path></symbol>
+    <symbol id="icon-network" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="6" rx="1"></rect><rect x="2" y="16" width="6" height="6" rx="1"></rect><rect x="16" y="16" width="6" height="6" rx="1"></rect><path d="M12 8v4M5 16v-2a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2"></path></symbol>
+    <symbol id="icon-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"></path><path d="M3 6h.01M3 12h.01M3 18h.01"></path></symbol>
+    <symbol id="icon-hard-drive" viewBox="0 0 24 24"><path d="M22 12H2l3-8h14l3 8z"></path><path d="M2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6"></path><path d="M6 16h.01M10 16h.01"></path></symbol>
   </svg>
   <div id="homeView" class="app-shell">
     <aside class="sidebar" aria-label="Fleet navigation">
       <div class="sidebar-brand">
-        <span class="brand-mark">EB</span>
+        <span class="sidebar-logo"><img src="/logo/logo-smallsize.png" alt=""></span>
         <span>
-          <strong>Hardware Server</strong>
-          <small>${escapeHtml(publicUrl)}</small>
+          <strong>Electric Bird</strong>
+          <small>Hardware Gateway</small>
         </span>
       </div>
       <nav class="sidebar-nav">
-        <button class="nav-link active" type="button"><span class="nav-icon"><svg class="app-icon"><use href="#icon-home"></use></svg></span>Gateway Home</button>
+        <button class="nav-link active" type="button" data-home-target="homeOverviewPanel"><span class="nav-icon"><svg class="app-icon"><use href="#icon-home"></use></svg></span>Site</button>
       </nav>
     </aside>
     <div class="workspace">
       <header class="topbar">
         <div class="topbar-title">
-          <strong>Gateway Home</strong>
-          <span>Select a gateway to open the remote config workspace</span>
+          <strong id="homePageTitle">Site đang hoạt động</strong>
+          <span id="homePageSubtitle">Danh sách site đã kết nối server và trạng thái hoạt động hiện tại</span>
         </div>
         <div class="topbar-meta">
-          <button id="homeRefreshBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-refresh"></use></svg>Refresh</button>
-          <button id="homeLogoutBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-log-out"></use></svg>Logout</button>
+          <span class="topbar-item">Tất cả site</span>
+          <button id="homeRefreshBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-refresh"></use></svg>Tự động: 30s</button>
+          <button id="homeLogoutBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-log-out"></use></svg>Đăng xuất</button>
         </div>
       </header>
       <main class="content">
-        <section class="home-panel">
-          <div class="panel-title-row">
-            <div>
-              <h2 class="panel-title">Gateways</h2>
-              <p>Auto-provisioned hardware appears here after the first heartbeat.</p>
+        <section id="homeOverviewPanel" class="home-page active" data-home-panel>
+          <section class="home-panel">
+            <div class="panel-title-row">
+              <div>
+                <h2 class="panel-title">Site</h2>
+                <p>Danh sách site đã kết nối server. Bấm Remote để mở giao diện gateway từ xa.</p>
+              </div>
             </div>
-            <div class="actions">
-              <button id="addManualGatewayBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-plus"></use></svg>Add Manual Gateway</button>
-            </div>
-          </div>
-          <div id="gatewayHomeGrid" class="gateway-grid"></div>
+            <div id="gatewayHomeGrid" class="gateway-grid"></div>
+          </section>
         </section>
+
         <section id="manualGatewayPanel" class="home-panel hidden">
           <div class="section-header">
             <div class="section-title">
-              <h2>Manual Gateway</h2>
-              <p>Use this only when you need to pre-create a gateway.</p>
+              <h2>Thêm gateway thủ công</h2>
+              <p>Dùng khi cần tạo gateway trước khi thiết bị tự đăng ký.</p>
             </div>
           </div>
           <form class="grid" id="gatewayForm">
             <label>Gateway ID<input name="id" required></label>
-            <label>Name<input name="name"></label>
+            <label>Tên<input name="name"></label>
             <label>Site<input name="site"></label>
             <label>Token<input name="token" required></label>
-            <div class="actions"><button class="primary" type="submit">Save Gateway</button></div>
+            <div class="actions"><button class="primary" type="submit">Lưu gateway</button></div>
           </form>
         </section>
+
       </main>
     </div>
   </div>
 
   <div id="remoteView" class="app-shell hidden">
-    <aside class="sidebar" aria-label="Remote gateway navigation">
+    <aside class="sidebar" aria-label="Điều hướng chính">
       <div class="sidebar-brand">
-        <span class="brand-mark">MD</span>
+        <span class="sidebar-logo"><img src="/logo/logo-smallsize.png" alt=""></span>
         <span>
-          <strong>Monitoring Device</strong>
-          <small>Electricbird Remote</small>
+          <strong>Electric Bird</strong>
+          <small>Cổng phần cứng</small>
         </span>
       </div>
       <nav class="sidebar-nav">
-        <button id="backHomeBtn" class="nav-link" type="button"><span class="nav-icon"><svg class="app-icon"><use href="#icon-arrow-left"></use></svg></span>Gateway Home</button>
-        <button class="nav-link active" type="button" data-tab-target="generalInformation"><span class="nav-icon"><svg class="app-icon"><use href="#icon-home"></use></svg></span>General Information</button>
+        <a class="nav-link active" href="#stationDeviceOverviewSubtab" data-tab-target="generalInformation"><span class="nav-icon"><svg class="app-icon"><use href="#icon-overview"></use></svg></span>Tổng quan</a>
         <div class="nav-child active" data-child-menu="generalInformation">
-          <a class="active" href="#overviewSubtab" data-parent-tab="generalInformation" data-subtab-target="overviewSubtab">Overview</a>
-          <a href="#stationDeviceOverviewSubtab" data-parent-tab="generalInformation" data-subtab-target="stationDeviceOverviewSubtab">Station Device Overview</a>
+          <a class="active" href="#stationDeviceOverviewSubtab" data-parent-tab="generalInformation" data-subtab-target="stationDeviceOverviewSubtab">Thiết bị trạm</a>
         </div>
-        <button class="nav-link" type="button" data-tab-target="deviceMonitoringTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-monitor"></use></svg></span>Device Monitoring</button>
-        <button class="nav-link" type="button" data-tab-target="inverterControlTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-activity"></use></svg></span>Inverter Control</button>
-        <button class="nav-link" type="button" data-tab-target="settingCommunication"><span class="nav-icon"><svg class="app-icon"><use href="#icon-sliders"></use></svg></span>Setting Communication</button>
+        <a class="nav-link" href="#deviceMonitoringTab" data-tab-target="deviceMonitoringTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-monitor"></use></svg></span>Giám sát</a>
+        <a class="nav-link" href="#gatewaySubtab" data-tab-target="settingCommunication"><span class="nav-icon"><svg class="app-icon"><use href="#icon-rs485"></use></svg></span>Cấu hình</a>
         <div class="nav-child" data-child-menu="settingCommunication">
           <a class="active" href="#gatewaySubtab" data-parent-tab="settingCommunication" data-subtab-target="gatewaySubtab">Gateway</a>
-          <a href="#rs485PortsSubtab" data-parent-tab="settingCommunication" data-subtab-target="rs485PortsSubtab">RS485 Ports</a>
-          <a href="#modbusDevicesSubtab" data-parent-tab="settingCommunication" data-subtab-target="modbusDevicesSubtab">Modbus Devices</a>
-          <a href="#rawYamlSubtab" data-parent-tab="settingCommunication" data-subtab-target="rawYamlSubtab">Raw YAML</a>
+          <a href="#rs485PortsSubtab" data-parent-tab="settingCommunication" data-subtab-target="rs485PortsSubtab">RS485 / COM</a>
+          <a href="#stationsSubtab" data-parent-tab="settingCommunication" data-subtab-target="stationsSubtab">Trạm</a>
+          <a href="#modbusDevicesSubtab" data-parent-tab="settingCommunication" data-subtab-target="modbusDevicesSubtab">Thiết bị</a>
+          <a href="#iec104Subtab" data-parent-tab="settingCommunication" data-subtab-target="iec104Subtab">IEC104 / EVN</a>
+          <a href="#rawYamlSubtab" data-parent-tab="settingCommunication" data-subtab-target="rawYamlSubtab">YAML thô</a>
         </div>
-        <button class="nav-link" type="button" data-tab-target="libraryTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-database"></use></svg></span>Library</button>
+        <a class="nav-link" href="#libraryTab" data-tab-target="libraryTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-database"></use></svg></span>Mẫu</a>
+        <a class="nav-link" href="#inverterControlTab" data-tab-target="inverterControlTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-maintenance"></use></svg></span>Điều khiển</a>
+        <a class="nav-link" href="#storageSyncTab" data-tab-target="storageSyncTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-server"></use></svg></span>Lưu trữ</a>
+        <a class="nav-link" href="#logsEventsTab" data-tab-target="logsEventsTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-info"></use></svg></span>Sự kiện</a>
+        <a class="nav-link" href="#systemTab" data-tab-target="systemTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-settings"></use></svg></span>Hệ thống</a>
       </nav>
+      <div class="sidebar-footer" aria-hidden="true">
+        <span><svg class="app-icon"><use href="#icon-network"></use></svg></span>
+        <span><svg class="app-icon"><use href="#icon-server"></use></svg></span>
+        <span><svg class="app-icon"><use href="#icon-cloud"></use></svg></span>
+      </div>
     </aside>
 
     <div class="workspace">
       <header class="topbar">
+        <button class="menu-button" type="button" data-tab-target="generalInformation" aria-label="Menu tổng quan"><svg class="app-icon"><use href="#icon-menu"></use></svg></button>
         <div class="topbar-title">
-          <strong id="activePageTitle">Overview</strong>
-          <span id="activePageSubtitle">Gateway status and configured capacity</span>
+          <strong id="activePageTitle">Tổng quan</strong>
+          <span id="activePageSubtitle">Trạng thái gateway, telemetry và cấu hình IPC</span>
         </div>
         <div class="topbar-meta">
-          <span class="topbar-item"><svg class="app-icon"><use href="#icon-server"></use></svg>Gateway <span id="topGatewayId">-</span></span>
-          <span class="topbar-item">Version <span id="topConfigVersion">-</span></span>
+          <div class="topbar-system" aria-label="Cảnh báo runtime">
+            <span class="topbar-item" title="Kết nối tốt và đang đọc dữ liệu"><span class="badge-dot green"><svg class="app-icon"><use href="#icon-check-circle"></use></svg></span><span id="topOkCount">0</span></span>
+            <span class="topbar-item" title="Thiết bị lỗi hoặc poll thất bại"><span class="badge-dot red"><svg class="app-icon"><use href="#icon-alert-circle"></use></svg></span><span id="topErrorCount">0</span></span>
+            <span class="topbar-item" title="Có kết nối nhưng chưa có dữ liệu thanh ghi"><span class="badge-dot orange"><svg class="app-icon"><use href="#icon-alert-triangle"></use></svg></span><span id="topWarningCount">0</span></span>
+            <span class="topbar-item" title="Mất liên lạc hoặc chưa có telemetry"><span class="badge-dot gray"><svg class="app-icon"><use href="#icon-help"></use></svg></span><span id="topLossCount">0</span></span>
+            <span class="topbar-item"><svg class="app-icon"><use href="#icon-user"></use></svg>Quản trị</span>
+          </div>
           <div class="topbar-actions">
-            <button id="remoteRefreshBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-refresh"></use></svg>Refresh</button>
-            <button id="logoutBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-log-out"></use></svg>Logout</button>
+            <label class="admin-language-select" aria-label="Ngôn ngữ">
+              <select id="adminLanguageSelect">
+                <option value="vi">Tiếng Việt</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+            <button id="remoteDisconnectBtn" class="subtle" type="button">Disconnection</button>
           </div>
           <div class="status-chip">
-            <span id="statusDot" class="status-dot"></span>
-            <span id="statusText" class="status-text">Loading...</span>
+            <button id="status" class="status" type="button" aria-label="Trạng thái: Đang tải..." data-message="Đang tải..." title="Đang tải..."></button>
+            <span id="statusText" class="status-text">Đang tải...</span>
           </div>
         </div>
       </header>
 
       <main class="content">
         <div id="generalInformation" class="tab-panel active" data-tab-panel>
-          <div id="overviewSubtab" class="subtab-panel active" data-subtab-panel="generalInformation">
-            <section class="home-panel">
+          <div id="stationDeviceOverviewSubtab" class="subtab-panel active" data-subtab-panel="generalInformation">
+            <section class="home-panel realtime-panel">
               <div class="panel-title-row">
-                <h2 class="panel-title">Overview</h2>
-                <button class="subtle" type="button" data-parent-tab="generalInformation" data-subtab-target="stationDeviceOverviewSubtab">Details</button>
+                <h2 class="panel-title">Tổng quan thiết bị trạm <span>( Tốt <b id="dashboardGoodInline">0</b>, Cảnh báo <b id="dashboardWarningInline">0</b>, Lỗi <b class="danger-text" id="dashboardBadInline">0</b>, Mất liên lạc <b id="dashboardLossInline">0</b> )</span></h2>
               </div>
-              <div class="overview">
-                <div class="metric"><span>Gateway</span><strong id="dashboardGateway">-</strong></div>
-                <div class="metric"><span>Online Devices</span><strong id="dashboardOnlineCount">0</strong></div>
-                <div class="metric"><span>RS485 Ports</span><strong id="dashboardPortCount">0</strong></div>
-                <div class="metric"><span>Station Devices</span><strong id="dashboardDeviceCount">0</strong></div>
+              <div class="status-legend" aria-label="Chú giải trạng thái">
+                <span><i class="topology-dot good"></i>Tốt</span>
+                <span><i class="topology-dot warning"></i>Cảnh báo</span>
+                <span><i class="topology-dot bad"></i>Lỗi</span>
+                <span><i class="topology-dot loss"></i>Mất liên lạc</span>
               </div>
-            </section>
-          </div>
-          <div id="stationDeviceOverviewSubtab" class="subtab-panel" data-subtab-panel="generalInformation">
-            <section class="home-panel">
-              <div class="panel-title-row">
-                <h2 class="panel-title">Station Device Overview <span>( Online <b id="dashboardOnlineInline">0</b>, Offline <b id="dashboardOfflineInline">0</b> )</span></h2>
-              </div>
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Port</th>
-                      <th>Device Name</th>
-                      <th>Slave ID</th>
-                      <th>Online Status</th>
-                      <th>Device Model</th>
-                      <th>Register Points</th>
-                    </tr>
-                  </thead>
-                  <tbody id="dashboardDevices"></tbody>
-                </table>
-              </div>
+              <div id="dashboardTopology" class="topology-tree"></div>
             </section>
           </div>
         </div>
 
         <div id="deviceMonitoringTab" class="tab-panel" data-tab-panel>
-          <section class="home-panel">
+          <section id="deviceMonitoring" class="home-panel monitoring-panel">
             <div class="panel-title-row">
-              <h2 class="panel-title">Device Monitoring <span id="monitoringSummary">Waiting for readings</span></h2>
-              <div class="actions"><span id="monitoringUpdated" class="topbar-item">Last refresh: -</span></div>
+              <h2 class="panel-title">Giám sát thiết bị <span id="monitoringSummary">Đang chờ dữ liệu</span></h2>
+              <div class="monitor-toolbar">
+                <span id="monitoringUpdated">Cập nhật lần cuối: -</span>
+                <button id="refreshTelemetryBtn" class="subtle icon-text" type="button">
+                  <svg class="app-icon"><use href="#icon-refresh"></use></svg>
+                  Làm mới
+                </button>
+              </div>
             </div>
             <div id="monitoringDevices" class="monitor-grid"></div>
           </section>
@@ -1127,30 +2363,30 @@ export function renderDashboardPage({ publicUrl }) {
         <div id="inverterControlTab" class="tab-panel" data-tab-panel>
           <section class="home-panel">
             <div class="panel-title-row">
-              <h2 class="panel-title">Inverter Control</h2>
+              <h2 class="panel-title">Điều khiển trạm / inverter</h2>
             </div>
             <div class="control-layout">
-              <label>Device
+              <label>Đối tượng
                 <select id="controlDeviceName"></select>
               </label>
               <div class="control-stack">
                 <div class="control-actions">
-                  <button class="primary" type="button" data-control-action="start">Start</button>
-                  <button class="danger" type="button" data-control-action="stop">Stop</button>
-                  <button class="subtle" type="button" data-control-action="reboot">Reboot</button>
-                  <button class="subtle" type="button" data-control-action="clear_power_limit">Clear Limit</button>
+                  <button class="primary" type="button" data-control-action="start">Khởi động</button>
+                  <button class="danger" type="button" data-control-action="stop">Dừng</button>
+                  <button class="subtle" type="button" data-control-action="reboot">Khởi động lại</button>
+                  <button class="subtle" type="button" data-control-action="clear_power_limit">Xóa giới hạn</button>
                 </div>
                 <form id="powerLimitForm" class="limit-grid">
-                  <label>Limit Type
+                  <label>Kiểu giới hạn
                     <select id="powerLimitMode">
                       <option value="percent">Percent</option>
                       <option value="kw">kW</option>
                       <option value="watts">W</option>
                     </select>
                   </label>
-                  <label>Limit Value<input id="powerLimitValue" type="number" min="0" step="0.1" value="60"></label>
-                  <label>Duration Minutes<input id="powerLimitDurationMinutes" type="number" min="1" max="1440" step="1" value="15"></label>
-                  <button class="primary" type="submit">Apply Limit</button>
+                  <label>Giá trị giới hạn<input id="powerLimitValue" type="number" min="0" step="0.1" value="60"></label>
+                  <label>Thời lượng phút<input id="powerLimitDurationMinutes" type="number" min="1" max="1440" step="1" value="15"></label>
+                  <button class="primary" type="submit">Áp dụng giới hạn</button>
                 </form>
               </div>
             </div>
@@ -1158,24 +2394,85 @@ export function renderDashboardPage({ publicUrl }) {
 
           <section class="home-panel">
             <div class="panel-title-row">
-              <h2 class="panel-title">Command History</h2>
-              <div class="actions">
-                <button id="commandRefreshBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-refresh"></use></svg>Refresh</button>
-              </div>
+              <h2 class="panel-title">Lịch sử lệnh</h2>
             </div>
             <div class="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>Created</th>
-                    <th>Action</th>
-                    <th>Status</th>
-                    <th>Details</th>
-                    <th>Updated</th>
+                    <th>Tạo lúc</th>
+                    <th>Hành động</th>
+                    <th>Trạng thái</th>
+                    <th>Chi tiết</th>
+                    <th>Cập nhật</th>
                   </tr>
                 </thead>
-                <tbody id="commandHistoryBody"></tbody>
+                <tbody id="controlHistoryBody"></tbody>
               </table>
+            </div>
+          </section>
+        </div>
+
+        <div id="storageSyncTab" class="tab-panel" data-tab-panel>
+          <section class="config-section">
+            <div class="panel-title-row">
+              <div>
+                <h2 class="panel-title">Lưu trữ & Đồng bộ</h2>
+                <p>Queue nội bộ, giới hạn lưu trữ, upload HTTP/Mongo và IEC104 runtime.</p>
+              </div>
+              <div class="actions">
+                <button id="refreshRuntimeBtn" class="subtle" type="button">Làm mới</button>
+              </div>
+            </div>
+            <section class="overview config-overview" aria-label="Tổng quan đồng bộ runtime">
+              <div class="metric"><span>Record trong queue</span><strong id="queueRecords">-</strong></div>
+              <div class="metric"><span>Dung lượng queue</span><strong id="queueBytes">-</strong></div>
+              <div class="metric"><span>Đồng bộ cloud</span><strong id="runtimeCloudMode">-</strong></div>
+              <div class="metric"><span>IEC104</span><strong id="runtimeIec104">-</strong></div>
+            </section>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Hạng mục</th><th>Giá trị</th><th>Ghi chú</th></tr></thead>
+                <tbody id="storageSyncBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <div id="logsEventsTab" class="tab-panel" data-tab-panel>
+          <section class="config-section">
+            <div class="panel-title-row">
+              <div>
+                <h2 class="panel-title">Sự kiện</h2>
+                <p>Sự kiện vận hành suy ra từ telemetry, queue, IEC104 và điều khiển gần nhất.</p>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Thời gian</th><th>Loại</th><th>Nội dung</th><th>Trạng thái</th></tr></thead>
+                <tbody id="logsEventsBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <div id="systemTab" class="tab-panel" data-tab-panel>
+          <section class="config-section">
+            <div class="panel-title-row">
+              <div>
+                <h2 class="panel-title">Hệ thống</h2>
+                <p>Thông tin IPC gateway, tài nguyên cấu hình và trạng thái service.</p>
+              </div>
+              <div class="actions">
+                <button class="subtle" type="button" data-restart-gateway>Khởi động lại</button>
+                <button class="primary" type="button" data-save-config>Lưu</button>
+              </div>
+            </div>
+            <div class="grid">
+              <div class="metric"><span>Gateway ID</span><strong id="systemGatewayId">-</strong></div>
+              <div class="metric"><span>Thiết bị</span><strong id="systemDeviceCount">0</strong></div>
+              <div class="metric"><span>Cổng</span><strong id="systemPortCount">0</strong></div>
+              <div class="metric"><span>Mẫu</span><strong id="systemTemplateCount">0</strong></div>
             </div>
           </section>
         </div>
@@ -1184,45 +2481,46 @@ export function renderDashboardPage({ publicUrl }) {
           <div id="gatewaySubtab" class="subtab-panel active" data-subtab-panel="settingCommunication">
             <section class="overview">
               <div class="metric"><span>Gateway</span><strong id="summaryGateway">-</strong></div>
-              <div class="metric"><span>Server</span><strong id="summaryServer">-</strong></div>
-              <div class="metric"><span>Ports</span><strong id="summaryPorts">0</strong></div>
-              <div class="metric"><span>Devices</span><strong id="summaryDevices">0</strong></div>
+              <div class="metric"><span>Máy chủ</span><strong id="summaryServer">-</strong></div>
+              <div class="metric"><span>Cổng</span><strong id="summaryPorts">0</strong></div>
+              <div class="metric"><span>Thiết bị</span><strong id="summaryDevices">0</strong></div>
             </section>
             <section class="config-section">
               <div class="section-header">
                 <div class="section-title">
                   <h2>Gateway</h2>
-                  <p>Send device data to the server and control upload behavior.</p>
+                  <p>Thiết lập gửi dữ liệu thiết bị lên máy chủ và chu kỳ upload.</p>
                 </div>
                 <div class="actions">
-                  <button class="subtle" type="button" data-parent-tab="settingCommunication" data-subtab-target="rawYamlSubtab">Raw YAML</button>
-                  <button class="primary" type="button" data-save-config>Save New Version</button>
+                  <button class="subtle" type="button" data-parent-tab="settingCommunication" data-subtab-target="rawYamlSubtab">YAML thô</button>
+                  <button class="subtle" type="button" data-restart-gateway>Khởi động lại</button>
+                  <button class="primary" type="button" data-save-config>Lưu</button>
                 </div>
               </div>
               <div class="grid">
                 <label>Gateway ID <input id="gatewayId" autocomplete="off"></label>
-                <label>Gateway ID path <input id="gatewayIdPath" autocomplete="off"></label>
-                <label>Poll loop delay ms <input id="pollLoopDelayMs" type="number" min="50" step="50"></label>
-                <label class="wide">Server URL <input id="serverUrl" autocomplete="url"></label>
+                <label>Đường dẫn Gateway ID <input id="gatewayIdPath" autocomplete="off"></label>
+                <label>Độ trễ vòng poll ms <input id="pollLoopDelayMs" type="number" min="50" step="50"></label>
+                <label class="wide">URL máy chủ <input id="serverUrl" autocomplete="url"></label>
                 <label>Token env <input id="tokenEnv" autocomplete="off"></label>
                 <label>Timeout ms <input id="timeoutMs" type="number" min="100"></label>
-                <label>Batch size <input id="batchSize" type="number" min="1"></label>
-                <label>Upload interval ms <input id="uploadIntervalMs" type="number" min="500"></label>
-                <label class="wide">Remote Config URL <input id="remoteConfigUrl" autocomplete="url"></label>
-                <label>Remote enabled <select id="remoteConfigEnabled"><option value="true">true</option><option value="false">false</option></select></label>
+                <label>Cỡ lô upload <input id="batchSize" type="number" min="1"></label>
+                <label>Chu kỳ upload ms <input id="uploadIntervalMs" type="number" min="500"></label>
+                <label class="wide">URL cấu hình từ xa <input id="remoteConfigUrl" autocomplete="url"></label>
+                <label>Bật cấu hình từ xa <select id="remoteConfigEnabled"><option value="true">Bật</option><option value="false">Tắt</option></select></label>
                 <label>Remote token env <input id="remoteConfigTokenEnv" autocomplete="off"></label>
-                <label>Remote check ms <input id="remoteConfigCheckIntervalMs" type="number" min="5000" step="1000"></label>
+                <label>Chu kỳ kiểm tra remote ms <input id="remoteConfigCheckIntervalMs" type="number" min="5000" step="1000"></label>
                 <label>Remote timeout ms <input id="remoteConfigTimeoutMs" type="number" min="1000" step="1000"></label>
-                <label class="wide">Remote state path <input id="remoteConfigStatePath" autocomplete="off"></label>
-                <label>Mongo enabled <select id="mongoEnabled"><option value="false">false</option><option value="true">true</option></select></label>
+                <label class="wide">Đường dẫn trạng thái remote <input id="remoteConfigStatePath" autocomplete="off"></label>
+                <label>Bật Mongo <select id="mongoEnabled"><option value="false">Tắt</option><option value="true">Bật</option></select></label>
                 <label>Mongo URI env <input id="mongoUriEnv" autocomplete="off"></label>
                 <label>Mongo DB env <input id="mongoDbNameEnv" autocomplete="off"></label>
-                <label>Mongo DB name <input id="mongoDbName" autocomplete="off"></label>
-                <label>Mongo check ms <input id="mongoCheckIntervalMs" type="number" min="5000" step="1000"></label>
-                <label>Mongo upload ms <input id="mongoUploadIntervalMs" type="number" min="500" step="500"></label>
-                <label>Mongo batch size <input id="mongoBatchSize" type="number" min="1"></label>
-                <label class="wide">Mongo state path <input id="mongoStatePath" autocomplete="off"></label>
-                <label class="wide">Queue path <input id="queuePath" autocomplete="off"></label>
+                <label>Tên Mongo DB <input id="mongoDbName" autocomplete="off"></label>
+                <label>Chu kỳ Mongo ms <input id="mongoCheckIntervalMs" type="number" min="5000" step="1000"></label>
+                <label>Chu kỳ upload Mongo ms <input id="mongoUploadIntervalMs" type="number" min="500" step="500"></label>
+                <label>Cỡ lô Mongo <input id="mongoBatchSize" type="number" min="1"></label>
+                <label class="wide">Đường dẫn trạng thái Mongo <input id="mongoStatePath" autocomplete="off"></label>
+                <label class="wide">Đường dẫn queue <input id="queuePath" autocomplete="off"></label>
               </div>
             </section>
           </div>
@@ -1231,25 +2529,26 @@ export function renderDashboardPage({ publicUrl }) {
             <section class="config-section">
               <div class="section-header">
                 <div class="section-title">
-                  <h2>RS485 Ports</h2>
-                  <p>Serial port and Modbus RTU connection settings.</p>
+                  <h2>RS485 / COM</h2>
+                  <p>Cấu hình cổng serial và kết nối Modbus RTU.</p>
                 </div>
                 <div class="actions">
-                  <button id="addPortBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-plus"></use></svg>Add Port</button>
-                  <button class="primary" type="button" data-save-config>Save New Version</button>
+                  <button id="addPortBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-plus"></use></svg>Thêm cổng</button>
+                  <button class="subtle" type="button" data-restart-gateway>Khởi động lại</button>
+                  <button class="primary" type="button" data-save-config>Lưu</button>
                 </div>
               </div>
               <div class="table-wrap">
                 <table>
                   <thead>
                     <tr>
-                      <th>Name</th>
-                      <th>Path</th>
-                      <th>Baud</th>
-                      <th>Parity</th>
-                      <th>Data</th>
-                      <th>Stop</th>
-                      <th>Timeout</th>
+                      <th>Tên</th>
+                      <th>Đường dẫn COM</th>
+                      <th>Tốc độ baud</th>
+                      <th>Kiểm tra chẵn lẻ</th>
+                      <th>Bit dữ liệu</th>
+                      <th>Bit stop</th>
+                      <th>Thời gian chờ</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -1259,19 +2558,52 @@ export function renderDashboardPage({ publicUrl }) {
             </section>
           </div>
 
+          <div id="stationsSubtab" class="subtab-panel" data-subtab-panel="settingCommunication">
+            <section class="config-section">
+              <div class="section-header">
+                <div class="section-title">
+                  <h2>Trạm</h2>
+                  <p>Tạo trạm và gán inverter, công tơ, cảm biến thời tiết vào từng trạm.</p>
+                </div>
+                <div class="actions">
+                  <button id="addStationBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-plus"></use></svg>Thêm trạm</button>
+                  <button class="subtle" type="button" data-restart-gateway>Khởi động lại</button>
+                  <button class="primary" type="button" data-save-config>Lưu cấu hình</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Tên trạm</th>
+                      <th>Công suất</th>
+                      <th>Thiết bị</th>
+                      <th>EVN</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="stationsBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
           <div id="modbusDevicesSubtab" class="subtab-panel" data-subtab-panel="settingCommunication">
             <section class="config-section">
               <div class="section-header">
                 <div class="section-title">
-                  <h2>Modbus Devices</h2>
-                  <p>Devices, slave IDs, polling intervals, and register maps on RS485 ports.</p>
+                  <h2>Thiết bị Modbus</h2>
+                  <p>Thiết bị, slave ID, chu kỳ polling và bản đồ thanh ghi trên RS485/COM.</p>
                 </div>
                 <div class="actions template-actions">
-                  <select id="newDeviceTemplate" aria-label="Device template"><option value="">Blank device</option></select>
-                  <button id="addDeviceBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-plus"></use></svg>Add Device</button>
-                  <button class="primary" type="button" data-save-config>Save New Version</button>
+                  <select id="newDeviceTemplate" aria-label="Mẫu thiết bị"><option value="">Thiết bị trống</option></select>
+                  <button id="addDeviceBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-plus"></use></svg>Thêm thiết bị</button>
+                  <button class="subtle" type="button" data-restart-gateway>Khởi động lại</button>
+                  <button class="primary" type="button" data-save-config>Lưu</button>
                 </div>
               </div>
+              <div id="configurationTopology" class="topology-tree topology-tree-compact"></div>
               <div id="devices"></div>
             </section>
           </div>
@@ -1280,27 +2612,140 @@ export function renderDashboardPage({ publicUrl }) {
             <section class="config-section">
               <div class="section-header">
                 <div class="section-title">
-                  <h2>Raw YAML</h2>
-                  <p>Remote config document that will become the next cloud config version.</p>
+                  <h2>YAML thô</h2>
+                  <p>Tài liệu cấu hình remote sẽ trở thành phiên bản cloud config tiếp theo.</p>
                 </div>
-                <div class="actions"><button class="primary" type="button" data-save-config>Save New Version</button></div>
+                <div class="actions"><button class="primary" type="button" data-save-config>Lưu</button></div>
               </div>
               <textarea id="rawYaml" class="raw" readonly></textarea>
             </section>
           </div>
+
+          <div id="iec104Subtab" class="subtab-panel" data-subtab-panel="settingCommunication">
+    <section class="config-section">
+      <div class="section-header">
+        <div class="section-title">
+          <h2>IEC104 EVN</h2>
+          <p>Cấu hình kết nối IEC104 cho EVN; IOA và register mapping nằm ở phần EVN bên dưới.</p>
+        </div>
+        <div class="actions">
+          <button id="applyEvnIec104DefaultsBtn" class="subtle" type="button">Áp dụng mặc định EVN</button>
+          <button class="subtle" type="button" data-restart-gateway>Khởi động lại</button>
+          <button class="primary" type="button" data-save-config>Lưu</button>
+        </div>
+      </div>
+      <div class="evn-iec104-note">
+        <strong>Vai trò IEC104 EVN cố định</strong>
+        <span id="iec104ModeNote">EVN/SCADA là master/client; gateway là server/controlled station lắng nghe TCP 2404.</span>
+        <span>CA thường là 1, OA thường là 0; gateway gửi định kỳ 5 phút và bật spontaneous theo chuẩn EVN.</span>
+      </div>
+      <div class="grid">
+        <input id="iec104Mode" type="hidden" value="server">
+        <input id="iec104RemoteHost" type="hidden" value="">
+        <input id="iec104RemotePort" type="hidden" value="2404">
+        <input id="iec104LocalAddress" type="hidden" value="">
+        <input id="iec104LocalPort" type="hidden" value="0">
+        <input id="iec104ReconnectMs" type="hidden" value="5000">
+        <input id="iec104KeepAliveMs" type="hidden" value="30000">
+        <input id="iec104StaleAfterMs" type="hidden" value="600000">
+        <input id="iec104PeriodicMs" type="hidden" value="300000">
+        <input id="iec104Spontaneous" type="hidden" value="true">
+        <label class="toggle-field">Bật IEC104 EVN
+          <span class="toggle-switch">
+            <input id="iec104Enabled" type="checkbox" checked>
+            <span class="toggle-track" aria-hidden="true"></span>
+            <span class="toggle-on">Bật</span>
+            <span class="toggle-off">Tắt</span>
+          </span>
+        </label>
+        <label class="wide">IP gateway lắng nghe <input id="iec104Host" placeholder="0.0.0.0" autocomplete="off"></label>
+        <label>Cổng IEC104 EVN <input id="iec104Port" type="number" min="1" max="65535"></label>
+        <label>Địa chỉ ASDU (CA) <input id="iec104CommonAddress" type="number" min="1" max="65535"></label>
+        <label>Địa chỉ nguồn (OA) <input id="iec104OriginatorAddress" type="number" min="0" max="255"></label>
+        <label>Số kết nối EVN tối đa <input id="iec104MaxClientConnections" type="number" min="1" max="32"></label>
+      </div>
+    </section>
+
+    <section class="config-section">
+      <div class="section-header">
+        <div class="section-title">
+          <h2>Register EVN yêu cầu</h2>
+          <p>Đánh dấu các thanh ghi Modbus bằng đúng Vai trò EVN để gateway tự cộng, chốt D-1 và sinh IOA cố định.</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nhóm</th>
+              <th>IOA</th>
+              <th>Tín hiệu EVN</th>
+              <th>Type ID</th>
+              <th>Vai trò register cần đánh dấu</th>
+              <th>Bắt buộc</th>
+            </tr>
+          </thead>
+          <tbody id="evnRequiredRegistersBody">
+            <tr><td>Đo lường</td><td>1</td><td>P-out - tổng công suất tác dụng phát lên lưới</td><td>T13 M_ME_NC_1</td><td><code>station_active_power_kw</code></td><td>Bắt buộc</td></tr>
+            <tr><td>Đo lường</td><td>2</td><td>Pinv-out - tổng công suất phát ra từ inverter</td><td>T13 M_ME_NC_1</td><td><code>inverter_active_power_kw</code> trên từng inverter</td><td>Bắt buộc</td></tr>
+            <tr><td>Đo lường</td><td>3</td><td>Ainv_D-1 - điện năng inverter ngày liền trước</td><td>T13 M_ME_NC_1</td><td><code>inverter_daily_energy_kwh</code>; gateway chốt lúc 23:59</td><td>Bắt buộc</td></tr>
+            <tr><td>Điều khiển</td><td>11</td><td>Cho phép điều khiển P-out</td><td>T45 C_SC_NA_1</td><td>Không cần register đo; dùng lệnh điều khiển trạm</td><td>Bắt buộc</td></tr>
+            <tr><td>Điều khiển</td><td>12</td><td>SetPoint P-out theo %</td><td>T50 C_SE_NC_1</td><td>Register control giới hạn công suất inverter theo %</td><td>Bắt buộc</td></tr>
+            <tr><td>Điều khiển</td><td>13</td><td>SetPoint P-out theo kW</td><td>T50 C_SE_NC_1</td><td>Register control giới hạn công suất inverter theo kW</td><td>Bắt buộc</td></tr>
+            <tr><td>Đo lường</td><td>4</td><td>Q-out - công suất phản kháng tại điểm đấu nối</td><td>T13 M_ME_NC_1</td><td><code>station_reactive_power_kvar</code></td><td>Khuyến nghị</td></tr>
+            <tr><td>Đo lường</td><td>5 / 6 / 7</td><td>Ua / Ub / Uc</td><td>T13 M_ME_NC_1</td><td><code>phase_a_voltage_v</code>, <code>phase_b_voltage_v</code>, <code>phase_c_voltage_v</code></td><td>Khuyến nghị</td></tr>
+            <tr><td>Đo lường</td><td>8 / 9 / 10</td><td>Ia / Ib / Ic</td><td>T13 M_ME_NC_1</td><td><code>phase_a_current_a</code>, <code>phase_b_current_a</code>, <code>phase_c_current_a</code></td><td>Khuyến nghị</td></tr>
+            <tr><td>Đo lường</td><td>11 / 12</td><td>Tần số lưới / hệ số công suất</td><td>T13 M_ME_NC_1</td><td><code>grid_frequency_hz</code>, <code>power_factor</code></td><td>Khuyến nghị</td></tr>
+            <tr><td>Inverter</td><td>13,14 rồi +2 mỗi inverter</td><td>P inverter n / A inverter n D-1</td><td>T13 M_ME_NC_1</td><td><code>inverter_active_power_kw</code>, <code>inverter_daily_energy_kwh</code></td><td>Khuyến nghị</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="section-footnote">IOA đo lường và IOA điều khiển có thể trùng số nhưng khác Type ID theo bảng EVN. Điều khiển Q-out là tùy yêu cầu EVN và chưa sinh tự động khi gateway chưa có register điều khiển Q.</p>
+    </section>
+
+    <section class="config-section">
+      <div class="section-header">
+        <div class="section-title">
+          <h2>Mapping IEC104 EVN cố định</h2>
+          <p>IOA EVN là cố định; chọn trạm rồi cập nhật mapping để sinh point và lệnh điều khiển.</p>
+        </div>
+        <div class="actions">
+          <select id="iec104EvnStation" aria-label="Trạm EVN"></select>
+          <button id="generateEvnIec104Btn" class="subtle" type="button">Cập nhật mapping EVN</button>
+          <button class="primary" type="button" data-save-config>Lưu</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>IOA</th>
+              <th>Tên</th>
+              <th>Nguồn</th>
+              <th>Đối tượng</th>
+              <th>Thông số</th>
+              <th>Kiểu</th>
+              <th>Đảo chiều</th>
+            </tr>
+          </thead>
+          <tbody id="iec104PointsBody"></tbody>
+        </table>
+      </div>
+    </section>
+        </div>
         </div>
 
         <div id="libraryTab" class="tab-panel" data-tab-panel>
           <section class="config-section">
             <div class="section-header">
               <div class="section-title">
-                <h2>Library</h2>
-                <p>Add, edit, and delete Modbus reading templates used by Modbus Devices.</p>
+                <h2>Thư viện mẫu</h2>
+                <p>Thêm, sửa và xóa mẫu đọc Modbus dùng cho thiết bị Modbus.</p>
               </div>
               <div class="actions">
-                <button id="refreshTemplatesBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-refresh"></use></svg>Refresh Library</button>
-                <button id="addTemplateBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-plus"></use></svg>Add Template</button>
-                <button id="saveTemplatesBtn" class="primary" type="button">Save Library</button>
+                <button id="syncTemplatesBtn" class="subtle" type="button">Đồng bộ từ server</button>
+                <button id="addTemplateBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-plus"></use></svg>Thêm mẫu</button>
+                <button id="saveTemplatesBtn" class="primary" type="button">Lưu thư viện</button>
               </div>
             </div>
             <div id="templateLibrary"></div>
@@ -1321,45 +2766,275 @@ export function renderDashboardPage({ publicUrl }) {
     let commands = [];
     let selectedControlDevice = "";
     let templates = [];
+    let homeTelemetry = new Map();
+    let homeConfigs = new Map();
+    let homeCommands = new Map();
+    let homeTelemetryRequestId = 0;
+    let homeDetailsRequestId = 0;
     const expandedDeviceRegisters = new Set();
     const expandedTemplateRegisters = new Set();
+    let currentLanguage = localStorage.getItem("adminLanguage") || localStorage.getItem("loginLanguage") || "vi";
+    const adminTextViToEn = {
+      "Tổng quan": "Overview",
+      "Thiết bị trạm": "Station devices",
+      "Giám sát": "Monitoring",
+      "Cấu hình": "Configuration",
+      "Gateway": "Gateway",
+      "RS485 / COM": "RS485 / COM",
+      "Trạm": "Station",
+      "Thiết bị": "Devices",
+      "IEC104 / EVN": "IEC104 / EVN",
+      "YAML thô": "Raw YAML",
+      "Mẫu": "Templates",
+      "Điều khiển": "Control",
+      "Lưu trữ": "Storage",
+      "Sự kiện": "Events",
+      "Hệ thống": "System",
+      "Quản trị": "Admin",
+      "Cổng phần cứng": "Hardware gateway",
+      "Cảnh báo runtime": "Runtime alerts",
+      "Tiếng Việt": "Vietnamese",
+      "Đang tải...": "Loading...",
+      "Tổng quan thiết bị trạm": "Station device overview",
+      "Tốt": "Good",
+      "Cảnh báo": "Warning",
+      "Lỗi": "Bad",
+      "Mất liên lạc": "Loss communication",
+      "Giám sát thiết bị": "Device monitoring",
+      "Làm mới": "Refresh",
+      "Điều khiển trạm": "Station control",
+      "Lưu lịch sử": "Save history",
+      "Cấu hình gateway": "Gateway configuration",
+      "Cấu hình RS485 / COM": "RS485 / COM configuration",
+      "Cấu hình trạm": "Station configuration",
+      "Thiết bị Modbus": "Modbus devices",
+      "EVN IEC104": "EVN IEC104",
+      "Mặc định EVN": "EVN defaults",
+      "Tạo mapping EVN": "Generate EVN mapping",
+      "Lưu": "Save",
+      "Khởi động lại": "Restart",
+      "Thư viện mẫu": "Template library",
+      "Đồng bộ từ server": "Sync from server",
+      "Thêm mẫu": "Add template",
+      "Lưu thư viện": "Save library",
+      "Thêm trạm": "Add station",
+      "Thêm cổng": "Add port",
+      "Thêm thiết bị": "Add device",
+      "Xóa": "Delete",
+      "Kiểu": "Type",
+      "Giao thức": "Protocol",
+      "Chu kỳ poll ms": "Poll ms",
+      "Hàm": "Function",
+      "Quyền": "Access",
+      "Đọc": "Poll",
+      "Độ dài": "Length",
+      "Thứ tự word": "Word order",
+      "Hệ số": "Scale",
+      "Độ lệch": "Offset",
+      "Đơn vị": "Unit",
+      "Không chọn": "None",
+      "Chưa chọn": "Not selected",
+      "Công tơ": "Meter",
+      "Trạm thời tiết": "Weather station",
+      "Khác": "Other",
+      "Không dùng cho EVN": "Not used for EVN",
+      "P tổng trạm": "Station total P",
+      "P inverter để cộng": "Inverter P for sum",
+      "Điện năng ngày trạm": "Station daily energy",
+      "Điện năng ngày inverter": "Inverter daily energy",
+      "Q tổng trạm": "Station total Q",
+      "Q inverter để cộng": "Inverter Q for sum",
+      "Điện áp pha A": "Phase A voltage",
+      "Điện áp pha B": "Phase B voltage",
+      "Điện áp pha C": "Phase C voltage",
+      "Dòng pha A": "Phase A current",
+      "Dòng pha B": "Phase B current",
+      "Dòng pha C": "Phase C current",
+      "Tần số lưới": "Grid frequency",
+      "Hệ số công suất": "Power factor",
+      "Tổng lượng phát": "Generation energy",
+      "Tổng lượng giao/lên lưới": "Export energy",
+      "Tổng lượng nhận/từ lưới": "Import energy",
+      "Sẵn sàng": "Ready",
+      "Đồng bộ": "Synced",
+      "Đang tải": "Loading",
+    };
+    const adminTextEnToVi = Object.fromEntries(Object.entries(adminTextViToEn).map(([vi, en]) => [en, vi]));
 
     const el = (id) => document.getElementById(id);
+    function setText(id, value) {
+      const node = el(id);
+      if (node) node.textContent = value;
+    }
     const templateTypeOptions = [
       { value: "inverter", label: "Inverter" },
-      { value: "meter", label: "Meter" },
-      { value: "weatherstation", label: "WeatherStation" },
+      { value: "meter", label: "Công tơ" },
+      { value: "weatherstation", label: "Trạm thời tiết" },
       { value: "datalogger", label: "Datalogger" },
-      { value: "other", label: "Other" },
+      { value: "other", label: "Khác" },
     ];
-    const tabIds = ["generalInformation", "deviceMonitoringTab", "inverterControlTab", "settingCommunication", "libraryTab"];
+    const evnRoleOptions = [
+      { value: "", label: "Không dùng cho EVN" },
+      { value: "station_active_power_kw", label: "P tổng trạm" },
+      { value: "inverter_active_power_kw", label: "P inverter để cộng" },
+      { value: "station_daily_energy_kwh", label: "Điện năng ngày trạm" },
+      { value: "inverter_daily_energy_kwh", label: "Điện năng ngày inverter" },
+      { value: "station_reactive_power_kvar", label: "Q tổng trạm" },
+      { value: "inverter_reactive_power_kvar", label: "Q inverter để cộng" },
+      { value: "phase_a_voltage_v", label: "Điện áp pha A" },
+      { value: "phase_b_voltage_v", label: "Điện áp pha B" },
+      { value: "phase_c_voltage_v", label: "Điện áp pha C" },
+      { value: "phase_a_current_a", label: "Dòng pha A" },
+      { value: "phase_b_current_a", label: "Dòng pha B" },
+      { value: "phase_c_current_a", label: "Dòng pha C" },
+      { value: "grid_frequency_hz", label: "Tần số lưới" },
+      { value: "power_factor", label: "Hệ số công suất" },
+      { value: "generation_active_energy_kwh", label: "Tổng lượng phát" },
+      { value: "export_active_energy_kwh", label: "Tổng lượng giao/lên lưới" },
+      { value: "import_active_energy_kwh", label: "Tổng lượng nhận/từ lưới" },
+    ];
+    const monitoringMetricNames = {
+      model: ["model", "model_no", "device_model", "solis_model_definition", "meter_model_detection_result", "current_battery_model"],
+      activePower: ["active_power_kw", "active_power_w", "active_power_total_w", "total_active_power_w", "meter_total_active_power_kw", "meter_active_power_w", "power_meter_active_power_w", "inverter_grid_port_power_w", "total_ac_power_w"],
+      ratedPower: ["rated_power_kw", "rated_active_power_kw", "rated_active_power_w", "nominal_active_power_kw", "max_active_power_kw", "max_permanent_active_power_w", "limit_active_power_rated_w"],
+      dailyEnergy: ["daily_energy_yield_kwh", "daily_energy_kwh", "daily_ac_energy_kwh", "daily_ac_energy_wh", "daily_ac_energy_wh_64", "daily_export_energy_kwh", "today_energy_fed_to_grid_kwh"],
+      reactivePower: ["reactive_power_kvar", "reactive_power_var", "reactive_power_total_var", "total_reactive_power_var", "ac_reactive_power_kvar", "meter_total_reactive_power_var"],
+      deviceStatus: ["device_status", "operating_status", "inverter_current_status", "meter_status", "energy_storage_running_status", "esu1_running_status", "esu2_running_status", "work_status_1", "work_status_2", "status_message", "status_description"],
+    };
+    const tabIds = ["generalInformation", "deviceMonitoringTab", "settingCommunication", "libraryTab", "inverterControlTab", "storageSyncTab", "logsEventsTab", "systemTab"];
     const defaultSubtabs = {
-      generalInformation: "overviewSubtab",
+      generalInformation: "stationDeviceOverviewSubtab",
       settingCommunication: "gatewaySubtab",
     };
     const subtabParents = {
-      overviewSubtab: "generalInformation",
       stationDeviceOverviewSubtab: "generalInformation",
       gatewaySubtab: "settingCommunication",
       rs485PortsSubtab: "settingCommunication",
+      stationsSubtab: "settingCommunication",
       modbusDevicesSubtab: "settingCommunication",
+      iec104Subtab: "settingCommunication",
       rawYamlSubtab: "settingCommunication",
     };
     const pageLabels = {
-      overviewSubtab: ["Overview", "Gateway status and configured capacity"],
-      stationDeviceOverviewSubtab: ["Station Device Overview", "Connection state for every configured device"],
-      deviceMonitoringTab: ["Device Monitoring", "Latest uploaded telemetry records"],
-      inverterControlTab: ["Inverter Control", "Queued actions and latest command state"],
-      gatewaySubtab: ["Gateway", "Server upload, queue, and polling behavior"],
-      rs485PortsSubtab: ["RS485 Ports", "Serial settings used by Modbus RTU devices"],
-      modbusDevicesSubtab: ["Modbus Devices", "Device identity, connection mode, and register maps"],
-      rawYamlSubtab: ["Raw YAML", "Current cloud config payload"],
-      libraryTab: ["Library", "Reusable Modbus device templates"],
+      stationDeviceOverviewSubtab: ["Tổng quan", "Trạng thái kết nối của từng thiết bị Modbus"],
+      deviceMonitoringTab: ["Giám sát thiết bị", "Dữ liệu Modbus mới nhất và giá trị thanh ghi thô"],
+      inverterControlTab: ["Điều khiển trạm", "Chạy lệnh điều khiển Modbus ở cấp trạm hoặc inverter"],
+      gatewaySubtab: ["Gateway", "Upload server, queue và vòng polling"],
+      rs485PortsSubtab: ["RS485 / COM", "Thiết lập serial dùng cho thiết bị Modbus RTU"],
+      stationsSubtab: ["Trạm", "Topology trạm và nhóm điều khiển EVN"],
+      modbusDevicesSubtab: ["Thiết bị Modbus", "Định danh thiết bị, chế độ kết nối và bản đồ thanh ghi"],
+      rawYamlSubtab: ["YAML thô", "Cấu hình gateway hiện đang lưu"],
+      libraryTab: ["Mẫu", "Mẫu thiết bị Modbus có thể tái sử dụng"],
+      iec104Subtab: ["IEC 60870-5-104", "Bật IEC104 và cấu hình ánh xạ điểm"],
+      storageSyncTab: ["Lưu trữ & Đồng bộ", "Queue local, upload cloud và IEC104 runtime"],
+      logsEventsTab: ["Logs / Sự kiện", "Sự kiện vận hành gần nhất trên IPC gateway"],
+      systemTab: ["Hệ thống", "Thông tin IPC gateway và trạng thái service"],
+    };
+    const homePageLabels = {
+      homeOverviewPanel: ["Site đang hoạt động", "Danh sách site đã kết nối server và trạng thái hoạt động hiện tại"],
     };
 
+    function translateAdminText(value) {
+      const raw = String(value ?? "");
+      const text = raw.trim();
+      if (!text) return raw;
+
+      const translated = currentLanguage === "en"
+        ? translateAdminViToEn(text)
+        : translateAdminEnToVi(text);
+
+      return translated === text ? raw : raw.replace(text, translated);
+    }
+
+    function translateAdminViToEn(text) {
+      const direct = adminTextViToEn[text];
+      if (direct) return direct;
+
+      let match = text.match(/^Trạng thái: (.+)$/);
+      if (match) return "Status: " + translateAdminViToEn(match[1]);
+      match = text.match(/^Tổng quan thiết bị trạm \\( Tốt (\\d+), Cảnh báo (\\d+), Lỗi (\\d+), Mất liên lạc (\\d+) \\)$/);
+      if (match) return "Station device overview ( Good " + match[1] + ", Warning " + match[2] + ", Bad " + match[3] + ", Loss communication " + match[4] + " )";
+      match = text.match(/^(\\d+) thiết bị$/);
+      if (match) return match[1] + " devices";
+      match = text.match(/^Trạm (\\d+)$/);
+      if (match) return "Station " + match[1];
+      match = text.match(/^Đã đồng bộ (\\d+) mẫu từ server$/);
+      if (match) return "Synced " + match[1] + " templates from server";
+      match = text.match(/^Đã cập nhật mapping EVN cho (.+)$/);
+      if (match) return "Updated EVN mapping for " + match[1];
+      match = text.match(/^Đã xóa trạm\\/site (.+)$/);
+      if (match) return "Deleted station/site " + match[1];
+
+      return text;
+    }
+
+    function translateAdminEnToVi(text) {
+      const direct = adminTextEnToVi[text];
+      if (direct) return direct;
+
+      let match = text.match(/^Status: (.+)$/);
+      if (match) return "Trạng thái: " + translateAdminEnToVi(match[1]);
+      match = text.match(/^Station device overview \\( Good (\\d+), Warning (\\d+), Bad (\\d+), Loss communication (\\d+) \\)$/);
+      if (match) return "Tổng quan thiết bị trạm ( Tốt " + match[1] + ", Cảnh báo " + match[2] + ", Lỗi " + match[3] + ", Mất liên lạc " + match[4] + " )";
+      match = text.match(/^(\\d+) devices$/);
+      if (match) return match[1] + " thiết bị";
+      match = text.match(/^Station (\\d+)$/);
+      if (match) return "Trạm " + match[1];
+      match = text.match(/^Synced (\\d+) templates from server$/);
+      if (match) return "Đã đồng bộ " + match[1] + " mẫu từ server";
+      match = text.match(/^Updated EVN mapping for (.+)$/);
+      if (match) return "Đã cập nhật mapping EVN cho " + match[1];
+      match = text.match(/^Deleted station\\/site (.+)$/);
+      if (match) return "Đã xóa trạm/site " + match[1];
+
+      return text;
+    }
+
+    function applyAdminLanguage(root = document) {
+      const languageSelect = el("adminLanguageSelect");
+      if (languageSelect && languageSelect.value !== currentLanguage) {
+        languageSelect.value = currentLanguage;
+      }
+
+      const scope = root === document ? document.body : root;
+      if (!scope) return;
+
+      const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+          const parent = node.parentElement;
+          if (!parent || ["SCRIPT", "STYLE", "SVG", "TEXTAREA"].includes(parent.tagName)) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          if (!node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        },
+      });
+      const textNodes = [];
+      while (walker.nextNode()) textNodes.push(walker.currentNode);
+      for (const node of textNodes) {
+        node.nodeValue = translateAdminText(node.nodeValue);
+      }
+
+      scope.querySelectorAll("[title], [aria-label], [placeholder], [data-message]").forEach((node) => {
+        for (const attribute of ["title", "aria-label", "placeholder", "data-message"]) {
+          if (!node.hasAttribute(attribute)) continue;
+          node.setAttribute(attribute, translateAdminText(node.getAttribute(attribute)));
+        }
+      });
+    }
+
     function setStatus(message, type = "") {
-      el("statusText").textContent = message;
-      el("statusDot").className = "status-dot " + type;
+      const displayMessage = translateAdminText(message);
+      setText("statusText", displayMessage);
+      const status = el("status");
+      if (status) {
+        status.className = "status " + type;
+        status.dataset.message = displayMessage;
+        status.title = displayMessage;
+        status.setAttribute("aria-label", translateAdminText("Trạng thái: " + displayMessage));
+      }
+      const dot = el("statusDot");
+      if (dot) dot.className = "status-dot " + type;
     }
 
     async function requestJson(url, options = {}) {
@@ -1389,36 +3064,436 @@ export function renderDashboardPage({ publicUrl }) {
       gateways = gatewayPayload.gateways || [];
       templates = templatePayload.templates || [];
       renderHome();
+      loadHomeTelemetry().catch((error) => console.error(error));
+      loadHomeDetails().catch((error) => console.error(error));
+    }
+
+    async function loadHomeTelemetry() {
+      const requestId = ++homeTelemetryRequestId;
+      const entries = await Promise.allSettled(gateways.map(async (gateway) => {
+        const payload = await requestJson("/api/gateways/" + encodeURIComponent(gateway.id) + "/telemetry/latest");
+        return [gateway.id, payload.records || []];
+      }));
+
+      if (requestId !== homeTelemetryRequestId) return;
+
+      homeTelemetry = new Map();
+      for (const entry of entries) {
+        if (entry.status === "fulfilled") {
+          homeTelemetry.set(entry.value[0], entry.value[1]);
+        }
+      }
+      renderHome();
+    }
+
+    async function loadHomeDetails() {
+      const requestId = ++homeDetailsRequestId;
+      const entries = await Promise.allSettled(gateways.map(async (gateway) => {
+        const [configPayload, commandPayload] = await Promise.all([
+          requestJson("/api/gateways/" + encodeURIComponent(gateway.id) + "/config"),
+          requestJson("/api/gateways/" + encodeURIComponent(gateway.id) + "/commands"),
+        ]);
+        return [gateway.id, configPayload, commandPayload.commands || []];
+      }));
+
+      if (requestId !== homeDetailsRequestId) return;
+
+      homeConfigs = new Map();
+      homeCommands = new Map();
+      for (const entry of entries) {
+        if (entry.status !== "fulfilled") continue;
+        homeConfigs.set(entry.value[0], entry.value[1]);
+        homeCommands.set(entry.value[0], entry.value[2]);
+      }
+      renderHome();
     }
 
     function renderHome() {
       const grid = el("gatewayHomeGrid");
+      const total = gateways.length;
+      const online = gateways.filter((gateway) => gateway.status === "online").length;
+      const offline = total - online;
+      const onlineRatio = total ? Math.round((online / total) * 1000) / 10 : 0;
+      const offlineRatio = total ? Math.round((offline / total) * 1000) / 10 : 0;
+      const metrics = homeFleetMetrics();
+
+      setText("homeTotalGateways", String(total));
+      setText("homeOnlineGateways", String(online));
+      setText("homeOfflineGateways", String(offline));
+      setText("homeLostHeartbeat", String(offline));
+      setText("homeGatewayBreakdown", "Online: " + online + " | Offline: " + offline);
+      setText("homeOnlineRatio", onlineRatio + "%");
+      setText("homeOfflineRatio", offlineRatio + "%");
+      setText("homeTotalPower", metrics.powerKw === null ? "-" : formatPowerKw(metrics.powerKw));
+      setText("homeTodayEnergy", metrics.todayKwh === null ? "-" : formatEnergyKwh(metrics.todayKwh));
+      setText("homeYesterdayEnergy", metrics.yesterdayKwh === null ? "-" : formatEnergyKwh(metrics.yesterdayKwh));
+      setText("homeQueueRecords", metrics.queueRecords === null ? "-" : formatCompactNumber(metrics.queueRecords));
+      setText("homeProtocolState", total ? "Sẵn sàng" : "-");
+      setText("homeModbusState", total ? "Cấu hình" : "-");
+      setText("homeCloudState", online ? "Đồng bộ" : "-");
+
       if (!gateways.length) {
-        grid.innerHTML = '<div class="empty-state">No gateways yet. Power on hardware and it will auto-register here.</div>';
+        if (grid) grid.innerHTML = '<div class="empty-state">Chưa có site. Khi gateway gửi heartbeat, site sẽ tự xuất hiện ở đây.</div>';
+        if (el("homeFocusGatewayName")) renderHomeFocus(null);
+        renderHomeModules();
+        applyAdminLanguage(el("homeView"));
         return;
       }
 
-      grid.innerHTML = gateways.map((gateway) => {
-        const status = gateway.status || "offline";
-        return \`
-          <article class="gateway-card is-\${escapeHtml(status)}">
-            <div class="gateway-card-head">
-              <div>
-                <strong>\${escapeHtml(gateway.name || gateway.id)}</strong>
-                <p>\${escapeHtml(gateway.site || "No site")} | \${escapeHtml(gateway.id)}</p>
+      if (grid) {
+        grid.innerHTML = gateways.map((gateway) => {
+          const status = gateway.status || "offline";
+          return \`
+            <article class="gateway-card is-\${escapeHtml(status)}">
+              <div class="gateway-card-head">
+                <div>
+                  <strong>\${escapeHtml(gateway.site || gateway.name || gateway.id)}</strong>
+                  <p>\${escapeHtml(gateway.name || gateway.id)} | \${escapeHtml(gateway.id)}</p>
+                </div>
+                <span class="badge \${escapeHtml(status)}">\${escapeHtml(statusLabel(status))}</span>
               </div>
-              <span class="badge \${escapeHtml(status)}">\${escapeHtml(status)}</span>
-            </div>
-            <div class="gateway-stats">
-              <div class="gateway-stat"><span>Last seen</span><strong>\${escapeHtml(formatDateTime(gateway.lastSeenAt))}</strong></div>
-              <div class="gateway-stat"><span>Config</span><strong>\${escapeHtml((gateway.appliedConfigVersion || "-") + " / " + (gateway.desiredConfigVersion || gateway.latestConfigVersion || "-"))}</strong></div>
-            </div>
-            <div class="actions gateway-card-actions">
-              <button class="primary" type="button" data-remote-gateway="\${escapeHtml(gateway.id)}"><svg class="app-icon"><use href="#icon-monitor"></use></svg>Remote</button>
-            </div>
-          </article>
-        \`;
+              <div class="gateway-stats">
+                <div class="gateway-stat"><span>Last seen</span><strong>\${escapeHtml(formatDateTime(gateway.lastSeenAt))}</strong></div>
+                <div class="gateway-stat"><span>Config</span><strong>\${escapeHtml((gateway.appliedConfigVersion || "-") + " / " + (gateway.desiredConfigVersion || gateway.latestConfigVersion || "-"))}</strong></div>
+              </div>
+              <div class="actions gateway-card-actions">
+                <button class="primary" type="button" data-remote-gateway="\${escapeHtml(gateway.id)}"><svg class="app-icon"><use href="#icon-monitor"></use></svg>Remote</button>
+                <button class="danger" type="button" data-delete-gateway="\${escapeHtml(gateway.id)}"><svg class="app-icon"><use href="#icon-alert-circle"></use></svg>Xóa</button>
+              </div>
+            </article>
+          \`;
+        }).join("");
+      }
+
+      if (el("homeFocusGatewayName")) renderHomeFocus(gateways[0]);
+      renderHomeModules();
+      applyAdminLanguage(el("homeView"));
+    }
+
+    function renderHomeFocus(gateway) {
+      const status = gateway?.status || "offline";
+      el("homeFocusGatewayName").textContent = gateway ? (gateway.name || gateway.id) : "Chưa chọn gateway";
+      el("homeFocusStatus").className = "badge " + status;
+      el("homeFocusStatus").textContent = statusLabel(status);
+      el("homeFocusHeartbeat").textContent = formatDateTime(gateway?.lastSeenAt);
+      el("homeFocusConfig").textContent = gateway ? String(gateway.appliedConfigVersion || "-") : "-";
+      el("homeFocusId").textContent = gateway?.id || "-";
+      el("homeFocusSite").textContent = [gateway?.site, gateway?.name].filter(Boolean).join(" / ") || "-";
+      el("homeFocusApp").textContent = gateway?.appVersion || "-";
+      el("homeFocusConfigStatus").textContent = gateway?.lastConfigStatus || "-";
+      el("homeFocusCreated").textContent = formatDateTime(gateway?.createdAt);
+    }
+
+    function statusLabel(status) {
+      const labels = {
+        online: "Online",
+        offline: "Offline",
+        error: "Cảnh báo",
+        waiting: "Waiting",
+      };
+      return labels[status] || status || "-";
+    }
+
+    function syncLabel(status) {
+      const labels = {
+        applied: "Đồng bộ",
+        failed: "Lỗi",
+        offline: "--",
+      };
+      return labels[status] || status || "-";
+    }
+
+    function homeFleetMetrics() {
+      let powerKw = 0;
+      let todayKwh = 0;
+      let yesterdayKwh = 0;
+      let queueRecords = 0;
+      let hasPower = false;
+      let hasToday = false;
+      let hasYesterday = false;
+      let hasQueue = false;
+
+      for (const gateway of gateways) {
+        const records = homeTelemetry.get(gateway.id) || [];
+        const metrics = homeGatewayMetrics(records);
+        if (metrics.powerKw !== null) {
+          powerKw += metrics.powerKw;
+          hasPower = true;
+        }
+        if (metrics.todayKwh !== null) {
+          todayKwh += metrics.todayKwh;
+          hasToday = true;
+        }
+        if (metrics.yesterdayKwh !== null) {
+          yesterdayKwh += metrics.yesterdayKwh;
+          hasYesterday = true;
+        }
+        if (metrics.queueRecords !== null) {
+          queueRecords += metrics.queueRecords;
+          hasQueue = true;
+        }
+      }
+
+      return {
+        powerKw: hasPower ? powerKw : null,
+        todayKwh: hasToday ? todayKwh : null,
+        yesterdayKwh: hasYesterday ? yesterdayKwh : null,
+        queueRecords: hasQueue ? queueRecords : null,
+      };
+    }
+
+    function homeGatewayMetrics(records) {
+      const devices = telemetryRecordsToDevices(records || []);
+      const power = firstMetricFromReadings(devices, ["active_power_kw", "active_power_w", "meter_active_power_kw", "grid_export_power_kw", "export_power_kw", "p_out_kw"], { prefer: "meter" })
+        || aggregateMetricFromReadings(devices, ["active_power_kw", "active_power_w", "active_power_total_kw", "ac_power_kw", "output_power_kw", "inverter_active_power_kw"], { prefer: "inverter", unit: "kW" });
+      const today = firstMetricFromReadings(devices, ["daily_energy_yield_kwh", "daily_energy_kwh", "energy_today_kwh", "yield_today_kwh", "today_energy_kwh"], { prefer: "meter" })
+        || aggregateMetricFromReadings(devices, ["daily_energy_yield_kwh", "daily_energy_kwh", "energy_today_kwh", "yield_today_kwh", "today_energy_kwh"], { prefer: "inverter", unit: "kWh" });
+      const yesterday = firstMetricFromReadings(devices, [
+        "site_yesterday_energy_kwh",
+        "yesterday_energy_kwh",
+        "ainv_d_minus_1_kwh",
+        "ainv_d_1_kwh",
+        "inverter_yesterday_energy_kwh",
+        "previous_day_energy_kwh",
+        "daily_energy_yield_d_minus_1_kwh",
+      ], {});
+      const queue = firstMetricFromReadings(devices, ["queue_records", "pending_records", "queue_size", "pending_count"], {});
+
+      return {
+        powerKw: metricNumber(power, "kW"),
+        todayKwh: metricNumber(today, "kWh"),
+        yesterdayKwh: metricNumber(yesterday, "kWh"),
+        queueRecords: metricNumber(queue, ""),
+      };
+    }
+
+    function metricNumber(metric, preferredUnit = "") {
+      const value = normalizeMetricValue(metric, preferredUnit)?.value;
+      const number = Number(value);
+      return Number.isFinite(number) ? number : null;
+    }
+
+    function renderHomeModules() {
+      renderHomeGatewayModule();
+      renderHomeTelemetryModule();
+      renderHomeConfigModule();
+      renderHomeDevicesModule();
+      renderHomeTemplatesModule();
+      renderHomeIec104Module();
+      renderHomeControlModule();
+      renderHomeStorageModule();
+      renderHomeLogsModule();
+      renderHomeReportsModule();
+      renderHomeSystemModule();
+    }
+
+    function renderHomeGatewayModule() {
+      const body = el("homeGatewayFullBody");
+      if (!body) return;
+      if (!gateways.length) {
+        body.innerHTML = '<tr><td colspan="8" class="empty-state">Chưa có gateway.</td></tr>';
+        return;
+      }
+      body.innerHTML = gateways.map((gateway) => {
+        const status = gateway.status || "offline";
+        const configText = (gateway.appliedConfigVersion || "-") + " / " + (gateway.desiredConfigVersion || gateway.latestConfigVersion || "-");
+        const cloudStatus = gateway.lastConfigStatus === "failed" ? "failed" : status === "online" ? "applied" : "offline";
+        return '<tr>' +
+          '<td><a href="#" class="id-link" data-remote-gateway="' + escapeHtml(gateway.id) + '">' + escapeHtml(gateway.id) + '</a></td>' +
+          '<td>' + escapeHtml([gateway.site, gateway.name].filter(Boolean).join(" / ") || "-") + '</td>' +
+          '<td><span class="badge ' + escapeHtml(status) + '">' + escapeHtml(statusLabel(status)) + '</span></td>' +
+          '<td>' + escapeHtml(formatDateTime(gateway.lastSeenAt)) + '</td>' +
+          '<td>' + escapeHtml(gateway.appVersion || "-") + '</td>' +
+          '<td>' + escapeHtml(configText) + '</td>' +
+          '<td><span class="badge ' + escapeHtml(cloudStatus) + '">' + escapeHtml(syncLabel(cloudStatus)) + '</span></td>' +
+          '<td><button class="subtle" type="button" data-remote-gateway="' + escapeHtml(gateway.id) + '">Mở</button></td>' +
+        '</tr>';
       }).join("");
+    }
+
+    function renderHomeTelemetryModule() {
+      const body = el("homeTelemetryBody");
+      if (!body) return;
+      const rows = [];
+      for (const gateway of gateways) {
+        const devices = telemetryRecordsToDevices(homeTelemetry.get(gateway.id) || []);
+        if (!devices.length) {
+          rows.push('<tr><td>' + escapeHtml(gateway.id) + '</td><td colspan="4" class="empty-state">Chưa có telemetry</td><td><button class="subtle" type="button" data-remote-gateway="' + escapeHtml(gateway.id) + '">Mở</button></td></tr>');
+          continue;
+        }
+        for (const device of devices) {
+          const measurementKeys = Object.keys(device.measurements || {}).slice(0, 5);
+          rows.push('<tr>' +
+            '<td>' + escapeHtml(gateway.id) + '</td>' +
+            '<td>' + escapeHtml(device.name || "-") + '</td>' +
+            '<td><span class="badge ' + escapeHtml(device.status || "waiting") + '">' + escapeHtml(statusLabel(device.status || "waiting")) + '</span></td>' +
+            '<td>' + escapeHtml(formatDateTime(device.lastSeenAt)) + '</td>' +
+            '<td>' + escapeHtml(measurementKeys.map((key) => key + "=" + formatMeasurement(device.measurements[key])).join(" | ") || "-") + '</td>' +
+            '<td><button class="subtle" type="button" data-remote-gateway="' + escapeHtml(gateway.id) + '">Mở</button></td>' +
+          '</tr>');
+        }
+      }
+      body.innerHTML = rows.join("") || '<tr><td colspan="6" class="empty-state">Chưa có telemetry.</td></tr>';
+    }
+
+    function renderHomeConfigModule() {
+      const body = el("homeConfigBody");
+      if (!body) return;
+      body.innerHTML = gateways.map((gateway) => {
+        const payload = homeConfigs.get(gateway.id);
+        const config = payload?.config || {};
+        return '<tr>' +
+          '<td>' + escapeHtml(gateway.id) + '</td>' +
+          '<td>' + escapeHtml(hostFromUrl(config.server?.url || "")) + '</td>' +
+          '<td>' + escapeHtml(hostFromUrl(config.remoteConfig?.url || "")) + '</td>' +
+          '<td>' + escapeHtml(String(Object.keys(config.ports || {}).length)) + '</td>' +
+          '<td>' + escapeHtml(String((config.devices || []).length)) + '</td>' +
+          '<td>' + escapeHtml((gateway.appliedConfigVersion || "-") + " / " + (gateway.desiredConfigVersion || payload?.version || gateway.latestConfigVersion || "-")) + '</td>' +
+          '<td><button class="subtle" type="button" data-remote-gateway="' + escapeHtml(gateway.id) + '">Cấu hình</button></td>' +
+        '</tr>';
+      }).join("") || '<tr><td colspan="7" class="empty-state">Chưa có cấu hình gateway.</td></tr>';
+    }
+
+    function renderHomeDevicesModule() {
+      const body = el("homeDevicesBody");
+      if (!body) return;
+      const rows = [];
+      for (const gateway of gateways) {
+        const config = homeConfigs.get(gateway.id)?.config || {};
+        for (const device of config.devices || []) {
+          const isTcp = device.protocol === "modbus-tcp";
+          const model = [device.manufacturer, device.model].filter(Boolean).join(" - ") || device.type || "-";
+          rows.push('<tr>' +
+            '<td>' + escapeHtml(gateway.id) + '</td>' +
+            '<td>' + escapeHtml(device.name || "-") + '</td>' +
+            '<td>' + escapeHtml(device.protocol || "modbus-rtu") + '</td>' +
+            '<td>' + escapeHtml(isTcp ? ((device.host || "-") + ":" + (device.tcpPort || 502)) : (device.port || "-")) + '</td>' +
+            '<td>' + escapeHtml(String(isTcp ? (device.unitId || device.slaveId || "-") : (device.slaveId || "-"))) + '</td>' +
+            '<td>' + escapeHtml(String((device.registers || []).length)) + '</td>' +
+            '<td>' + escapeHtml(model) + '</td>' +
+            '<td><button class="subtle" type="button" data-remote-gateway="' + escapeHtml(gateway.id) + '">Mở</button></td>' +
+          '</tr>');
+        }
+      }
+      body.innerHTML = rows.join("") || '<tr><td colspan="8" class="empty-state">Chưa có thiết bị trong config.</td></tr>';
+    }
+
+    function renderHomeTemplatesModule() {
+      const body = el("homeTemplatesBody");
+      if (!body) return;
+      body.innerHTML = templates.map((template) => '<tr>' +
+        '<td>' + escapeHtml(template.id || "-") + '</td>' +
+        '<td>' + escapeHtml(template.label || "-") + '</td>' +
+        '<td>' + escapeHtml(template.type || template.category || "-") + '</td>' +
+        '<td>' + escapeHtml(template.protocol || "modbus-rtu") + '</td>' +
+        '<td>' + escapeHtml(String((template.registers || []).length)) + '</td>' +
+        '<td>' + escapeHtml(template.version || "1.0.0") + '</td>' +
+      '</tr>').join("") || '<tr><td colspan="6" class="empty-state">Chưa có template.</td></tr>';
+    }
+
+    function renderHomeIec104Module() {
+      const body = el("homeIec104Body");
+      if (!body) return;
+      body.innerHTML = gateways.map((gateway) => {
+        const iec104 = homeConfigs.get(gateway.id)?.config?.iec104 || {};
+        const endpoint = (iec104.mode || "client") === "server"
+          ? (iec104.host || "0.0.0.0") + ":" + (iec104.port || 2404)
+          : (iec104.remoteHost || "-") + ":" + (iec104.remotePort || 2404);
+        return '<tr>' +
+          '<td>' + escapeHtml(gateway.id) + '</td>' +
+          '<td><span class="badge ' + (iec104.enabled ? "online" : "offline") + '">' + escapeHtml(String(Boolean(iec104.enabled))) + '</span></td>' +
+          '<td>' + escapeHtml(iec104.mode || "client") + '</td>' +
+          '<td>' + escapeHtml(endpoint) + '</td>' +
+          '<td>' + escapeHtml((iec104.commonAddress || 1) + " / " + (iec104.originatorAddress || 0)) + '</td>' +
+          '<td>' + escapeHtml(String((iec104.points || []).length)) + '</td>' +
+          '<td>' + escapeHtml(String((iec104.controls || []).length)) + '</td>' +
+          '<td><button class="subtle" type="button" data-remote-gateway="' + escapeHtml(gateway.id) + '">IEC104</button></td>' +
+        '</tr>';
+      }).join("") || '<tr><td colspan="8" class="empty-state">Chưa có gateway.</td></tr>';
+    }
+
+    function renderHomeControlModule() {
+      const body = el("homeControlBody");
+      if (!body) return;
+      body.innerHTML = gateways.map((gateway) => {
+        const commandsForGateway = homeCommands.get(gateway.id) || [];
+        const count = (status) => commandsForGateway.filter((command) => command.status === status).length;
+        const latest = commandsForGateway[0];
+        return '<tr>' +
+          '<td>' + escapeHtml(gateway.id) + '</td>' +
+          '<td>' + count("queued") + '</td>' +
+          '<td>' + count("running") + '</td>' +
+          '<td>' + count("done") + '</td>' +
+          '<td>' + count("failed") + '</td>' +
+          '<td>' + escapeHtml(latest ? actionLabel(latest.action) + " | " + (latest.status || "queued") : "-") + '</td>' +
+          '<td><button class="subtle" type="button" data-remote-gateway="' + escapeHtml(gateway.id) + '">Điều khiển</button></td>' +
+        '</tr>';
+      }).join("") || '<tr><td colspan="7" class="empty-state">Chưa có lệnh điều khiển.</td></tr>';
+    }
+
+    function renderHomeStorageModule() {
+      const body = el("homeStorageBody");
+      if (!body) return;
+      body.innerHTML = gateways.map((gateway) => {
+        const config = homeConfigs.get(gateway.id)?.config || {};
+        const queue = config.storage?.queue || {};
+        const pending = homeGatewayMetrics(homeTelemetry.get(gateway.id) || []).queueRecords;
+        return '<tr>' +
+          '<td>' + escapeHtml(gateway.id) + '</td>' +
+          '<td>' + escapeHtml(config.storage?.queuePath || "-") + '</td>' +
+          '<td>' + escapeHtml(String(queue.maxRecords || "-")) + '</td>' +
+          '<td>' + escapeHtml(queue.maxBytes ? formatBytes(queue.maxBytes) : "-") + '</td>' +
+          '<td>' + escapeHtml(queue.retentionMs ? formatMs(queue.retentionMs) : "-") + '</td>' +
+          '<td>' + escapeHtml(pending === null ? "-" : formatCompactNumber(pending)) + '</td>' +
+          '<td>' + escapeHtml(config.mongo?.enabled ? "MongoDB" : "HTTP") + '</td>' +
+        '</tr>';
+      }).join("") || '<tr><td colspan="7" class="empty-state">Chưa có dữ liệu lưu trữ.</td></tr>';
+    }
+
+    function renderHomeLogsModule() {
+      const body = el("homeLogsBody");
+      if (!body) return;
+      const rows = [];
+      for (const gateway of gateways) {
+        rows.push({ time: gateway.lastSeenAt, gateway: gateway.id, type: "Heartbeat", text: statusLabel(gateway.status || "offline"), status: gateway.status || "offline" });
+        if (gateway.lastConfigStatus) rows.push({ time: gateway.updatedAt, gateway: gateway.id, type: "Config", text: gateway.lastConfigMessage || ("Config " + gateway.lastConfigStatus), status: gateway.lastConfigStatus });
+        for (const command of (homeCommands.get(gateway.id) || []).slice(0, 3)) {
+          rows.push({ time: command.createdAt, gateway: gateway.id, type: "Command", text: actionLabel(command.action) + " " + commandDetail(command), status: command.status || "queued" });
+        }
+      }
+      rows.sort((a, b) => Date.parse(b.time || 0) - Date.parse(a.time || 0));
+      body.innerHTML = rows.slice(0, 100).map((row) => '<tr>' +
+        '<td>' + escapeHtml(formatDateTime(row.time)) + '</td>' +
+        '<td>' + escapeHtml(row.gateway) + '</td>' +
+        '<td>' + escapeHtml(row.type) + '</td>' +
+        '<td>' + escapeHtml(row.text || "-") + '</td>' +
+        '<td><span class="badge ' + escapeHtml(row.status || "waiting") + '">' + escapeHtml(row.status || "-") + '</span></td>' +
+      '</tr>').join("") || '<tr><td colspan="5" class="empty-state">Chưa có sự kiện.</td></tr>';
+    }
+
+    function renderHomeReportsModule() {
+      const body = el("homeReportsBody");
+      if (!body) return;
+      body.innerHTML = gateways.map((gateway) => {
+        const records = homeTelemetry.get(gateway.id) || [];
+        const devices = telemetryRecordsToDevices(records);
+        const metrics = homeGatewayMetrics(records);
+        const lastTelemetry = devices.map((device) => Date.parse(device.lastSeenAt || "")).filter(Number.isFinite).sort((a, b) => b - a)[0];
+        return '<tr>' +
+          '<td>' + escapeHtml(gateway.id) + '</td>' +
+          '<td>' + escapeHtml(metrics.powerKw === null ? "-" : formatPowerKw(metrics.powerKw)) + '</td>' +
+          '<td>' + escapeHtml(metrics.todayKwh === null ? "-" : formatEnergyKwh(metrics.todayKwh)) + '</td>' +
+          '<td>' + escapeHtml(metrics.yesterdayKwh === null ? "-" : formatEnergyKwh(metrics.yesterdayKwh)) + '</td>' +
+          '<td>' + escapeHtml(String(devices.length)) + '</td>' +
+          '<td>' + escapeHtml(lastTelemetry ? formatDateTime(new Date(lastTelemetry).toISOString()) : "-") + '</td>' +
+        '</tr>';
+      }).join("") || '<tr><td colspan="6" class="empty-state">Chưa có báo cáo.</td></tr>';
+    }
+
+    function renderHomeSystemModule() {
+      if (el("homeSystemGateways")) el("homeSystemGateways").textContent = String(gateways.length);
+      if (el("homeSystemTemplates")) el("homeSystemTemplates").textContent = String(templates.length);
+      if (el("homeSystemTelemetry")) el("homeSystemTelemetry").textContent = String(homeTelemetry.size);
     }
 
     async function openRemote(gatewayId) {
@@ -1442,11 +3517,29 @@ export function renderDashboardPage({ publicUrl }) {
       };
       commands = commandPayload.commands || [];
 
-      el("topGatewayId").textContent = gatewayId;
-      el("topConfigVersion").textContent = selectedConfigVersion || "-";
+      setText("topGatewayId", gatewayId);
+      setText("topConfigVersion", selectedConfigVersion || "-");
       render();
-      showTab("generalInformation", false, "overviewSubtab");
+      showTab("generalInformation", false, "stationDeviceOverviewSubtab");
       setStatus("Remote config loaded", "ok");
+    }
+
+    async function deleteGateway(gatewayId) {
+      const gateway = gateways.find((item) => item.id === gatewayId) || { id: gatewayId };
+      const label = gateway.site || gateway.name || gateway.id;
+      if (!confirm("Xóa trạm/site " + label + "? Dữ liệu cấu hình, telemetry và lịch sử lệnh của gateway này sẽ bị xóa khỏi server.")) {
+        return;
+      }
+
+      await requestJson("/api/gateways/" + encodeURIComponent(gatewayId), {
+        method: "DELETE",
+      });
+      gateways = gateways.filter((item) => item.id !== gatewayId);
+      homeTelemetry.delete(gatewayId);
+      homeConfigs.delete(gatewayId);
+      homeCommands.delete(gatewayId);
+      renderHome();
+      setStatus("Đã xóa trạm/site " + label, "ok");
     }
 
     function backHome() {
@@ -1486,6 +3579,26 @@ export function renderDashboardPage({ publicUrl }) {
           batchSize: 100,
           statePath: "/data/mongo-sync-state.json",
         },
+        iec104: {
+          enabled: true,
+          mode: "server",
+          remoteHost: "",
+          remotePort: 2404,
+          localAddress: "",
+          localPort: 0,
+          host: "0.0.0.0",
+          port: 2404,
+          commonAddress: 1,
+          originatorAddress: 0,
+          staleAfterMs: 600000,
+          maxClientConnections: 4,
+          reconnectMs: 5000,
+          keepAliveMs: 30000,
+          periodicMs: 300000,
+          spontaneous: true,
+          points: [],
+          controls: [],
+        },
         storage: {
           queuePath: "/data/queue.jsonl",
           queue: {
@@ -1496,6 +3609,7 @@ export function renderDashboardPage({ publicUrl }) {
             corruptPath: "/data/queue.jsonl.corrupt",
           },
         },
+        stations: [],
         ports: {},
         devices: [],
       };
@@ -1503,6 +3617,13 @@ export function renderDashboardPage({ publicUrl }) {
 
     function render() {
       if (!state) return;
+
+      state.stations = Array.isArray(state.stations) ? state.stations : [];
+      state.devices = Array.isArray(state.devices) ? state.devices : [];
+      state.ports = state.ports || {};
+      state.iec104 = state.iec104 || {};
+      state.iec104.points = Array.isArray(state.iec104.points) ? state.iec104.points : [];
+      state.iec104.controls = Array.isArray(state.iec104.controls) ? state.iec104.controls : [];
 
       el("gatewayId").value = state.gateway?.id || selectedId;
       el("gatewayIdPath").value = state.gateway?.idPath || "/data/gateway-id";
@@ -1526,6 +3647,22 @@ export function renderDashboardPage({ publicUrl }) {
       el("mongoUploadIntervalMs").value = state.mongo?.uploadIntervalMs ?? 5000;
       el("mongoBatchSize").value = state.mongo?.batchSize ?? 100;
       el("mongoStatePath").value = state.mongo?.statePath || "/data/mongo-sync-state.json";
+      el("iec104Enabled").checked = state.iec104?.enabled ?? true;
+      el("iec104Mode").value = "server";
+      el("iec104Host").value = state.iec104?.host || "0.0.0.0";
+      el("iec104Port").value = state.iec104?.port ?? 2404;
+      el("iec104RemoteHost").value = "";
+      el("iec104RemotePort").value = 2404;
+      el("iec104LocalAddress").value = "";
+      el("iec104LocalPort").value = 0;
+      el("iec104CommonAddress").value = state.iec104?.commonAddress ?? 1;
+      el("iec104OriginatorAddress").value = state.iec104?.originatorAddress ?? 0;
+      el("iec104StaleAfterMs").value = state.iec104?.staleAfterMs ?? 600000;
+      el("iec104ReconnectMs").value = 5000;
+      el("iec104KeepAliveMs").value = state.iec104?.keepAliveMs ?? 30000;
+      el("iec104PeriodicMs").value = state.iec104?.periodicMs ?? 300000;
+      el("iec104Spontaneous").value = "true";
+      el("iec104MaxClientConnections").value = state.iec104?.maxClientConnections ?? 4;
       el("queuePath").value = state.storage?.queuePath || "/data/queue.jsonl";
       el("rawYaml").value = stringifyConfig(state);
 
@@ -1536,7 +3673,13 @@ export function renderDashboardPage({ publicUrl }) {
       renderTemplatePicker();
       renderTemplateLibrary();
       renderPorts();
+      renderStations();
       renderDevices();
+      renderIec104();
+      renderRemoteStorage();
+      renderRemoteEvents();
+      renderRemoteSystem();
+      applyAdminLanguage(el("remoteView"));
     }
 
     function renderSummary() {
@@ -1551,79 +3694,454 @@ export function renderDashboardPage({ publicUrl }) {
     }
 
     function renderDashboard() {
-      const ports = Object.keys(state.ports || {});
       const devices = state.devices || [];
       const readings = telemetryDeviceMap();
-      const onlineCount = devices.filter((device) => readings.get(device.name)?.status === "online").length;
-      const offlineCount = Math.max(devices.length - onlineCount, 0);
+      const statusCounts = countRuntimeStatuses(devices, readings);
+      const okCount = statusCounts.good;
+      const warningCount = statusCounts.warning;
+      const errorCount = statusCounts.bad;
+      const lossCount = statusCounts.loss;
 
-      el("dashboardGateway").textContent = state.gateway?.id || "-";
-      el("dashboardPortCount").textContent = String(ports.length);
-      el("dashboardDeviceCount").textContent = String(devices.length);
-      el("dashboardOnlineCount").textContent = String(onlineCount);
-      el("dashboardOfflineInline").textContent = String(offlineCount);
-      el("dashboardOnlineInline").textContent = String(onlineCount);
+      setText("dashboardGoodInline", String(okCount));
+      setText("dashboardWarningInline", String(warningCount));
+      setText("dashboardBadInline", String(errorCount));
+      setText("dashboardLossInline", String(lossCount));
+      setText("topOkCount", String(okCount));
+      setText("topErrorCount", String(errorCount));
+      setText("topWarningCount", String(warningCount));
+      setText("topLossCount", String(lossCount));
 
-      const body = el("dashboardDevices");
-      if (!devices.length) {
-        body.innerHTML = '<tr><td colspan="6">No devices configured</td></tr>';
-        return;
+      const topology = el("dashboardTopology");
+      const configurationTopology = el("configurationTopology");
+      const topologyHtml = renderTopology(readings);
+
+      if (topology) topology.innerHTML = topologyHtml;
+      if (configurationTopology) configurationTopology.innerHTML = topologyHtml;
+    }
+
+    function countRuntimeStatuses(devices, readings) {
+      return (devices || []).reduce((counts, device) => {
+        const status = runtimeStatus(readings.get(device.name), device);
+        counts[status.kind] = (counts[status.kind] || 0) + 1;
+        return counts;
+      }, {
+        good: 0,
+        warning: 0,
+        bad: 0,
+        loss: 0,
+      });
+    }
+
+    function renderTopology(readings) {
+      const groups = topologyStationGroups();
+      const ports = Object.keys(state.ports || {});
+
+      if (!groups.length && !ports.length) {
+        return '<div class="topology-empty">Chưa cấu hình trạm, IPC, RS485/COM hoặc thiết bị</div>';
       }
 
-      body.innerHTML = devices.map((device) => {
-        const reading = readings.get(device.name);
-        const status = runtimeStatus(reading);
-        const model = [device.manufacturer, device.model].filter(Boolean).join(" - ") || device.type || "-";
-        return \`
-          <tr>
-            <td>\${escapeHtml(device.port || "-")}</td>
-            <td>\${escapeHtml(device.name || "-")}</td>
-            <td>\${escapeHtml(device.slaveId ?? device.unitId ?? "-")}</td>
-            <td><span class="badge \${escapeHtml(status.className)}">\${escapeHtml(status.label)}</span></td>
-            <td>\${escapeHtml(model)}</td>
-            <td>\${(device.registers || []).length}</td>
-          </tr>
-        \`;
-      }).join("");
+      return groups.map((group) => renderTopologyStation(group, readings)).join("");
+    }
+
+    function topologyStationGroups() {
+      const devices = state.devices || [];
+      const stations = state.stations || [];
+
+      if (!stations.length) {
+        if (!devices.length && !Object.keys(state.ports || {}).length) return [];
+        return [{
+          id: "default",
+          name: "Trạm",
+          meta: devices.length ? devices.length + " thiết bị" : "Chưa cấu hình trạm",
+          devices,
+          portNames: Object.keys(state.ports || {}),
+        }];
+      }
+
+      const assigned = new Set();
+      const groups = stations.map((station, index) => {
+        const names = new Set(stationDeviceNamesForUi(station));
+        const stationDevices = devices.filter((device) => {
+          const matched = (device.name && names.has(device.name)) || device.stationId === station.id;
+          if (matched && device.name) assigned.add(device.name);
+          return matched;
+        });
+
+        return {
+          id: station.id || "station_" + (index + 1),
+          name: station.name || station.id || "Trạm " + (index + 1),
+          meta: station.capacityKw ? station.capacityKw + " kW" : stationDevices.length + " thiết bị",
+          devices: stationDevices,
+          portNames: [],
+        };
+      });
+
+      const unassigned = devices.filter((device) => device.name && !assigned.has(device.name));
+      if (unassigned.length) {
+        groups.push({
+          id: "unassigned",
+          name: "Thiết bị chưa gán trạm",
+          meta: unassigned.length + " thiết bị",
+          devices: unassigned,
+          portNames: [],
+        });
+      }
+
+      return groups;
+    }
+
+    function stationDeviceNamesForUi(station) {
+      const names = new Set(Array.isArray(station?.devices) ? station.devices.filter(Boolean) : []);
+      for (const device of state.devices || []) {
+        if (device.stationId && device.stationId === station?.id && device.name) {
+          names.add(device.name);
+        }
+      }
+      return [...names];
+    }
+
+    function renderTopologyStation(group, readings) {
+      const deviceStatuses = group.devices.map((device) => runtimeStatus(readings.get(device.name), device));
+      const stationStatus = statusFromChildren(deviceStatuses, group.devices.length ? "loss" : "warning");
+      const ipcStatus = statusFromChildren(deviceStatuses, group.devices.length ? "loss" : "warning");
+      const portGroups = topologyPortGroups(group);
+      const portHtml = portGroups.length
+        ? portGroups.map((portGroup) => renderTopologyPort(portGroup, readings)).join("")
+        : '<div class="topology-empty">Chưa gán RS485/COM hoặc thiết bị cho trạm này</div>';
+
+      return \`
+        <article class="topology-station">
+          \${renderTopologyNode({
+            icon: "icon-home",
+            type: "Trạm",
+            title: group.name,
+            meta: group.meta || "-",
+            status: stationStatus,
+          })}
+          <div class="topology-level">
+            \${renderTopologyNode({
+              icon: "icon-server",
+              type: "IPC",
+              title: state.gateway?.id || selectedId || "IPC Gateway",
+              meta: hostFromUrl(state.server?.url || "") || "-",
+              status: ipcStatus,
+            })}
+            <div class="topology-level">\${portHtml}</div>
+          </div>
+        </article>
+      \`;
+    }
+
+    function topologyPortGroups(group) {
+      const groups = new Map();
+
+      for (const name of group.portNames || []) {
+        if (!groups.has(name)) groups.set(name, { name, devices: [] });
+      }
+
+      for (const device of group.devices || []) {
+        const name = topologyPortName(device);
+        if (!groups.has(name)) groups.set(name, { name, devices: [] });
+        groups.get(name).devices.push(device);
+      }
+
+      return [...groups.values()].sort((left, right) => left.name.localeCompare(right.name));
+    }
+
+    function topologyPortName(device) {
+      if (device.protocol === "modbus-tcp") return "TCP";
+      return device.port || "Chưa chọn cổng";
+    }
+
+    function renderTopologyPort(portGroup, readings) {
+      const statuses = portGroup.devices.map((device) => runtimeStatus(readings.get(device.name), device));
+      const portStatus = statusFromChildren(statuses, portGroup.devices.length ? "loss" : "warning");
+      const port = state.ports?.[portGroup.name] || {};
+      const deviceHtml = portGroup.devices.length
+        ? portGroup.devices.map((device) => renderTopologyDevice(device, readings.get(device.name))).join("")
+        : '<div class="topology-empty">Chưa có thiết bị trên RS485/COM này</div>';
+
+      return \`
+        <div class="topology-station">
+          \${renderTopologyNode({
+            icon: "icon-network",
+            type: "RS485 / COM",
+            title: portGroup.name,
+            meta: topologyPortMeta(portGroup.name, port) + " | " + topologyComLabel(portGroup, port) + " | " + topologyComMeta(portGroup, port),
+            status: portStatus,
+          })}
+          <div class="topology-level">\${deviceHtml}</div>
+        </div>
+      \`;
+    }
+
+    function renderTopologyDevice(device, reading) {
+      const status = runtimeStatus(reading, device);
+      const slave = device.protocol === "modbus-tcp"
+        ? "unit " + (device.unitId || device.slaveId || 3)
+        : "slave " + (device.slaveId || 1);
+      const registers = (device.registers || []).length + " thanh ghi";
+
+      return renderTopologyNode({
+        icon: "icon-monitor",
+        type: "Thiết bị",
+        title: device.name || "Thiết bị chưa đặt tên",
+        meta: deviceSubtitle(device) + " | " + slave + " | " + registers,
+        status,
+      });
+    }
+
+    function renderTopologyNode({ icon, type, title, meta, status }) {
+      const kind = status?.kind || "loss";
+      const label = status?.label || statusFromKind(kind).label;
+
+      return \`
+        <div class="topology-node \${escapeHtml(kind)}">
+          <span class="topology-icon"><svg class="app-icon"><use href="#\${escapeHtml(icon)}"></use></svg></span>
+          <div class="topology-copy">
+            <span class="topology-kicker">\${escapeHtml(type)}</span>
+            <strong title="\${escapeHtml(title || "-")}">\${escapeHtml(title || "-")}</strong>
+            <p title="\${escapeHtml(meta || "-")}">\${escapeHtml(meta || "-")}</p>
+          </div>
+          <span class="topology-state \${escapeHtml(kind)}" title="\${escapeHtml(label)}"><i class="topology-dot \${escapeHtml(kind)}"></i>\${escapeHtml(label)}</span>
+        </div>
+      \`;
+    }
+
+    function topologyPortMeta(portName, port) {
+      if (portName === "TCP") return "Modbus TCP";
+      if (portName === "Chưa chọn cổng") return "Thiết bị chưa chọn cổng RS485";
+      return [
+        port.baudRate ? port.baudRate + " bps" : "",
+        port.parity || "",
+        port.dataBits ? port.dataBits + " data bits" : "",
+        port.stopBits ? port.stopBits + " stop" : "",
+      ].filter(Boolean).join(" | ") || "Chưa có thiết lập serial";
+    }
+
+    function topologyComLabel(portGroup, port) {
+      if (portGroup.name === "TCP") {
+        const hosts = [...new Set(portGroup.devices.map((device) => device.host).filter(Boolean))];
+        return hosts.length ? hosts.join(", ") : "TCP host";
+      }
+      return port.path || (port.pathCandidates || [])[0] || "Chưa có đường dẫn COM";
+    }
+
+    function topologyComMeta(portGroup, port) {
+      if (portGroup.name === "TCP") {
+        const tcpPorts = [...new Set(portGroup.devices.map((device) => device.tcpPort || 502))];
+        return "TCP port " + (tcpPorts.length ? tcpPorts.join(", ") : "502");
+      }
+      if (port.autoDiscover) return "Đang bật tự dò COM";
+      if ((port.pathCandidates || []).length) return (port.pathCandidates || []).length + " đường dẫn dự phòng";
+      return "Đường dẫn COM thủ công";
+    }
+
+    function statusFromChildren(statuses, emptyKind = "warning") {
+      const kinds = statuses.map((status) => status.kind);
+      if (!kinds.length) return statusFromKind(emptyKind);
+      if (kinds.includes("bad")) return statusFromKind("bad");
+      if (kinds.includes("loss")) return statusFromKind("loss");
+      if (kinds.includes("warning")) return statusFromKind("warning");
+      return statusFromKind("good");
     }
 
     function renderMonitoring() {
       const container = el("monitoringDevices");
       const devices = state.devices || [];
       const readings = telemetryDeviceMap();
-      const onlineCount = devices.filter((device) => readings.get(device.name)?.status === "online").length;
+      const statusCounts = countRuntimeStatuses(devices, readings);
 
-      el("monitoringSummary").textContent = "Online " + onlineCount + " / " + devices.length;
-      el("monitoringUpdated").textContent = "Last refresh: " + formatDateTime(telemetry.time);
+      el("monitoringSummary").textContent =
+        "Tốt " + statusCounts.good + ", Cảnh báo " + statusCounts.warning + ", Lỗi " + statusCounts.bad + ", Mất liên lạc " + statusCounts.loss;
+      el("monitoringUpdated").textContent = "Cập nhật lần cuối: " + formatDateTime(telemetry.time);
 
       if (!devices.length) {
-        container.innerHTML = '<div class="empty-state">No devices configured</div>';
+        container.innerHTML = '<div class="empty-state">Chưa cấu hình thiết bị</div>';
         return;
       }
 
-      container.innerHTML = devices.map((device) => {
-        const reading = readings.get(device.name);
-        const status = runtimeStatus(reading);
-        const measurements = reading?.measurements || {};
-        const rows = Object.entries(measurements).slice(0, 8).map(([key, value]) => \`
-          <tr><td>\${escapeHtml(key)}</td><td>\${escapeHtml(formatMeasurement(value))}</td></tr>
-        \`).join("") || '<tr><td colspan="2">No latest measurements</td></tr>';
+      container.innerHTML = devices.map((device) => renderMonitoringDevice(device, readings.get(device.name))).join("");
+    }
 
-        return \`
-          <article class="monitor-card">
-            <div class="monitor-head">
-              <div class="monitor-title">
-                <strong>\${escapeHtml(device.name || "-")}</strong>
-                <span>\${escapeHtml(deviceSubtitle(device))}</span>
-              </div>
-              <span class="badge \${escapeHtml(status.className)}">\${escapeHtml(status.label)}</span>
+    function renderMonitoringDevice(device, reading) {
+      const status = runtimeStatus(reading, device);
+      const model = [device.manufacturer, device.model].filter(Boolean).join(" - ") || device.type || "modbus";
+      const registers = (device.registers || []).filter(isPollableRegister);
+      const metricItems = monitoringMetricItems(device, reading, status);
+      const rows = registers.length
+        ? registers.map((register) => renderMeasurementRow(register, reading)).join("")
+        : '<tr><td colspan="4">Chưa cấu hình thanh ghi</td></tr>';
+      const error = reading?.lastError?.message
+        ? \`<div class="monitor-error">\${escapeHtml(reading.lastError.message)}</div>\`
+        : "";
+
+      return \`
+        <article class="monitor-card">
+          <div class="monitor-head">
+            <div class="monitor-title">
+              <strong>\${escapeHtml(device.name || "-")}</strong>
+              <span>\${escapeHtml(model)}</span>
             </div>
-            <div class="monitor-body">
-              <table class="monitor-table"><tbody>\${rows}</tbody></table>
-            </div>
-          </article>
-        \`;
-      }).join("");
+            <span class="monitor-status \${escapeHtml(status.badgeClass)}">\${escapeHtml(status.label)}</span>
+          </div>
+          <div class="monitor-meta">
+            <div><span>Cổng</span><strong>\${escapeHtml(device.port || reading?.port || "-")}</strong></div>
+            <div><span>Slave ID</span><strong>\${escapeHtml(device.slaveId ?? reading?.slaveId ?? "-")}</strong></div>
+            <div><span>Cập nhật</span><strong>\${escapeHtml(formatDateTime(reading?.collectedAt || reading?.updatedAt))}</strong></div>
+          </div>
+          <div class="monitor-key-grid">
+            \${metricItems.map(renderMonitoringMetricItem).join("")}
+          </div>
+          <table class="monitor-table">
+            <thead>
+              <tr>
+                <th>Thông số</th>
+                <th>Giá trị</th>
+                <th>Đơn vị</th>
+                <th>Raw</th>
+              </tr>
+            </thead>
+            <tbody>\${rows}</tbody>
+          </table>
+          \${error}
+        </article>
+      \`;
+    }
+
+    function isPollableRegister(register) {
+      return register?.poll !== false && register?.access !== "wo";
+    }
+
+    function monitoringMetricItems(device, reading, status) {
+      const activePower = findMonitoringMetricValue(device, reading, monitoringMetricNames.activePower, isActivePowerMetric);
+      const ratedPower = findMonitoringMetricValue(device, reading, monitoringMetricNames.ratedPower, isRatedPowerMetric);
+      const dailyEnergy = findMonitoringMetricValue(device, reading, monitoringMetricNames.dailyEnergy, isDailyEnergyMetric);
+      const reactivePower = findMonitoringMetricValue(device, reading, monitoringMetricNames.reactivePower, isReactivePowerMetric);
+      const deviceStatus = findMonitoringMetricValue(device, reading, monitoringMetricNames.deviceStatus, isDeviceStatusMetric);
+
+      return [
+        { label: "Model", value: deviceModelText(device, reading) },
+        { label: "Công suất / định mức", value: formatMonitoringMetricPair(activePower, ratedPower), className: "power" },
+        { label: "Sản lượng ngày", value: formatMonitoringMetricValue(dailyEnergy) },
+        { label: "Công suất phản kháng", value: formatMonitoringMetricValue(reactivePower) },
+        { label: "Trạng thái", value: deviceStatus ? formatMonitoringMetricValue(deviceStatus) : status.label, className: "status" },
+      ];
+    }
+
+    function renderMonitoringMetricItem(item) {
+      const className = item.className ? " " + item.className : "";
+
+      return \`
+        <div class="monitor-key-item\${escapeHtml(className)}">
+          <span>\${escapeHtml(item.label)}</span>
+          <strong>\${escapeHtml(item.value || "-")}</strong>
+        </div>
+      \`;
+    }
+
+    function renderMeasurementRow(register, reading) {
+      const measurements = reading?.measurements || {};
+      const units = reading?.units || {};
+      const raw = reading?.raw || {};
+      const hasValue = Object.prototype.hasOwnProperty.call(measurements, register.name);
+      const rawValue = Array.isArray(raw[register.name]) ? raw[register.name].join(", ") : "-";
+
+      return \`
+        <tr>
+          <td>\${escapeHtml(register.name || "-")}</td>
+          <td class="monitor-value">\${escapeHtml(hasValue ? formatMeasurement(measurements[register.name]) : "-")}</td>
+          <td class="monitor-unit">\${escapeHtml(units[register.name] || register.unit || "-")}</td>
+          <td class="monitor-raw">\${escapeHtml(rawValue)}</td>
+        </tr>
+      \`;
+    }
+
+    function deviceModelText(device, reading) {
+      const configuredModel = [device.manufacturer, device.model].filter(Boolean).join(" - ");
+      if (configuredModel) return configuredModel;
+
+      const measuredModel = findMonitoringMetricValue(device, reading, monitoringMetricNames.model, isModelMetric);
+      if (measuredModel) return formatMonitoringMetricValue(measuredModel);
+
+      return device.type || "modbus";
+    }
+
+    function findMonitoringMetricValue(device, reading, exactNames, matchesName) {
+      const registers = device.registers || [];
+      const measurements = reading?.measurements || {};
+      const units = reading?.units || {};
+
+      for (const name of exactNames) {
+        if (Object.prototype.hasOwnProperty.call(measurements, name)) {
+          return { name, value: measurements[name], unit: units[name] || inferredUnit(name) };
+        }
+      }
+
+      for (const register of registers) {
+        const name = register.name || "";
+        if (!matchesName(name)) continue;
+        if (Object.prototype.hasOwnProperty.call(measurements, name)) {
+          return { name, value: measurements[name], unit: units[name] || register.unit || inferredUnit(name) };
+        }
+      }
+
+      for (const [name, value] of Object.entries(measurements)) {
+        if (matchesName(name)) return { name, value, unit: units[name] || inferredUnit(name) };
+      }
+
+      return null;
+    }
+
+    function formatMonitoringMetricPair(current, rated) {
+      if (!current && !rated) return "-";
+      if (!current) return "- / " + formatMonitoringMetricValue(rated);
+      if (!rated) return formatMonitoringMetricValue(current);
+
+      return formatMonitoringMetricValue(current) + " / " + formatMonitoringMetricValue(rated);
+    }
+
+    function formatMonitoringMetricValue(metric) {
+      if (!metric) return "-";
+      const value = Number(metric.value);
+      if (!Number.isFinite(value)) return String(metric.value ?? "-");
+
+      const unit = metric.unit || inferredUnit(metric.name);
+      const lowerUnit = unit.toLowerCase();
+      if (lowerUnit === "w" && Math.abs(value) >= 1000) return formatCompactNumber(value / 1000) + " kW";
+      if (lowerUnit === "var" && Math.abs(value) >= 1000) return formatCompactNumber(value / 1000) + " kVAr";
+      if (lowerUnit === "wh" && Math.abs(value) >= 1000) return formatCompactNumber(value / 1000) + " kWh";
+      return formatCompactNumber(value) + (unit ? " " + unit : "");
+    }
+
+    function isModelMetric(name) {
+      const key = normalizedName(name);
+      return key.includes("model");
+    }
+
+    function isActivePowerMetric(name) {
+      const key = normalizedName(name);
+      return key.includes("activepower") || key.includes("acpower") || key.includes("gridportpower") || key.includes("outputpower");
+    }
+
+    function isRatedPowerMetric(name) {
+      const key = normalizedName(name);
+      return key.includes("ratedpower") || key.includes("nominalpower") || key.includes("maxactivepower") || key.includes("limitactivepowerrated");
+    }
+
+    function isDailyEnergyMetric(name) {
+      const key = normalizedName(name);
+      return key.includes("daily") && (key.includes("energy") || key.includes("yield"));
+    }
+
+    function isReactivePowerMetric(name) {
+      const key = normalizedName(name);
+      return key.includes("reactivepower") || key.includes("qout");
+    }
+
+    function isDeviceStatusMetric(name) {
+      const key = normalizedName(name);
+      return key.includes("status") || key.includes("running");
     }
 
     function renderInverterControl() {
@@ -1632,7 +4150,7 @@ export function renderDashboardPage({ publicUrl }) {
       const disabled = !devices.length;
 
       if (disabled) {
-        deviceSelect.innerHTML = '<option value="">No inverter device</option>';
+        deviceSelect.innerHTML = '<option value="">Chưa có thiết bị inverter</option>';
         selectedControlDevice = "";
       } else {
         if (!devices.some((device) => device.name === selectedControlDevice)) {
@@ -1670,9 +4188,9 @@ export function renderDashboardPage({ publicUrl }) {
     }
 
     function renderCommandHistory() {
-      const body = el("commandHistoryBody");
+      const body = el("controlHistoryBody");
       if (!commands.length) {
-        body.innerHTML = '<tr><td colspan="5">No commands yet</td></tr>';
+        body.innerHTML = '<tr><td colspan="5">Chưa có lệnh.</td></tr>';
         return;
       }
 
@@ -1687,23 +4205,110 @@ export function renderDashboardPage({ publicUrl }) {
       \`).join("");
     }
 
+    function renderRemoteStorage() {
+      const body = el("storageSyncBody");
+      if (!body || !state) return;
+
+      const queue = state.storage?.queue || {};
+      const mongo = state.mongo || {};
+      const remoteConfig = state.remoteConfig || {};
+      const records = homeTelemetry.get(selectedId) || [];
+      const pending = homeGatewayMetrics(records).queueRecords;
+      setText("queueRecords", pending === null ? "-" : formatCompactNumber(pending));
+      setText("queueBytes", queue.maxBytes ? formatBytes(queue.maxBytes) : "-");
+      setText("runtimeCloudMode", mongo.enabled ? "MongoDB" : "HTTP");
+      setText("runtimeIec104", state.iec104?.enabled ? ((state.iec104.mode || "server") + " / enabled") : "Tắt");
+      const rows = [
+        ["Đường dẫn queue", state.storage?.queuePath || "-", "File queue local trên IPC"],
+        ["Đường dẫn điện năng D-1", state.storage?.stationEnergyPath || "-", "File chốt điện năng hôm qua cho IEC104 EVN"],
+        ["Max records", queue.maxRecords || "-", "Giới hạn số bản ghi queue"],
+        ["Max bytes", queue.maxBytes ? formatBytes(queue.maxBytes) : "-", "Giới hạn dung lượng queue"],
+        ["Retention", queue.retentionMs ? formatMs(queue.retentionMs) : "-", "Thời gian giữ dữ liệu local"],
+        ["Pending records", pending === null ? "-" : formatCompactNumber(pending), "Metric do gateway gửi lên nếu có"],
+        ["Remote config", remoteConfig.enabled ? "Enable" : "Disable", hostFromUrl(remoteConfig.url || "") || "-"],
+        ["Mongo sync", mongo.enabled ? "Enable" : "Disable", mongo.dbName || mongo.dbNameEnv || "-"],
+        ["Runtime IEC104", state.iec104?.enabled ? ((state.iec104.mode || "server") + " / enabled") : "Tắt", "Trạng thái endpoint IEC104"],
+      ];
+
+      body.innerHTML = rows.map((row) => '<tr>' +
+        '<td>' + escapeHtml(row[0]) + '</td>' +
+        '<td>' + escapeHtml(row[1]) + '</td>' +
+        '<td>' + escapeHtml(row[2]) + '</td>' +
+      '</tr>').join("");
+    }
+
+    function renderRemoteEvents() {
+      const body = el("logsEventsBody");
+      if (!body) return;
+
+      const gateway = selectedGateway || {};
+      const rows = [
+        {
+          time: gateway.lastSeenAt,
+          type: "Heartbeat",
+          text: statusLabel(gateway.status || "offline"),
+          status: gateway.status || "offline",
+        },
+      ];
+
+      if (gateway.lastConfigStatus) {
+        rows.push({
+          time: gateway.updatedAt,
+          type: "Config",
+          text: gateway.lastConfigMessage || ("Config " + gateway.lastConfigStatus),
+          status: gateway.lastConfigStatus,
+        });
+      }
+
+      for (const command of commands.slice(0, 25)) {
+        rows.push({
+          time: command.createdAt,
+          type: "Command",
+          text: actionLabel(command.action) + " | " + commandDetail(command),
+          status: command.status || "queued",
+        });
+      }
+
+      rows.sort((a, b) => Date.parse(b.time || 0) - Date.parse(a.time || 0));
+      body.innerHTML = rows.map((row) => '<tr>' +
+        '<td>' + escapeHtml(formatDateTime(row.time)) + '</td>' +
+        '<td>' + escapeHtml(row.type) + '</td>' +
+        '<td>' + escapeHtml(row.text || "-") + '</td>' +
+        '<td><span class="badge ' + escapeHtml(row.status || "waiting") + '">' + escapeHtml(row.status || "-") + '</span></td>' +
+      '</tr>').join("") || '<tr><td colspan="4" class="empty-state">Chưa có sự kiện.</td></tr>';
+    }
+
+    function renderRemoteSystem() {
+      if (!state) return;
+      const setText = (id, value) => {
+        const node = el(id);
+        if (node) node.textContent = value;
+      };
+
+      setText("systemGatewayId", selectedId || state.gateway?.id || "-");
+      setText("systemDeviceCount", String((state.devices || []).length));
+      setText("systemPortCount", String(Object.keys(state.ports || {}).length));
+      setText("systemTemplateCount", String(templates.length));
+    }
+
     async function refreshCommands() {
       if (!selectedId) return;
       const payload = await requestJson("/api/gateways/" + encodeURIComponent(selectedId) + "/commands");
       commands = payload.commands || [];
       renderCommandHistory();
-      setStatus("Command history refreshed", "ok");
+      renderRemoteEvents();
+      setStatus("Đã làm mới lịch sử lệnh", "ok");
     }
 
     async function queueInverterControl(action, extra = {}) {
       if (!selectedId) return;
       const deviceName = el("controlDeviceName").value;
       if (!deviceName) {
-        setStatus("No inverter device selected", "error");
+        setStatus("Chưa chọn thiết bị inverter", "error");
         return;
       }
 
-      setStatus("Queueing " + actionLabel(action) + "...");
+      setStatus("Đang queue " + actionLabel(action) + "...");
       const payload = await requestJson("/api/gateways/" + encodeURIComponent(selectedId) + "/control", {
         method: "POST",
         body: JSON.stringify({
@@ -1715,7 +4320,7 @@ export function renderDashboardPage({ publicUrl }) {
 
       commands = [payload.command, ...commands.filter((command) => command.id !== payload.command.id)].slice(0, 100);
       renderCommandHistory();
-      setStatus("Queued " + actionLabel(payload.command.action), "ok");
+      setStatus("Đã queue " + actionLabel(payload.command.action), "ok");
     }
 
     function submitPowerLimitForm() {
@@ -1724,15 +4329,15 @@ export function renderDashboardPage({ publicUrl }) {
       const durationMinutes = Number(el("powerLimitDurationMinutes").value);
 
       if (!["percent", "kw", "watts"].includes(mode)) {
-        setStatus("Invalid limit type", "error");
+        setStatus("Kiểu giới hạn không hợp lệ", "error");
         return;
       }
       if (!Number.isFinite(value) || value < 0) {
-        setStatus("Limit value must be zero or higher", "error");
+        setStatus("Giá trị giới hạn phải lớn hơn hoặc bằng 0", "error");
         return;
       }
       if (!Number.isFinite(durationMinutes) || durationMinutes <= 0 || durationMinutes > 1440) {
-        setStatus("Duration must be between 1 and 1440 minutes", "error");
+        setStatus("Thời lượng phải từ 1 đến 1440 phút", "error");
         return;
       }
 
@@ -1744,11 +4349,11 @@ export function renderDashboardPage({ publicUrl }) {
 
     function actionLabel(action) {
       const labels = {
-        start: "Start",
-        stop: "Stop",
-        reboot: "Reboot",
-        limit_power: "Limit Power",
-        clear_power_limit: "Clear Limit",
+        start: "Khởi động",
+        stop: "Dừng",
+        reboot: "Khởi động lại",
+        limit_power: "Giới hạn công suất",
+        clear_power_limit: "Xóa giới hạn",
       };
       return labels[action] || action || "-";
     }
@@ -1767,7 +4372,7 @@ export function renderDashboardPage({ publicUrl }) {
     }
 
     function renderTemplatePicker() {
-      el("newDeviceTemplate").innerHTML = '<option value="">Blank device</option>' +
+      el("newDeviceTemplate").innerHTML = '<option value="">Thiết bị trống</option>' +
         templates.map((template) => option(template.id, template.id, template.label)).join("");
     }
 
@@ -1776,7 +4381,7 @@ export function renderDashboardPage({ publicUrl }) {
       container.innerHTML = "";
 
       if (!templates.length) {
-        container.innerHTML = '<div class="empty-state">No templates in library</div>';
+        container.innerHTML = '<div class="empty-state">Chưa có mẫu thiết bị</div>';
         return;
       }
 
@@ -1788,26 +4393,26 @@ export function renderDashboardPage({ publicUrl }) {
           '<div class="device-head">' +
             '<div class="device-title">' +
               '<strong>' + escapeHtml(template.label || template.id || "Template " + (index + 1)) + '</strong>' +
-              '<p>' + escapeHtml(template.id || "-") + ' | ' + (template.registers || []).length + ' registers</p>' +
+              '<p>' + escapeHtml(template.id || "-") + ' | ' + (template.registers || []).length + ' thanh ghi</p>' +
             '</div>' +
-            '<button type="button" class="danger" data-remove-template="' + index + '">Remove Template</button>' +
+            '<button type="button" class="danger" data-remove-template="' + index + '">Xóa mẫu</button>' +
           '</div>' +
           '<div class="grid">' +
             '<label>ID <input data-template="' + index + '" data-field="id" value="' + escapeHtml(template.id || "") + '" autocomplete="off"></label>' +
-            '<label>Label <input data-template="' + index + '" data-field="label" value="' + escapeHtml(template.label || "") + '" autocomplete="off"></label>' +
-            '<label>Manufacturer <input data-template="' + index + '" data-field="manufacturer" value="' + escapeHtml(template.manufacturer || "") + '"></label>' +
+            '<label>Nhãn <input data-template="' + index + '" data-field="label" value="' + escapeHtml(template.label || "") + '" autocomplete="off"></label>' +
+            '<label>Hãng <input data-template="' + index + '" data-field="manufacturer" value="' + escapeHtml(template.manufacturer || "") + '"></label>' +
             '<label>Model <input data-template="' + index + '" data-field="model" value="' + escapeHtml(template.model || "") + '"></label>' +
-            '<label>Category <input data-template="' + index + '" data-field="category" value="' + escapeHtml(template.category || "") + '"></label>' +
-            '<label>Type <select data-template="' + index + '" data-field="type">' + templateTypeOptionsHtml(template.type, template.category) + '</select></label>' +
-            '<label>Protocol <input data-template="' + index + '" data-field="protocol" value="' + escapeHtml(template.protocol || "modbus-rtu") + '"></label>' +
-            '<label>Poll ms <input data-template="' + index + '" data-field="pollIntervalMs" type="number" min="500" value="' + (template.pollIntervalMs || 5000) + '"></label>' +
-            '<label class="wide">Notes <input data-template="' + index + '" data-field="notes" value="' + escapeHtml(template.notes || "") + '"></label>' +
+            '<label>Nhóm <input data-template="' + index + '" data-field="category" value="' + escapeHtml(template.category || "") + '"></label>' +
+            '<label>Kiểu <select data-template="' + index + '" data-field="type">' + templateTypeOptionsHtml(template.type, template.category) + '</select></label>' +
+            '<label>Giao thức <input data-template="' + index + '" data-field="protocol" value="' + escapeHtml(template.protocol || "modbus-rtu") + '"></label>' +
+            '<label>Chu kỳ poll ms <input data-template="' + index + '" data-field="pollIntervalMs" type="number" min="500" value="' + (template.pollIntervalMs || 5000) + '"></label>' +
+            '<label class="wide">Ghi chú <input data-template="' + index + '" data-field="notes" value="' + escapeHtml(template.notes || "") + '"></label>' +
           '</div>' +
           '<div class="registers-head">' +
-            '<span class="pill">' + (template.registers || []).length + ' registers</span>' +
+            '<span class="pill">' + (template.registers || []).length + ' thanh ghi</span>' +
             '<div class="register-actions">' +
-              '<button class="subtle" type="button" data-toggle-template-registers="' + index + '">' + (registersExpanded ? "Hide Registers" : "Edit Registers") + '</button>' +
-              (registersExpanded ? '<button class="subtle" type="button" data-add-template-register="' + index + '">Add Register</button>' : "") +
+              '<button class="subtle" type="button" data-toggle-template-registers="' + index + '">' + (registersExpanded ? "Ẩn thanh ghi" : "Sửa thanh ghi") + '</button>' +
+              (registersExpanded ? '<button class="subtle" type="button" data-add-template-register="' + index + '">Thêm thanh ghi</button>' : "") +
             '</div>' +
           '</div>' +
           (registersExpanded ? renderTemplateRegisterTable(index, template.registers || []) : renderRegisterPreview(template.registers || []));
@@ -1820,17 +4425,18 @@ export function renderDashboardPage({ publicUrl }) {
         '<table>' +
           '<thead>' +
             '<tr>' +
-              '<th>Name</th>' +
-              '<th>Function</th>' +
-              '<th>Access</th>' +
-              '<th>Poll</th>' +
-              '<th>Address</th>' +
-              '<th>Length</th>' +
-              '<th>Type</th>' +
-              '<th>Word</th>' +
-              '<th>Scale</th>' +
-              '<th>Offset</th>' +
-              '<th>Unit</th>' +
+              '<th>Tên</th>' +
+              '<th>Hàm</th>' +
+              '<th>Quyền</th>' +
+              '<th>Đọc</th>' +
+              '<th>Địa chỉ</th>' +
+              '<th>Độ dài</th>' +
+              '<th>Kiểu</th>' +
+              '<th>Thứ tự word</th>' +
+              '<th>Hệ số</th>' +
+              '<th>Độ lệch</th>' +
+              '<th>Đơn vị</th>' +
+              '<th>Vai trò EVN</th>' +
               '<th></th>' +
             '</tr>' +
           '</thead>' +
@@ -1848,11 +4454,12 @@ export function renderDashboardPage({ publicUrl }) {
         '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="address" type="number" min="0" value="' + (register.address || 0) + '"></td>' +
         '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="length" type="number" min="1" value="' + (register.length || 1) + '"></td>' +
         '<td><select data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="type">' + ["uint16", "int16", "uint32", "int32", "uint64", "int64", "float32", "float64", "string", "bytes", "bitfield16", "bitfield32"].map((item) => option(item, register.type || "uint16")).join("") + '</select></td>' +
-        '<td><select data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="wordOrder">' + ["", "be", "le", "high-low", "low-high"].map((item) => option(item, register.wordOrder || "", item || "default")).join("") + '</select></td>' +
+        '<td><select data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="wordOrder">' + ["", "be", "le", "high-low", "low-high"].map((item) => option(item, register.wordOrder || "", item || "mặc định")).join("") + '</select></td>' +
         '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="scale" type="number" step="any" value="' + (register.scale ?? 1) + '"></td>' +
         '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="offset" type="number" step="any" value="' + (register.offset ?? "") + '"></td>' +
         '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="unit" value="' + escapeHtml(register.unit || "") + '"></td>' +
-        '<td><button type="button" class="danger" data-remove-template-register="' + templateIndex + ':' + registerIndex + '">Remove</button></td>' +
+        '<td><select data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="evnRole">' + evnRoleOptions.map((item) => option(item.value, register.evnRole || "", item.label)).join("") + '</select></td>' +
+        '<td><button type="button" class="danger" data-remove-template-register="' + templateIndex + ':' + registerIndex + '">Xóa</button></td>' +
       '</tr>';
     }
 
@@ -1878,6 +4485,48 @@ export function renderDashboardPage({ publicUrl }) {
       return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
     }
 
+    function renderStations() {
+      const body = el("stationsBody");
+      if (!body) return;
+
+      const stations = state.stations || [];
+      if (!stations.length) {
+        body.innerHTML = '<tr><td colspan="6" class="empty-state">Chưa cấu hình trạm</td></tr>';
+        return;
+      }
+
+      body.innerHTML = stations.map((station, index) => \`
+        <tr data-station-row="\${index}">
+          \${renderStationRow(index, station)}
+        </tr>
+      \`).join("");
+    }
+
+    function renderStationRow(index, station) {
+      const devices = state.devices || [];
+      const selectedNames = new Set(stationDeviceNamesForUi(station));
+      const size = Math.min(Math.max(devices.length, 2), 6);
+      const deviceOptions = devices.length
+        ? devices.map((device) => {
+          const name = device.name || "";
+          return \`<option value="\${escapeHtml(name)}" \${selectedNames.has(name) ? "selected" : ""}>\${escapeHtml(name || "Thiết bị chưa đặt tên")}</option>\`;
+        }).join("")
+        : '<option value="" disabled>Chưa cấu hình thiết bị</option>';
+
+      return \`
+        <td><input data-station="\${index}" data-field="id" value="\${escapeHtml(station.id || "")}" placeholder="station_1"></td>
+        <td><input data-station="\${index}" data-field="name" value="\${escapeHtml(station.name || "")}" placeholder="Tên trạm"></td>
+        <td><input data-station="\${index}" data-field="capacityKw" type="number" min="0" step="0.1" value="\${station.capacityKw ?? ""}"></td>
+        <td>
+          <select data-station="\${index}" data-field="devices" multiple size="\${size}">
+            \${deviceOptions}
+          </select>
+        </td>
+        <td><input data-station="\${index}" data-field="evnEnabled" type="checkbox" \${station.evnProfile?.enabled ? "checked" : ""} title="Bật profile trạm EVN"></td>
+        <td><button type="button" data-remove-station="\${index}" class="danger">Xóa</button></td>
+      \`;
+    }
+
     function renderPorts() {
       const body = el("portsBody");
       body.innerHTML = "";
@@ -1892,7 +4541,7 @@ export function renderDashboardPage({ publicUrl }) {
           <td><input data-port="\${escapeHtml(name)}" data-field="dataBits" type="number" value="\${port.dataBits || 8}"></td>
           <td><input data-port="\${escapeHtml(name)}" data-field="stopBits" type="number" value="\${port.stopBits || 1}"></td>
           <td><input data-port="\${escapeHtml(name)}" data-field="timeoutMs" type="number" value="\${port.timeoutMs || 1000}"></td>
-          <td><button type="button" data-remove-port="\${escapeHtml(name)}" class="danger">Remove</button></td>
+          <td><button type="button" data-remove-port="\${escapeHtml(name)}" class="danger">Xóa</button></td>
         \`;
         body.appendChild(row);
       }
@@ -1903,7 +4552,7 @@ export function renderDashboardPage({ publicUrl }) {
       container.innerHTML = "";
 
       if (!(state.devices || []).length) {
-        container.innerHTML = '<div class="empty-state">No devices configured</div>';
+        container.innerHTML = '<div class="empty-state">Chưa cấu hình thiết bị</div>';
         return;
       }
 
@@ -1911,6 +4560,7 @@ export function renderDashboardPage({ publicUrl }) {
         const ports = Object.keys(state.ports || {});
         const protocolMode = device.protocol || "modbus-rtu";
         const registersExpanded = expandedDeviceRegisters.has(String(index));
+        const stationOptions = (state.stations || []).map((station) => option(station.id || "", device.stationId || "", station.name || station.id || "Trạm")).join("");
         const section = document.createElement("div");
         section.className = "device";
         section.dataset.protocolMode = protocolMode;
@@ -1920,36 +4570,43 @@ export function renderDashboardPage({ publicUrl }) {
               <strong>\${escapeHtml(device.name || "device_" + (index + 1))}</strong>
               <p>\${escapeHtml(deviceSubtitle(device))}</p>
             </div>
-            <button type="button" class="danger" data-remove-device="\${index}">Remove Device</button>
+            <button type="button" class="danger" data-remove-device="\${index}">Xóa thiết bị</button>
           </div>
           <div class="grid">
-            <label class="wide">Template
+            <label class="wide">Mẫu
               <div class="inline-field">
                 <select data-device="\${index}" data-field="templateId">
-                  <option value="">Custom device</option>
+                  <option value="">Thiết bị tùy chỉnh</option>
                   \${templates.map((template) => option(template.id, selectedTemplateId(device), template.label)).join("")}
                 </select>
-                <button class="subtle" type="button" data-apply-template="\${index}">Apply</button>
+                <button class="subtle" type="button" data-apply-template="\${index}">Áp dụng</button>
               </div>
             </label>
-            <label>Name <input data-device="\${index}" data-field="name" value="\${escapeHtml(device.name || "")}"></label>
-            <label>Type <input data-device="\${index}" data-field="type" value="\${escapeHtml(device.type || "")}"></label>
-            <label>Manufacturer <input data-device="\${index}" data-field="manufacturer" value="\${escapeHtml(device.manufacturer || "")}"></label>
+            <label>Tên <input data-device="\${index}" data-field="name" value="\${escapeHtml(device.name || "")}"></label>
+            <label>Kiểu <input data-device="\${index}" data-field="type" value="\${escapeHtml(device.type || "")}"></label>
+            <label>Trạm
+              <select data-device="\${index}" data-field="stationId">
+                <option value="">Không gán trạm</option>
+                \${stationOptions}
+              </select>
+            </label>
+            <label>Công suất kW <input data-device="\${index}" data-field="capacityKw" type="number" min="0" step="0.1" value="\${device.capacityKw ?? ""}"></label>
+            <label>Hãng <input data-device="\${index}" data-field="manufacturer" value="\${escapeHtml(device.manufacturer || "")}"></label>
             <label>Model <input data-device="\${index}" data-field="model" value="\${escapeHtml(device.model || "")}"></label>
-            <label>Category <input data-device="\${index}" data-field="category" value="\${escapeHtml(device.category || "")}"></label>
-            <label>Protocol <select data-device="\${index}" data-field="protocol">\${["modbus-rtu", "modbus-tcp"].map((name) => option(name, device.protocol || "modbus-rtu")).join("")}</select></label>
-            <label class="rtu-field">Port <select data-device="\${index}" data-field="port"><option value="">None</option>\${ports.map((name) => option(name, device.port)).join("")}</select></label>
+            <label>Nhóm <input data-device="\${index}" data-field="category" value="\${escapeHtml(device.category || "")}"></label>
+            <label>Giao thức <select data-device="\${index}" data-field="protocol">\${["modbus-rtu", "modbus-tcp"].map((name) => option(name, device.protocol || "modbus-rtu")).join("")}</select></label>
+            <label class="rtu-field">Cổng <select data-device="\${index}" data-field="port"><option value="">Không chọn</option>\${ports.map((name) => option(name, device.port)).join("")}</select></label>
             <label class="rtu-field">Slave ID <input data-device="\${index}" data-field="slaveId" type="number" min="1" max="247" value="\${device.slaveId || 1}"></label>
-            <label class="tcp-field">Host <input data-device="\${index}" data-field="host" value="\${escapeHtml(device.host || "")}" placeholder="192.168.1.50 or hostname"></label>
-            <label class="tcp-field">TCP Port <input data-device="\${index}" data-field="tcpPort" type="number" min="1" max="65535" value="\${device.tcpPort || 502}"></label>
+            <label class="tcp-field">Host TCP <input data-device="\${index}" data-field="host" value="\${escapeHtml(device.host || "")}" placeholder="192.168.1.50 hoặc hostname"></label>
+            <label class="tcp-field">Cổng TCP <input data-device="\${index}" data-field="tcpPort" type="number" min="1" max="65535" value="\${device.tcpPort || 502}"></label>
             <label class="tcp-field">Unit ID <input data-device="\${index}" data-field="unitId" type="number" min="1" max="247" value="\${device.unitId || device.slaveId || 3}"></label>
-            <label>Poll ms <input data-device="\${index}" data-field="pollIntervalMs" type="number" min="500" value="\${device.pollIntervalMs || 5000}"></label>
+            <label>Chu kỳ poll ms <input data-device="\${index}" data-field="pollIntervalMs" type="number" min="500" value="\${device.pollIntervalMs || 5000}"></label>
           </div>
           <div class="registers-head">
-            <span class="pill">\${(device.registers || []).length} registers</span>
+            <span class="pill">\${(device.registers || []).length} thanh ghi</span>
             <div class="register-actions">
-              <button class="subtle" type="button" data-toggle-device-registers="\${index}">\${registersExpanded ? "Hide Registers" : "Edit Registers"}</button>
-              \${registersExpanded ? \`<button class="subtle" type="button" data-add-register="\${index}">Add Register</button>\` : ""}
+              <button class="subtle" type="button" data-toggle-device-registers="\${index}">\${registersExpanded ? "Ẩn thanh ghi" : "Sửa thanh ghi"}</button>
+              \${registersExpanded ? \`<button class="subtle" type="button" data-add-register="\${index}">Thêm thanh ghi</button>\` : ""}
             </div>
           </div>
           \${registersExpanded ? renderRegisterTable(index, device.registers || []) : renderRegisterPreview(device.registers || [])}
@@ -1964,15 +4621,16 @@ export function renderDashboardPage({ publicUrl }) {
           <table>
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Function</th>
-                <th>Access</th>
-                <th>Poll</th>
-                <th>Address</th>
-                <th>Length</th>
-                <th>Type</th>
-                <th>Scale</th>
-                <th>Unit</th>
+                <th>Tên</th>
+                <th>Hàm</th>
+                <th>Quyền</th>
+                <th>Đọc</th>
+                <th>Địa chỉ</th>
+                <th>Độ dài</th>
+                <th>Kiểu</th>
+                <th>Hệ số</th>
+                <th>Đơn vị</th>
+                <th>Vai trò EVN</th>
                 <th></th>
               </tr>
             </thead>
@@ -1994,13 +4652,14 @@ export function renderDashboardPage({ publicUrl }) {
           <td><select data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="type">\${["uint16", "int16", "uint32", "int32", "uint64", "int64", "float32", "float64", "string", "bytes", "bitfield16", "bitfield32"].map((item) => option(item, register.type || "uint16")).join("")}</select></td>
           <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="scale" type="number" step="any" value="\${register.scale ?? 1}"></td>
           <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="unit" value="\${escapeHtml(register.unit || "")}"></td>
-          <td><button type="button" class="danger" data-remove-register="\${deviceIndex}:\${registerIndex}">Remove</button></td>
+          <td><select data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="evnRole">\${evnRoleOptions.map((item) => option(item.value, register.evnRole || "", item.label)).join("")}</select></td>
+          <td><button type="button" class="danger" data-remove-register="\${deviceIndex}:\${registerIndex}">Xóa</button></td>
         </tr>
       \`;
     }
 
     function renderRegisterPreview(registers) {
-      if (!registers.length) return '<div class="register-preview"><span class="register-chip">No registers</span></div>';
+      if (!registers.length) return '<div class="register-preview"><span class="register-chip">Chưa có thanh ghi</span></div>';
       const visible = registers.slice(0, 8);
       const remaining = registers.length - visible.length;
       return \`
@@ -2009,6 +4668,280 @@ export function renderDashboardPage({ publicUrl }) {
           \${remaining > 0 ? \`<span class="register-chip">+\${remaining} more</span>\` : ""}
         </div>
       \`;
+    }
+
+    function renderIec104() {
+      renderEvnStationPicker();
+      renderIec104Points();
+    }
+
+    function renderEvnStationPicker() {
+      const picker = el("iec104EvnStation");
+      const stations = state.stations || [];
+      const generateButton = el("generateEvnIec104Btn");
+
+      if (!picker) return;
+
+      if (!stations.length) {
+        picker.innerHTML = '<option value="">Chưa có trạm</option>';
+        picker.disabled = true;
+        if (generateButton) generateButton.disabled = true;
+        return;
+      }
+
+      picker.disabled = false;
+      if (generateButton) generateButton.disabled = false;
+      const selected = picker.value || stations.find((station) => station.evnProfile?.enabled)?.id || stations[0].id || "";
+      picker.innerHTML = stations.map((station) => option(station.id || "", selected, station.name || station.id || "Trạm")).join("");
+    }
+
+    function renderIec104Points() {
+      const body = el("iec104PointsBody");
+      const points = state.iec104?.points || [];
+      body.innerHTML = "";
+
+      if (!points.length) {
+        const emptyText = (state.stations || []).length
+          ? "Chưa có mapping EVN. Chọn trạm rồi bấm Cập nhật mapping EVN."
+          : "Chưa có trạm EVN. Tạo trạm trước khi cập nhật mapping.";
+        body.innerHTML = '<tr><td colspan="7" class="empty-state">' + escapeHtml(emptyText) + '</td></tr>';
+        return;
+      }
+
+      points.forEach((point, index) => {
+        const row = document.createElement("tr");
+        row.dataset.iec104PointRow = String(index);
+        row.innerHTML = renderIec104PointRow(index, point);
+        body.appendChild(row);
+      });
+    }
+
+    function renderIec104PointRow(index, point) {
+      const source = point.source || (point.station || point.stationId ? "station" : "device");
+      const target = source === "station" ? (point.station || point.stationId || "") : (point.device || "");
+      const type = point.type || "float";
+
+      return '' +
+        '<td><input data-field="ioa" type="hidden" value="' + escapeHtml(point.ioa || "") + '"><strong>' + escapeHtml(point.ioa || "") + '</strong></td>' +
+        '<td><input data-field="name" type="hidden" value="' + escapeHtml(point.name || "") + '">' + escapeHtml(point.name || "-") + '</td>' +
+        '<td><input data-field="source" type="hidden" value="' + escapeHtml(source) + '">' + escapeHtml(source === "station" ? "Trạm" : "Thiết bị") + '</td>' +
+        '<td><input data-field="' + (source === "station" ? "station" : "device") + '" type="hidden" value="' + escapeHtml(target) + '">' + escapeHtml(target || "-") + '</td>' +
+        '<td><input data-field="measurement" type="hidden" value="' + escapeHtml(point.measurement || "") + '">' + escapeHtml(point.measurement || "-") + '</td>' +
+        '<td><input data-field="type" type="hidden" value="' + escapeHtml(type) + '">' + escapeHtml(type) + '</td>' +
+        '<td><input data-field="inverted" type="checkbox" ' + (point.inverted ? "checked" : "") + ' disabled><input data-field="invertedValue" type="hidden" value="' + (point.inverted ? "true" : "") + '"></td>';
+    }
+
+    function collectIec104Points() {
+      return [...document.querySelectorAll("[data-iec104-point-row]")].map((row, index) => {
+        const previous = state.iec104?.points?.[index] || {};
+        const value = (field) => row.querySelector("[data-field='" + field + "']")?.value?.trim?.() || "";
+        const checked = (field) => Boolean(row.querySelector("[data-field='" + field + "']")?.checked);
+        const source = value("source") || (value("station") ? "station" : "device");
+        const point = {
+          ...previous,
+          ioa: Number(value("ioa")),
+          source,
+          measurement: value("measurement"),
+          type: value("type") || "float",
+        };
+
+        const name = value("name");
+        if (name) point.name = name;
+        else delete point.name;
+
+        if (source === "station") {
+          point.station = value("station");
+          delete point.device;
+          delete point.deviceName;
+        } else {
+          point.device = value("device");
+          delete point.station;
+          delete point.stationId;
+        }
+
+        if (checked("inverted")) point.inverted = true;
+        else delete point.inverted;
+
+        return point;
+      }).filter((point) => point.ioa || point.device || point.station || point.measurement || point.name);
+    }
+
+    function applyEvnIec104Defaults() {
+      state.iec104 = {
+        ...(state.iec104 || {}),
+        enabled: true,
+        mode: "server",
+        host: "0.0.0.0",
+        port: 2404,
+        remoteHost: "",
+        remotePort: 2404,
+        localAddress: "",
+        localPort: 0,
+        commonAddress: 1,
+        originatorAddress: 0,
+        staleAfterMs: 600000,
+        maxClientConnections: 4,
+        reconnectMs: 5000,
+        keepAliveMs: 30000,
+        periodicMs: 300000,
+        spontaneous: true,
+      };
+      render();
+      setStatus("Đã áp dụng mặc định IEC104 EVN", "ok");
+    }
+
+    function generateEvnIec104Mapping() {
+      collectConfig();
+      const requestedStationId = el("iec104EvnStation").value || state.stations?.[0]?.id || "";
+      const station = (state.stations || []).find((item) => item.id === requestedStationId);
+
+      if (!station) {
+        setStatus("Hãy tạo trạm trước khi cập nhật mapping EVN", "error");
+        return;
+      }
+
+      const mapping = buildClientEvnIec104Mapping(station);
+      state.iec104 = {
+        ...(state.iec104 || {}),
+        points: mapping.points,
+        controls: mapping.controls,
+      };
+      station.evnProfile = {
+        ...(station.evnProfile || {}),
+        enabled: true,
+        autoGenerateIoa: true,
+      };
+
+      renderStations();
+      renderEvnStationPicker();
+      renderIec104Points();
+      setStatus("Đã cập nhật mapping EVN cho " + (station.name || station.id), "ok");
+    }
+
+    function buildClientEvnIec104Mapping(station) {
+      const stationId = station?.id || "";
+      const stationDevices = devicesForStationConfig(station);
+      const inverterDevices = stationDevices.filter(isClientInverterDevice);
+
+      return {
+        points: [
+          stationPoint(1, "p_out_kw", stationId, "active_power_kw"),
+          stationPoint(2, "pinv_out_kw", stationId, "inverter_total_active_power_kw"),
+          stationPoint(3, "ainv_d_minus_1_kwh", stationId, "inverter_total_yesterday_energy_kwh"),
+          stationPoint(4, "q_out_kvar", stationId, "reactive_power_kvar"),
+          stationPoint(5, "phase_a_voltage_v", stationId, "phase_a_voltage_v"),
+          stationPoint(6, "phase_b_voltage_v", stationId, "phase_b_voltage_v"),
+          stationPoint(7, "phase_c_voltage_v", stationId, "phase_c_voltage_v"),
+          stationPoint(8, "phase_a_current_a", stationId, "phase_a_current_a"),
+          stationPoint(9, "phase_b_current_a", stationId, "phase_b_current_a"),
+          stationPoint(10, "phase_c_current_a", stationId, "phase_c_current_a"),
+          stationPoint(11, "grid_frequency_hz", stationId, "grid_frequency_hz"),
+          stationPoint(12, "power_factor", stationId, "power_factor"),
+          ...inverterDevices.flatMap((device, index) => clientInverterPoints(device, index)),
+        ],
+        controls: [
+          {
+            ioa: 11,
+            name: "enable_p_out_control",
+            type: "single",
+            station: stationId,
+            actionOn: "clear_power_limit",
+            selectBeforeExecute: true,
+          },
+          {
+            ioa: 12,
+            name: "setpoint_p_out_percent",
+            type: "setpoint",
+            station: stationId,
+            action: "limit_power",
+            valueField: "percent",
+            durationSeconds: 86400,
+            selectBeforeExecute: true,
+          },
+          {
+            ioa: 13,
+            name: "setpoint_p_out_kw",
+            type: "setpoint",
+            station: stationId,
+            action: "limit_power",
+            valueField: "kw",
+            durationSeconds: 86400,
+            selectBeforeExecute: true,
+          },
+        ],
+      };
+    }
+
+    function stationPoint(ioa, name, stationId, measurement) {
+      return {
+        ioa,
+        name,
+        source: "station",
+        station: stationId,
+        measurement,
+        type: "float",
+      };
+    }
+
+    function clientInverterPoints(device, index) {
+      const firstIoa = 13 + (index * 2);
+      const inverterNumber = index + 1;
+
+      return [
+        {
+          ioa: firstIoa,
+          name: "inverter_" + inverterNumber + "_active_power_kw",
+          source: "device",
+          device: device.name || "",
+          measurement: clientMeasurementName(device, ["active_power_kw", "active_power_total_kw", "ac_power_kw"], ["inverter_active_power_kw"]),
+          type: "float",
+        },
+        {
+          ioa: firstIoa + 1,
+          name: "inverter_" + inverterNumber + "_daily_energy_kwh",
+          source: "device",
+          device: device.name || "",
+          measurement: clientMeasurementName(device, ["daily_energy_yield_kwh", "daily_energy_kwh", "energy_today_kwh"], ["inverter_daily_energy_kwh"]),
+          type: "float",
+        },
+      ];
+    }
+
+    function devicesForStationConfig(station) {
+      const selected = new Set(Array.isArray(station?.devices) ? station.devices : []);
+      return (state.devices || []).filter((device) => (
+        device.name && (selected.has(device.name) || device.stationId === station?.id)
+      ));
+    }
+
+    function isClientInverterDevice(device) {
+      const text = [device.name, device.category, device.type, device.manufacturer, device.model, device.templateId]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return text.includes("inverter")
+        || text.includes("sun2000")
+        || text.includes("huawei")
+        || text.includes("sungrow")
+        || text.includes("goodwe")
+        || text.includes("sma");
+    }
+
+    function clientMeasurementName(device, preferredNames, evnRoles = []) {
+      const registers = device.registers || [];
+
+      for (const role of evnRoles) {
+        const tagged = registers.find((register) => register.evnRole === role && register.name);
+        if (tagged) return tagged.name;
+      }
+
+      const registerNames = registers.map((register) => register.name).filter(Boolean);
+      for (const name of preferredNames) {
+        if (registerNames.includes(name)) return name;
+      }
+
+      return preferredNames[0];
     }
 
     function collectTemplateLibrary() {
@@ -2036,6 +4969,77 @@ export function renderDashboardPage({ publicUrl }) {
       });
 
       return templates;
+    }
+
+    function collectStations() {
+      return [...document.querySelectorAll("[data-station-row]")].map((row, index) => {
+        const value = (field) => row.querySelector("[data-field='" + field + "']")?.value?.trim?.() || "";
+        const checked = (field) => Boolean(row.querySelector("[data-field='" + field + "']")?.checked);
+        const selectedDevices = [...row.querySelectorAll("[data-field='devices'] option:checked")]
+          .map((optionEl) => optionEl.value)
+          .filter(Boolean);
+        const id = value("id") || "station_" + (index + 1);
+        const capacityKw = Number(value("capacityKw"));
+        const station = {
+          id,
+          name: value("name") || id,
+          devices: [...new Set(selectedDevices)],
+        };
+
+        if (Number.isFinite(capacityKw) && capacityKw > 0) {
+          station.capacityKw = capacityKw;
+        }
+
+        if (checked("evnEnabled")) {
+          station.evnProfile = {
+            enabled: true,
+            autoGenerateIoa: true,
+          };
+        }
+
+        return station;
+      }).filter((station) => station.id || station.name || station.devices.length);
+    }
+
+    function syncStationDeviceMembership() {
+      const stations = state.stations || [];
+      const devices = state.devices || [];
+      const stationIds = new Set(stations.map((station) => station.id).filter(Boolean));
+      const deviceNames = new Set(devices.map((device) => device.name).filter(Boolean));
+      const stationById = new Map(stations.map((station) => [station.id, station]));
+      const assignments = new Map();
+
+      for (const station of stations) {
+        station.devices = [...new Set((station.devices || []).filter((name) => deviceNames.has(name)))];
+        for (const deviceName of station.devices) {
+          assignments.set(deviceName, station.id);
+        }
+      }
+
+      for (const device of devices) {
+        if (!device.name) continue;
+
+        if (assignments.has(device.name)) {
+          device.stationId = assignments.get(device.name);
+          continue;
+        }
+
+        if (device.stationId && stationIds.has(device.stationId)) {
+          const station = stationById.get(device.stationId);
+          station.devices = [...new Set([...(station.devices || []), device.name])];
+          assignments.set(device.name, device.stationId);
+          continue;
+        }
+
+        delete device.stationId;
+      }
+
+      for (const station of stations) {
+        station.devices = [...new Set((station.devices || []).filter((name) => {
+          const device = devices.find((item) => item.name === name);
+          return device && device.stationId === station.id;
+        }))];
+      }
     }
 
     function collectConfig() {
@@ -2068,6 +5072,26 @@ export function renderDashboardPage({ publicUrl }) {
         uploadIntervalMs: numberValue("mongoUploadIntervalMs"),
         batchSize: numberValue("mongoBatchSize"),
         statePath: el("mongoStatePath").value.trim(),
+      };
+      state.iec104 = {
+        ...(state.iec104 || {}),
+        enabled: el("iec104Enabled").checked,
+        mode: "server",
+        host: el("iec104Host").value.trim() || "0.0.0.0",
+        port: numberValue("iec104Port"),
+        remoteHost: "",
+        remotePort: 2404,
+        localAddress: "",
+        localPort: 0,
+        commonAddress: numberValue("iec104CommonAddress"),
+        originatorAddress: numberValue("iec104OriginatorAddress"),
+        staleAfterMs: numberValue("iec104StaleAfterMs"),
+        maxClientConnections: numberValue("iec104MaxClientConnections"),
+        reconnectMs: 5000,
+        keepAliveMs: numberValue("iec104KeepAliveMs"),
+        periodicMs: numberValue("iec104PeriodicMs"),
+        spontaneous: true,
+        points: collectIec104Points(),
       };
       state.storage = {
         ...(state.storage || {}),
@@ -2108,6 +5132,9 @@ export function renderDashboardPage({ publicUrl }) {
         register[input.dataset.field] = coerceInput(input);
       });
 
+      state.stations = collectStations();
+      syncStationDeviceMembership();
+
       return state;
     }
 
@@ -2120,10 +5147,16 @@ export function renderDashboardPage({ publicUrl }) {
         body: JSON.stringify({ config: state, restart_required: true }),
       });
       selectedConfigVersion = payload.version;
-      el("topConfigVersion").textContent = selectedConfigVersion || "-";
+      setText("topConfigVersion", selectedConfigVersion || "-");
       el("rawYaml").value = stringifyConfig(state);
       setStatus("Config version " + payload.version + " created", "ok");
       await loadGateways();
+    }
+
+    async function restartGateway() {
+      if (!selectedId) return;
+      await saveConfig();
+      setStatus("Đã gửi yêu cầu khởi động lại gateway", "ok");
     }
 
     function selectedTemplateId(device) {
@@ -2141,6 +5174,32 @@ export function renderDashboardPage({ publicUrl }) {
       });
 
       return match?.id || "";
+    }
+
+    function addStation() {
+      collectConfig();
+      state.stations = state.stations || [];
+      let index = state.stations.length + 1;
+      let id = "station_" + index;
+      while (state.stations.some((station) => station.id === id)) {
+        index += 1;
+        id = "station_" + index;
+      }
+      state.stations.push({
+        id,
+        name: "Trạm " + index,
+        devices: [],
+      });
+      renderStations();
+      setStatus("Đã thêm trạm", "ok");
+    }
+
+    function removeStation(index) {
+      collectConfig();
+      state.stations = state.stations || [];
+      state.stations.splice(Number(index), 1);
+      renderStations();
+      setStatus("Đã xóa trạm", "ok");
     }
 
     function addPort() {
@@ -2186,7 +5245,7 @@ export function renderDashboardPage({ publicUrl }) {
       const template = templates.find((item) => item.id === device.templateId);
 
       if (!template) {
-        setStatus("Select a template before applying", "error");
+        setStatus("Chọn mẫu trước khi áp dụng", "error");
         return;
       }
 
@@ -2223,7 +5282,7 @@ export function renderDashboardPage({ publicUrl }) {
       expandedTemplateRegisters.clear();
       renderTemplatePicker();
       renderTemplateLibrary();
-      setStatus("Removed template", "ok");
+      setStatus("Đã xóa mẫu", "ok");
     }
 
     function toggleTemplateRegisters(index) {
@@ -2265,14 +5324,14 @@ export function renderDashboardPage({ publicUrl }) {
       setStatus("Template library saved" + (payload.path ? " to " + payload.path : ""), "ok");
     }
 
-    async function refreshTemplateLibrary() {
-      setStatus("Refreshing template library...");
+    async function syncTemplateLibrary() {
+      setStatus("Đang đồng bộ thư viện mẫu từ server...");
       const payload = await requestJson("/api/device-templates");
       templates = payload.templates || [];
       expandedTemplateRegisters.clear();
       renderTemplatePicker();
       renderTemplateLibrary();
-      setStatus("Template library refreshed", "ok");
+      setStatus("Đã đồng bộ " + templates.length + " mẫu từ server", "ok");
     }
 
     function removePort(name) {
@@ -2388,12 +5447,26 @@ export function renderDashboardPage({ publicUrl }) {
         menu.classList.toggle("active", menu.dataset.childMenu === activeTab);
       });
 
-      const label = pageLabels[activeSubtab || activeTab] || pageLabels.overviewSubtab;
+      const label = pageLabels[activeSubtab || activeTab] || pageLabels.stationDeviceOverviewSubtab;
       el("activePageTitle").textContent = label[0];
       el("activePageSubtitle").textContent = label[1];
 
       const nextHash = activeSubtab || activeTab;
       if (updateHash && location.hash !== "#" + nextHash) history.replaceState(null, "", "#" + nextHash);
+    }
+
+    function showHomePage(panelId) {
+      const nextPanelId = homePageLabels[panelId] ? panelId : "homeOverviewPanel";
+      document.querySelectorAll("[data-home-panel]").forEach((panel) => {
+        panel.classList.toggle("active", panel.id === nextPanelId);
+      });
+      document.querySelectorAll("[data-home-target]").forEach((target) => {
+        target.classList.toggle("active", target.dataset.homeTarget === nextPanelId);
+      });
+      const label = homePageLabels[nextPanelId] || homePageLabels.homeOverviewPanel;
+      el("homePageTitle").textContent = label[0];
+      el("homePageSubtitle").textContent = label[1];
+      renderHomeModules();
     }
 
     function telemetryRecordsToDevices(records) {
@@ -2405,6 +5478,12 @@ export function renderDashboardPage({ publicUrl }) {
         if (!name || devices.has(name)) continue;
         devices.set(name, {
           name,
+          type: device.type || "",
+          category: device.category || "",
+          manufacturer: device.manufacturer || "",
+          model: device.model || "",
+          templateId: device.templateId || "",
+          stationId: device.stationId || "",
           status: Object.keys(record.measurements || {}).length ? "online" : "waiting",
           measurements: record.measurements || {},
           units: record.units || {},
@@ -2418,10 +5497,229 @@ export function renderDashboardPage({ publicUrl }) {
       return new Map((telemetry.devices || []).map((device) => [device.name, device]));
     }
 
-    function runtimeStatus(reading) {
-      if (reading?.status === "online") return { label: "Online", className: "online" };
-      if (reading?.status === "error") return { label: "Error", className: "error" };
-      return { label: "Waiting", className: "" };
+    function networkModeLabel() {
+      const parts = [];
+      if (state.iec104?.enabled) parts.push("IEC104");
+      parts.push("HTTP");
+      if (state.mongo?.enabled) parts.push("Mongo");
+      return parts.join(" + ");
+    }
+
+    function setHealth(id, label, className = "") {
+      const node = el(id);
+      node.textContent = label;
+      node.className = className;
+    }
+
+    function firstTelemetryMetric(names, { prefer = "" } = {}) {
+      return firstMetricFromReadings(telemetry.devices || [], names, { prefer });
+    }
+
+    function aggregateTelemetryMetric(names, { prefer = "", unit = "" } = {}) {
+      return aggregateMetricFromReadings(telemetry.devices || [], names, { prefer, unit });
+    }
+
+    function firstMetricFromReadings(sourceReadings, names, { prefer = "" } = {}) {
+      const preferredReadings = (sourceReadings || []).filter((reading) => metricDeviceMatches(reading, prefer));
+      const readings = preferredReadings.length ? preferredReadings : sourceReadings || [];
+
+      for (const reading of readings) {
+        const metric = measurementFromReading(reading, names);
+        if (metric) return metric;
+      }
+
+      return null;
+    }
+
+    function aggregateMetricFromReadings(sourceReadings, names, { prefer = "", unit = "" } = {}) {
+      const preferredReadings = (sourceReadings || []).filter((reading) => metricDeviceMatches(reading, prefer));
+      const readings = preferredReadings.length ? preferredReadings : sourceReadings || [];
+      let total = 0;
+      let count = 0;
+
+      for (const reading of readings) {
+        const metric = measurementFromReading(reading, names);
+        const normalized = normalizeMetricValue(metric, unit);
+        if (Number.isFinite(normalized?.value)) {
+          total += normalized.value;
+          count += 1;
+        }
+      }
+
+      return count ? { value: total, unit } : null;
+    }
+
+    function metricDeviceMatches(reading, prefer) {
+      if (!prefer) return true;
+      const device = (state?.devices || []).find((item) => item.name === reading?.name) || {};
+      const identity = [
+        reading?.name,
+        reading?.type,
+        reading?.category,
+        reading?.manufacturer,
+        reading?.model,
+        reading?.templateId,
+        device.name,
+        device.type,
+        device.category,
+        device.manufacturer,
+        device.model,
+        device.templateId,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      if (prefer === "inverter") {
+        return identity.includes("inverter") || identity.includes("sun2000") || identity.includes("sungrow") || identity.includes("goodwe") || identity.includes("sma") || identity.includes("growatt");
+      }
+      if (prefer === "meter") {
+        return identity.includes("meter") || identity.includes("dtsu") || identity.includes("powerlogic") || identity.includes("pm5") || identity.includes("sdm") || identity.includes("acrel");
+      }
+      return true;
+    }
+
+    function measurementFromReading(reading, names) {
+      const measurements = reading?.measurements || {};
+      const units = reading?.units || {};
+
+      for (const name of names) {
+        if (Object.prototype.hasOwnProperty.call(measurements, name)) {
+          return { name, value: measurements[name], unit: units[name] || inferredUnit(name) };
+        }
+      }
+
+      for (const [name, value] of Object.entries(measurements)) {
+        if (names.some((expected) => normalizedName(name) === normalizedName(expected))) {
+          return { name, value, unit: units[name] || inferredUnit(name) };
+        }
+      }
+
+      return null;
+    }
+
+    function normalizedName(value) {
+      return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    }
+
+    function inferredUnit(name) {
+      const key = String(name || "").toLowerCase();
+      if (key.includes("power_factor") || key === "pf" || key.includes("factor")) return "";
+      if (key.includes("frequency") || key.includes("freq")) return "Hz";
+      if (key.includes("voltage") || key.endsWith("_v") || key.includes("ua_") || key.includes("ub_") || key.includes("uc_")) return "V";
+      if (key.includes("current") || key.endsWith("_a")) return "A";
+      if (key.includes("energy") || key.includes("yield") || key.includes("kwh")) return "kWh";
+      if (key.includes("reactive") || key.includes("q_out")) return key.includes("_var") ? "var" : "kVAr";
+      if (key.includes("power") || key.includes("p_out")) return key.includes("_w") ? "W" : "kW";
+      return "";
+    }
+
+    function normalizeMetricValue(metric, preferredUnit = "") {
+      if (!metric) return null;
+      const value = Number(metric.value);
+      if (!Number.isFinite(value)) return { value: metric.value, unit: metric.unit || preferredUnit || "" };
+
+      let unit = metric.unit || preferredUnit || "";
+      const unitKey = unit.toLowerCase();
+      if (preferredUnit === "kW" && unitKey === "w") return { value: value / 1000, unit: "kW" };
+      if (preferredUnit === "kVAr" && (unitKey === "var" || unitKey === "vAr".toLowerCase())) return { value: value / 1000, unit: "kVAr" };
+      if (preferredUnit === "kWh" && unitKey === "wh") return { value: value / 1000, unit: "kWh" };
+      return { value, unit: preferredUnit || unit };
+    }
+
+    function formatMetricValue(metric, preferredUnit = "") {
+      const normalized = normalizeMetricValue(metric, preferredUnit);
+      if (!normalized) return "-";
+      if (typeof normalized.value === "number" && Number.isFinite(normalized.value)) {
+        return formatCompactNumber(normalized.value) + (normalized.unit ? " " + normalized.unit : "");
+      }
+      return escapeHtml(normalized.value) + (normalized.unit ? " " + normalized.unit : "");
+    }
+
+    function formatCompactNumber(value) {
+      if (!Number.isFinite(value)) return "-";
+      const abs = Math.abs(value);
+      if (abs >= 1000) return value.toFixed(1).replace(/\.0$/, "");
+      if (abs >= 100) return value.toFixed(1).replace(/\.0$/, "");
+      if (abs >= 10) return value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+      return value.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+    }
+
+    function formatPowerKw(value) {
+      if (!Number.isFinite(value)) return "-";
+      if (Math.abs(value) >= 1000) return formatCompactNumber(value / 1000) + " MW";
+      return formatCompactNumber(value) + " kW";
+    }
+
+    function formatEnergyKwh(value) {
+      if (!Number.isFinite(value)) return "-";
+      if (Math.abs(value) >= 1000) return formatCompactNumber(value / 1000) + " MWh";
+      return formatCompactNumber(value) + " kWh";
+    }
+
+    function formatBytes(bytes) {
+      const value = Number(bytes);
+      if (!Number.isFinite(value) || value <= 0) return "-";
+      const units = ["B", "KB", "MB", "GB", "TB"];
+      let size = value;
+      let index = 0;
+      while (size >= 1024 && index < units.length - 1) {
+        size /= 1024;
+        index += 1;
+      }
+      return formatCompactNumber(size) + " " + units[index];
+    }
+
+    function formatMs(ms) {
+      const value = Number(ms);
+      if (!Number.isFinite(value)) return "-";
+      if (value < 1000) return value + " ms";
+      return formatCompactNumber(value / 1000) + "s";
+    }
+
+    function statusFromKind(kind) {
+      const labels = {
+        good: "Tốt",
+        warning: "Cảnh báo",
+        bad: "Lỗi",
+        loss: "Mất liên lạc",
+      };
+      const classNames = {
+        good: "online",
+        warning: "warning",
+        bad: "error",
+        loss: "waiting",
+      };
+      const normalized = Object.prototype.hasOwnProperty.call(labels, kind) ? kind : "loss";
+      return {
+        kind: normalized,
+        label: labels[normalized],
+        className: classNames[normalized],
+        badgeClass: normalized,
+      };
+    }
+
+    function runtimeStatus(reading, device = {}) {
+      if (reading?.status === "online") {
+        if (isReadingStale(reading, device)) return statusFromKind("loss");
+        if (!hasReadableMeasurements(reading)) return statusFromKind("warning");
+        return statusFromKind("good");
+      }
+      if (reading?.status === "error") return statusFromKind("bad");
+      return statusFromKind("loss");
+    }
+
+    function isReadingStale(reading, device = {}) {
+      const rawTime = reading?.collectedAt || reading?.updatedAt || reading?.lastSeenAt;
+      const timestamp = Date.parse(rawTime || "");
+      if (!Number.isFinite(timestamp)) return false;
+      const pollMs = Number(device.pollIntervalMs) || 5000;
+      const staleAfterMs = Math.max(pollMs * 3, 15000);
+      return Date.now() - timestamp > staleAfterMs;
+    }
+
+    function hasReadableMeasurements(reading) {
+      return Object.keys(reading?.measurements || {}).length > 0;
     }
 
     function deviceSubtitle(device) {
@@ -2430,7 +5728,7 @@ export function renderDashboardPage({ publicUrl }) {
       if (device.protocol === "modbus-tcp") {
         return identity + " | TCP " + (device.host || "-") + " | unit " + (device.unitId || device.slaveId || 3);
       }
-      return identity + " | RTU port " + (device.port || "-") + " | slave " + (device.slaveId || 1);
+      return identity + " | RTU cổng " + (device.port || "-") + " | slave " + (device.slaveId || 1);
     }
 
     function hostFromUrl(value) {
@@ -2525,7 +5823,18 @@ export function renderDashboardPage({ publicUrl }) {
       if (!target) return;
 
       if (target.dataset.remoteGateway) {
+        event.preventDefault();
         openRemote(target.dataset.remoteGateway).catch((error) => setStatus(error.message, "error"));
+        return;
+      }
+      if (target.dataset.deleteGateway) {
+        event.preventDefault();
+        deleteGateway(target.dataset.deleteGateway).catch((error) => setStatus(error.message, "error"));
+        return;
+      }
+      if (target.dataset.homeTarget) {
+        event.preventDefault();
+        showHomePage(target.dataset.homeTarget);
         return;
       }
       if (target.id === "backHomeBtn") {
@@ -2543,22 +5852,35 @@ export function renderDashboardPage({ publicUrl }) {
         return;
       }
       if (target.id === "homeRefreshBtn") loadGateways().catch((error) => console.error(error));
+      if (target.id === "refreshTelemetryBtn" && selectedId) openRemote(selectedId).catch((error) => setStatus(error.message, "error"));
+      if (target.id === "refreshRuntimeBtn" && selectedId) openRemote(selectedId).catch((error) => setStatus(error.message, "error"));
       if (target.id === "remoteRefreshBtn" && selectedId) openRemote(selectedId).catch((error) => setStatus(error.message, "error"));
-      if (target.id === "commandRefreshBtn") refreshCommands().catch((error) => setStatus(error.message, "error"));
-      if (target.id === "homeLogoutBtn" || target.id === "logoutBtn") logout().catch((error) => console.error(error));
-      if (target.id === "addManualGatewayBtn") el("manualGatewayPanel").classList.toggle("hidden");
+      if (target.id === "remoteDisconnectBtn") {
+        backHome();
+        return;
+      }
+      if (target.id === "homeLogoutBtn") logout().catch((error) => console.error(error));
+      if (target.id === "addManualGatewayBtn" || target.id === "addManualGatewayBtn2") el("manualGatewayPanel").classList.toggle("hidden");
+      if (target.id === "homeTelemetryRefreshBtn") loadHomeTelemetry().catch((error) => console.error(error));
+      if (target.id === "homeConfigRefreshBtn") loadHomeDetails().catch((error) => console.error(error));
+      if (target.id === "refreshTemplatesHomeBtn") loadGateways().catch((error) => console.error(error));
       if (target.dataset.saveConfig !== undefined) saveConfig().catch((error) => setStatus(error.message, "error"));
+      if (target.dataset.restartGateway !== undefined) restartGateway().catch((error) => setStatus(error.message, "error"));
       if (target.dataset.controlAction) {
         const action = target.dataset.controlAction;
         if (["stop", "reboot"].includes(action) && !confirm("Queue " + actionLabel(action) + " for " + (el("controlDeviceName").value || "selected inverter") + "?")) return;
         queueInverterControl(action).catch((error) => setStatus(error.message, "error"));
       }
+      if (target.id === "addStationBtn") addStation();
       if (target.id === "addPortBtn") addPort();
       if (target.id === "addDeviceBtn") addDevice();
+      if (target.id === "applyEvnIec104DefaultsBtn") applyEvnIec104Defaults();
+      if (target.id === "generateEvnIec104Btn") generateEvnIec104Mapping();
       if (target.id === "addTemplateBtn") addTemplate();
       if (target.id === "saveTemplatesBtn") saveTemplateLibrary().catch((error) => setStatus(error.message, "error"));
-      if (target.id === "refreshTemplatesBtn") refreshTemplateLibrary().catch((error) => setStatus(error.message, "error"));
+      if (target.id === "syncTemplatesBtn") syncTemplateLibrary().catch((error) => setStatus(error.message, "error"));
       if (target.dataset.applyTemplate) applyTemplate(Number(target.dataset.applyTemplate));
+      if (target.dataset.removeStation) removeStation(Number(target.dataset.removeStation));
       if (target.dataset.removePort) removePort(target.dataset.removePort);
       if (target.dataset.removeDevice) removeDevice(Number(target.dataset.removeDevice));
       if (target.dataset.toggleDeviceRegisters) toggleDeviceRegisters(Number(target.dataset.toggleDeviceRegisters));
@@ -2572,8 +5894,20 @@ export function renderDashboardPage({ publicUrl }) {
 
     document.addEventListener("change", (event) => {
       const target = event.target;
+      if (target?.id === "adminLanguageSelect") {
+        currentLanguage = target.value === "en" ? "en" : "vi";
+        localStorage.setItem("adminLanguage", currentLanguage);
+        localStorage.setItem("loginLanguage", currentLanguage);
+        applyAdminLanguage();
+        return;
+      }
       if (target?.id === "controlDeviceName") {
         selectedControlDevice = target.value;
+        return;
+      }
+      if (target?.matches?.("[data-iec104-point-row] [data-field='source'], [data-iec104-point-row] [data-field='device'], [data-iec104-point-row] [data-field='station']")) {
+        collectConfig();
+        renderIec104();
         return;
       }
       if (!target?.matches?.("[data-device][data-field='protocol']")) return;

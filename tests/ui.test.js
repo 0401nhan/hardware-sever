@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import vm from "node:vm";
 
 import { renderDashboardPage } from "../src/ui.js";
+
+test("dashboard inline browser script is valid JavaScript", () => {
+  const html = renderDashboardPage({ publicUrl: "https://example.test" });
+  const script = html.match(/<script>([\s\S]*)<\/script>/)?.[1];
+
+  assert.ok(script);
+  assert.doesNotThrow(() => new vm.Script(script, { filename: "dashboard-inline.js" }));
+});
 
 test("dashboard renders inverter control actions", () => {
   const html = renderDashboardPage({ publicUrl: "https://example.test" });
@@ -26,4 +35,100 @@ test("dashboard renders shared template library editor", () => {
   assert.match(html, /id="addTemplateBtn"/);
   assert.match(html, /id="saveTemplatesBtn"/);
   assert.match(html, /\/api\/device-templates/);
+});
+
+test("dashboard starts at site list and remote disconnect returns home", () => {
+  const html = renderDashboardPage({ publicUrl: "https://example.test" });
+
+  assert.match(html, /id="homePageTitle">Site/);
+  assert.match(html, /data-home-target="homeOverviewPanel"/);
+  assert.deepEqual([...html.matchAll(/data-home-target="([^"]+)"/g)].map((match) => match[1]), ["homeOverviewPanel"]);
+  assert.doesNotMatch(html, /id="homeGatewayPanel"/);
+  assert.doesNotMatch(html, /id="homeTelemetryPanel"/);
+  assert.doesNotMatch(html, /id="homeConfigPanel"/);
+  assert.doesNotMatch(html, /id="gatewayTableBody"/);
+  assert.match(html, /id="gatewayHomeGrid" class="gateway-grid"/);
+  assert.match(html, /data-delete-gateway=/);
+  assert.match(html, /\/api\/gateways\/" \+ encodeURIComponent\(gatewayId\)/);
+  assert.match(html, /id="remoteDisconnectBtn"/);
+  assert.match(html, />Disconnection</);
+  assert.doesNotMatch(html, /id="logoutBtn"/);
+  assert.doesNotMatch(html, /id="backHomeBtn"/);
+  assert.doesNotMatch(html, /id="remoteRefreshBtn"/);
+  assert.match(html, /#remoteView \{/);
+  assert.match(html, /class="sidebar-logo"/);
+  assert.match(html, /\.sidebar-logo,\s*\.brand-mark \{/);
+  assert.match(html, /\.sidebar-logo img,\s*\.brand-mark img \{/);
+  assert.doesNotMatch(html, /<span class="brand-mark"><img src="\/logo\/logo-smallsize\.png"/);
+  assert.match(html, /id="adminLanguageSelect"/);
+  assert.doesNotMatch(html, /id="remoteLanguageSelect"/);
+  assert.match(html, /function applyAdminLanguage\(/);
+  assert.match(html, /target\?\.id === "adminLanguageSelect"/);
+  assert.match(html, /localStorage\.setItem\("adminLanguage"/);
+  assert.match(html, /href="#stationDeviceOverviewSubtab" data-tab-target="generalInformation"/);
+  assert.match(html, /Trạng thái gateway, telemetry và cấu hình IPC/);
+  assert.match(html, /stationDeviceOverviewSubtab: \["Tổng quan"/);
+  assert.doesNotMatch(html, /id="overviewSubtab"/);
+  assert.doesNotMatch(html, /data-subtab-target="overviewSubtab"/);
+  assert.match(html, /class="menu-button"[^>]+data-tab-target="generalInformation"/);
+  assert.match(html, /id="deviceMonitoring" class="home-panel monitoring-panel"/);
+  assert.match(html, /class="monitor-toolbar"/);
+  assert.match(html, /monitor-status/);
+  assert.match(html, /monitor-meta/);
+  assert.match(html, /monitor-key-grid/);
+  assert.match(html, /id="refreshTelemetryBtn"/);
+  assert.match(html, /id="controlHistoryBody"/);
+  assert.doesNotMatch(html, /id="commandRefreshBtn"/);
+  assert.match(html, /id="refreshRuntimeBtn"/);
+  assert.match(html, /id="storageSyncBody"/);
+  assert.match(html, /id="logsEventsBody"/);
+  assert.match(html, /id="systemGatewayId"/);
+  assert.match(html, /data-restart-gateway/);
+  assert.match(html, /id="configurationTopology" class="topology-tree topology-tree-compact"/);
+  assert.match(html, /id="syncTemplatesBtn"/);
+  assert.doesNotMatch(html, /id="refreshTemplatesBtn"/);
+  assert.match(html, /function syncTemplateLibrary\(/);
+  assert.doesNotMatch(html, /function refreshTemplateLibrary\(/);
+  assert.doesNotMatch(html, />Function<\/th>/);
+  assert.doesNotMatch(html, />Length<\/th>/);
+  assert.doesNotMatch(html, />Unit<\/th>/);
+  assert.doesNotMatch(html, /Protocol <select/);
+  assert.doesNotMatch(html, /id="remoteStorageBody"/);
+  assert.doesNotMatch(html, /id="remoteEventsBody"/);
+  assert.doesNotMatch(html, /id="remoteSystemGatewayId"/);
+  assert.match(html, /id="status" class="status"/);
+  assert.doesNotMatch(html, /id="statusDot"/);
+  assert.match(html, /target\.id === "remoteDisconnectBtn"/);
+  assert.match(html, /backHome\(\)/);
+  assert.match(html, /id="stationDeviceOverviewSubtab" class="subtab-panel active"/);
+  assert.match(html, /id="dashboardTopology" class="topology-tree"/);
+  assert.match(html, /id="topOkCount"/);
+  assert.match(html, /id="topErrorCount"/);
+  assert.match(html, /id="topWarningCount"/);
+  assert.match(html, /id="topLossCount"/);
+  assert.match(html, /data-subtab-target="stationsSubtab"/);
+  assert.match(html, /data-subtab-target="iec104Subtab"/);
+  assert.match(html, /id="iec104Subtab"/);
+  assert.match(html, /id="applyEvnIec104DefaultsBtn"/);
+  assert.match(html, /id="evnRequiredRegistersBody"/);
+  assert.match(html, /id="iec104EvnStation"/);
+  assert.match(html, /id="generateEvnIec104Btn"/);
+  assert.match(html, /id="iec104Enabled" type="checkbox" checked/);
+  assert.match(html, /type="hidden" value="server"/);
+  assert.match(html, /data-field="evnRole"/);
+  assert.match(html, /data-field="evnEnabled"/);
+  assert.match(html, /multiple size=/);
+  assert.doesNotMatch(html, /id="addIec104PointBtn"/);
+  assert.doesNotMatch(html, /id="addIec104ControlBtn"/);
+  assert.doesNotMatch(html, /id="iec104ControlsBody"/);
+  assert.doesNotMatch(html, /iec104Simulator/);
+  assert.doesNotMatch(html, /iec104SelectTimeout/);
+  assert.match(html, /target\.id === "applyEvnIec104DefaultsBtn"/);
+  assert.match(html, /target\.id === "generateEvnIec104Btn"/);
+  assert.match(html, /function collectStations\(\)/);
+  assert.match(html, /function syncStationDeviceMembership\(\)/);
+  assert.doesNotMatch(html, /data-tab-target="iec104Tab"/);
+  assert.match(html, /data-tab-target="storageSyncTab"/);
+  assert.match(html, /data-tab-target="logsEventsTab"/);
+  assert.match(html, /data-tab-target="systemTab"/);
 });

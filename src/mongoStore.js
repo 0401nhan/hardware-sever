@@ -59,6 +59,18 @@ export class MongoHardwareStore {
     return row ? mapGatewayDoc(row, this.offlineAfterMs, this.now) : null;
   }
 
+  async deleteGateway(id) {
+    const gateway = await this.getGateway(id);
+    if (!gateway) return null;
+    await Promise.all([
+      this.gateways.deleteOne({ _id: id }),
+      this.configVersions.deleteMany({ gatewayId: id }),
+      this.telemetryRecords.deleteMany({ gatewayId: id }),
+      this.gatewayCommands.deleteMany({ gatewayId: id }),
+    ]);
+    return gateway;
+  }
+
   async upsertGateway({ id, name = "", site = "", token = "" }) {
     const now = new Date().toISOString();
     const existing = await this.getGateway(id);

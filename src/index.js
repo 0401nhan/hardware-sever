@@ -322,6 +322,24 @@ server = http.createServer(async (req, res) => {
       });
     }
 
+    const gatewayMatch = pathname.match(/^\/api\/gateways\/([^/]+)$/);
+    if (gatewayMatch && req.method === "DELETE") {
+      const gatewayId = decodeURIComponent(gatewayMatch[1]);
+      const gateway = await store.deleteGateway(gatewayId);
+
+      if (!gateway) {
+        return sendJson(res, 404, {
+          ok: false,
+          error: "Gateway not found",
+        });
+      }
+
+      return sendJson(res, 200, {
+        ok: true,
+        gateway: redactGatewaySecrets(gateway),
+      });
+    }
+
     const gatewayConfigMatch = pathname.match(/^\/api\/gateways\/([^/]+)\/config$/);
     if (gatewayConfigMatch && req.method === "GET") {
       const gatewayId = decodeURIComponent(gatewayConfigMatch[1]);
