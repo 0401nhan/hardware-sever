@@ -4,6 +4,10 @@ import { MongoClient } from "mongodb";
 
 const DEFAULT_GATEWAY_OFFLINE_AFTER_MS = 90_000;
 
+function isMongoDuplicateKey(error) {
+  return error?.code === 11000;
+}
+
 export async function openMongoStore({ uri, dbName, tokenHashSecret, options = {} }) {
   const client = new MongoClient(uri);
   await client.connect();
@@ -138,28 +142,37 @@ export class MongoHardwareStore {
   }
 
   async addConfigVersion({ gatewayId, config, restartRequired = true, createdBy = "admin" }) {
-    const latest = await this.getLatestConfig(gatewayId);
-    const version = (latest?.version ?? 0) + 1;
     const configJson = stableJson(config);
     const configHash = sha256(configJson);
-    const now = new Date().toISOString();
 
-    await this.configVersions.insertOne({
-      _id: `${gatewayId}:${version}`,
-      gatewayId,
-      version,
-      config,
-      configHash,
-      restartRequired: Boolean(restartRequired),
-      createdBy,
-      createdAt: now,
-    });
-    await this.gateways.updateOne(
-      { _id: gatewayId },
-      { $set: { desiredConfigVersion: version, updatedAt: now } },
-    );
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const latest = await this.getLatestConfig(gatewayId);
+      const version = (latest?.version ?? 0) + 1;
+      const now = new Date().toISOString();
 
-    return this.getLatestConfig(gatewayId);
+      try {
+        await this.configVersions.insertOne({
+          _id: `${gatewayId}:${version}`,
+          gatewayId,
+          version,
+          config,
+          configHash,
+          restartRequired: Boolean(restartRequired),
+          createdBy,
+          createdAt: now,
+        });
+        await this.gateways.updateOne(
+          { _id: gatewayId },
+          { $set: { desiredConfigVersion: version, updatedAt: now } },
+        );
+
+        return this.getLatestConfig(gatewayId);
+      } catch (error) {
+        if (!isMongoDuplicateKey(error) || attempt === 4) throw error;
+      }
+    }
+
+    throw new Error("Failed to create MongoDB config version");
   }
 
   async updateConfigStatus({ gatewayId, version, status, message = "", appVersion = "" }) {
