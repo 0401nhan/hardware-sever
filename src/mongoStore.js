@@ -3,6 +3,9 @@ import crypto from "node:crypto";
 import { MongoClient } from "mongodb";
 
 const DEFAULT_GATEWAY_OFFLINE_AFTER_MS = 90_000;
+const DEFAULT_TELEMETRY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+const DEFAULT_TELEMETRY_PRUNE_INTERVAL_MS = 60 * 60 * 1000;
+const TELEMETRY_TTL_INDEX_NAME = "idx_telemetry_created_at_ttl";
 
 function isMongoDuplicateKey(error) {
   return error?.code === 11000;
@@ -20,13 +23,18 @@ export async function openMongoStore({ uri, dbName, tokenHashSecret, options = {
 export class MongoHardwareStore {
   constructor(client, dbName, tokenHashSecret, {
     offlineAfterMs = DEFAULT_GATEWAY_OFFLINE_AFTER_MS,
+    telemetryRetentionMs = DEFAULT_TELEMETRY_RETENTION_MS,
+    telemetryPruneIntervalMs = DEFAULT_TELEMETRY_PRUNE_INTERVAL_MS,
     now = () => Date.now(),
   } = {}) {
     this.client = client;
     this.db = client.db(dbName);
     this.tokenHashSecret = tokenHashSecret;
     this.offlineAfterMs = offlineAfterMs;
+    this.telemetryRetentionMs = nonNegativeInteger(telemetryRetentionMs, DEFAULT_TELEMETRY_RETENTION_MS);
+    this.telemetryPruneIntervalMs = nonNegativeInteger(telemetryPruneIntervalMs, DEFAULT_TELEMETRY_PRUNE_INTERVAL_MS);
     this.now = now;
+    this.lastTelemetryPrunedAt = 0;
 
     this.gateways = this.db.collection("gateways");
     this.configVersions = this.db.collection("config_versions");
@@ -41,6 +49,7 @@ export class MongoHardwareStore {
       this.gateways.createIndex({ updatedAt: -1 }),
       this.configVersions.createIndex({ gatewayId: 1, version: -1 }, { unique: true }),
       this.telemetryRecords.createIndex({ gatewayId: 1, createdAt: -1 }),
+      this.#syncTelemetryTtlIndex(),
       this.telemetryRecords.createIndex(
         { gatewayId: 1, recordId: 1 },
         { unique: true, partialFilterExpression: { recordId: { $type: "string" } } },
@@ -48,6 +57,7 @@ export class MongoHardwareStore {
       this.gatewayCommands.createIndex({ gatewayId: 1, status: 1, createdAt: 1 }),
       this.deviceTemplates.createIndex({ sortOrder: 1, id: 1 }),
     ]);
+    await this.pruneTelemetry({ force: true });
   }
 
   async listGateways() {
@@ -194,15 +204,20 @@ export class MongoHardwareStore {
   }
 
   async insertTelemetry(gatewayId, records) {
-    const now = new Date().toISOString();
+    const nowMs = this.now();
+    const nowDate = new Date(nowMs);
+    const now = nowDate.toISOString();
     const docs = records.map((record) => ({
       _id: record.id ? `${gatewayId}:${record.id}` : crypto.randomUUID(),
       gatewayId,
       recordId: record.id ?? null,
       record,
       createdAt: now,
+      createdAtDate: nowDate,
     }));
     let inserted = 0;
+
+    await this.pruneTelemetry({ nowMs });
 
     if (docs.length > 0) {
       try {
@@ -223,6 +238,27 @@ export class MongoHardwareStore {
       received: records.length,
       inserted,
       ignored: records.length - inserted,
+    };
+  }
+
+  async pruneTelemetry({ force = false, nowMs = this.now() } = {}) {
+    if (this.telemetryRetentionMs <= 0) return { deleted: 0 };
+    if (
+      !force &&
+      this.telemetryPruneIntervalMs > 0 &&
+      nowMs - this.lastTelemetryPrunedAt < this.telemetryPruneIntervalMs
+    ) {
+      return { deleted: 0 };
+    }
+
+    this.lastTelemetryPrunedAt = nowMs;
+    const cutoff = new Date(nowMs - this.telemetryRetentionMs).toISOString();
+    const result = await this.telemetryRecords.deleteMany({
+      createdAt: { $lt: cutoff },
+    });
+
+    return {
+      deleted: Number(result.deletedCount ?? 0),
     };
   }
 
@@ -466,6 +502,26 @@ export class MongoHardwareStore {
     return crypto.createHmac("sha256", this.tokenHashSecret).update(token).digest("hex");
   }
 
+  async #syncTelemetryTtlIndex() {
+    if (this.telemetryRetentionMs <= 0) {
+      await dropMongoIndexIfExists(this.telemetryRecords, TELEMETRY_TTL_INDEX_NAME);
+      return;
+    }
+
+    const options = {
+      name: TELEMETRY_TTL_INDEX_NAME,
+      expireAfterSeconds: Math.max(1, Math.ceil(this.telemetryRetentionMs / 1000)),
+    };
+
+    try {
+      await this.telemetryRecords.createIndex({ createdAtDate: 1 }, options);
+    } catch (error) {
+      if (!isIndexOptionsConflict(error)) throw error;
+      await dropMongoIndexIfExists(this.telemetryRecords, TELEMETRY_TTL_INDEX_NAME);
+      await this.telemetryRecords.createIndex({ createdAtDate: 1 }, options);
+    }
+  }
+
   async close() {
     await this.client.close();
   }
@@ -488,6 +544,22 @@ function mapGatewayDoc(row, offlineAfterMs, now) {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+async function dropMongoIndexIfExists(collection, indexName) {
+  try {
+    await collection.dropIndex(indexName);
+  } catch (error) {
+    if (!isIndexNotFound(error)) throw error;
+  }
+}
+
+function isIndexOptionsConflict(error) {
+  return error?.code === 85 || error?.codeName === "IndexOptionsConflict";
+}
+
+function isIndexNotFound(error) {
+  return error?.code === 27 || error?.codeName === "IndexNotFound";
 }
 
 function gatewayStatus(row, offlineAfterMs, now) {
@@ -552,6 +624,10 @@ function safeEqual(left, right) {
   const rightBuffer = Buffer.from(String(right));
   if (leftBuffer.length !== rightBuffer.length) return false;
   return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function nonNegativeInteger(value, fallback) {
+  return Number.isInteger(value) && value >= 0 ? value : fallback;
 }
 
 function normalizeTemplateLibrary(templates) {

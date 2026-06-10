@@ -144,9 +144,18 @@ Hardware-Server and Hardware-Gateway share these collections: `gateways`, `confi
 
 ## Docker Compose
 
+Production Compose expects an external MongoDB URI from `.env`:
+
 ```bash
 docker compose up -d --build
 docker compose logs -f hardware-server
+```
+
+For local testing with a MongoDB container, use the local overlay:
+
+```powershell
+$env:MONGODB_URI="mongodb://mongo:27017/hardware_gateway"
+docker compose -f docker-compose.yml -f docker-compose.local-mongo.yml up -d --build
 ```
 
 The container listens on port `7000`. Put Nginx/Caddy in front of it for TLS:
@@ -164,3 +173,12 @@ SQLite database:
 ```
 
 The Docker Compose file stores it in the `hardware-server-data` volume.
+
+Telemetry retention defaults to 30 days:
+
+```text
+TELEMETRY_RETENTION_MS=2592000000
+TELEMETRY_PRUNE_INTERVAL_MS=3600000
+```
+
+Set `TELEMETRY_RETENTION_MS=0` to disable automatic telemetry cleanup. MongoDB mode creates a TTL index for new telemetry records and also prunes older records by `createdAt`; SQLite mode prunes `telemetry_records` during startup and ingest.

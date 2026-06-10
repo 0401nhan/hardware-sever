@@ -292,6 +292,31 @@ test("allows the same telemetry record id on different gateways", async () => {
   }
 });
 
+test("prunes sqlite telemetry records beyond retention", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hardware-server-telemetry-retention-"));
+  const baseTime = Date.parse("2026-06-10T00:00:00.000Z");
+  let currentTime = baseTime - 2_000;
+  const store = await openDatabase(path.join(dir, "hardware-server.sqlite"), "test-secret", {
+    telemetryRetentionMs: 1_000,
+    telemetryPruneIntervalMs: 0,
+    now: () => currentTime,
+  });
+
+  try {
+    store.upsertGateway({ id: "GW-RETENTION", token: "token" });
+    assert.equal(store.insertTelemetry("GW-RETENTION", [{ id: "old-record" }]).inserted, 1);
+
+    currentTime = baseTime;
+    assert.equal(store.insertTelemetry("GW-RETENTION", [{ id: "new-record" }]).inserted, 1);
+
+    const records = store.latestTelemetry("GW-RETENTION", 10);
+    assert.deepEqual(records.map((record) => record.recordId), ["new-record"]);
+    assert.equal(store.db.prepare("SELECT COUNT(*) AS count FROM telemetry_records").get().count, 1);
+  } finally {
+    store.close();
+  }
+});
+
 test("reports an online gateway as offline after heartbeat timeout", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hardware-server-gateway-offline-"));
   const now = new Date("2026-05-14T10:00:00.000Z").getTime();

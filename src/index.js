@@ -31,6 +31,8 @@ const config = {
   provisioningToken: process.env.PROVISIONING_TOKEN || "replace-me",
   autoRegisterGateways: String(process.env.AUTO_REGISTER_GATEWAYS || "true").toLowerCase() === "true",
   gatewayOfflineAfterMs: positiveIntegerEnv("GATEWAY_OFFLINE_AFTER_MS", 90_000),
+  telemetryRetentionMs: nonNegativeIntegerEnv("TELEMETRY_RETENTION_MS", 30 * 24 * 60 * 60 * 1000),
+  telemetryPruneIntervalMs: nonNegativeIntegerEnv("TELEMETRY_PRUNE_INTERVAL_MS", 60 * 60 * 1000),
 };
 
 let store;
@@ -45,6 +47,8 @@ main().catch((error) => {
 async function main() {
 store = await openDatabase(config.dbPath, config.tokenHashSecret, {
   offlineAfterMs: config.gatewayOfflineAfterMs,
+  telemetryRetentionMs: config.telemetryRetentionMs,
+  telemetryPruneIntervalMs: config.telemetryPruneIntervalMs,
 });
 templateSeed = readDeviceTemplateSeed(config.deviceTemplatesPath);
 await store.seedDeviceTemplates(templateSeed.templates);
@@ -740,4 +744,9 @@ function safeEqual(input, expected) {
 function positiveIntegerEnv(name, fallback) {
   const value = Number.parseInt(process.env[name] || "", 10);
   return Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
+function nonNegativeIntegerEnv(name, fallback) {
+  const value = Number.parseInt(process.env[name] || "", 10);
+  return Number.isInteger(value) && value >= 0 ? value : fallback;
 }

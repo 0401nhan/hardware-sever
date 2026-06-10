@@ -7,6 +7,8 @@ import initSqlJs from "sql.js";
 
 const require = createRequire(import.meta.url);
 const DEFAULT_GATEWAY_OFFLINE_AFTER_MS = 90_000;
+const DEFAULT_TELEMETRY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+const DEFAULT_TELEMETRY_PRUNE_INTERVAL_MS = 60 * 60 * 1000;
 
 export async function openDatabase(dbPath, tokenHashSecret, options = {}) {
   if (mongoStoreEnabled()) {
@@ -149,7 +151,10 @@ export async function openDatabase(dbPath, tokenHashSecret, options = {}) {
 
   ensureTemplateRegisterColumns(db);
 
-  return new HardwareStore(db, tokenHashSecret, options);
+  const store = new HardwareStore(db, tokenHashSecret, options);
+  store.pruneTelemetry({ force: true });
+
+  return store;
 }
 
 function mongoStoreEnabled() {
@@ -174,12 +179,17 @@ function ensureTemplateRegisterColumns(db) {
 export class HardwareStore {
   constructor(db, tokenHashSecret, {
     offlineAfterMs = DEFAULT_GATEWAY_OFFLINE_AFTER_MS,
+    telemetryRetentionMs = DEFAULT_TELEMETRY_RETENTION_MS,
+    telemetryPruneIntervalMs = DEFAULT_TELEMETRY_PRUNE_INTERVAL_MS,
     now = () => Date.now(),
   } = {}) {
     this.db = db;
     this.tokenHashSecret = tokenHashSecret;
     this.offlineAfterMs = offlineAfterMs;
+    this.telemetryRetentionMs = nonNegativeInteger(telemetryRetentionMs, DEFAULT_TELEMETRY_RETENTION_MS);
+    this.telemetryPruneIntervalMs = nonNegativeInteger(telemetryPruneIntervalMs, DEFAULT_TELEMETRY_PRUNE_INTERVAL_MS);
     this.now = now;
+    this.lastTelemetryPrunedAt = 0;
   }
 
   listGateways() {
@@ -321,7 +331,8 @@ export class HardwareStore {
   }
 
   insertTelemetry(gatewayId, records) {
-    const now = new Date().toISOString();
+    const nowMs = this.now();
+    const now = new Date(nowMs).toISOString();
     const insert = this.db.prepare(`
       INSERT OR IGNORE INTO telemetry_records (gateway_id, record_id, record_json, created_at)
       VALUES (?, ?, ?, ?)
@@ -332,6 +343,8 @@ export class HardwareStore {
       WHERE id = ?
     `);
     let inserted = 0;
+
+    this.pruneTelemetry({ nowMs });
 
     try {
       this.db.exec("BEGIN");
@@ -350,6 +363,25 @@ export class HardwareStore {
       received: records.length,
       inserted,
       ignored: records.length - inserted,
+    };
+  }
+
+  pruneTelemetry({ force = false, nowMs = this.now() } = {}) {
+    if (this.telemetryRetentionMs <= 0) return { deleted: 0 };
+    if (
+      !force &&
+      this.telemetryPruneIntervalMs > 0 &&
+      nowMs - this.lastTelemetryPrunedAt < this.telemetryPruneIntervalMs
+    ) {
+      return { deleted: 0 };
+    }
+
+    this.lastTelemetryPrunedAt = nowMs;
+    const cutoff = new Date(nowMs - this.telemetryRetentionMs).toISOString();
+    const result = this.db.prepare("DELETE FROM telemetry_records WHERE created_at < ?").run(cutoff);
+
+    return {
+      deleted: Number(result.changes ?? 0),
     };
   }
 
@@ -971,6 +1003,10 @@ function stringValue(value) {
 function numberValue(value, fallback) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function nonNegativeInteger(value, fallback) {
+  return Number.isInteger(value) && value >= 0 ? value : fallback;
 }
 
 function slug(value) {
