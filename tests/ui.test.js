@@ -2,7 +2,19 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import vm from "node:vm";
 
-import { renderDashboardPage } from "../src/ui.js";
+import { renderDashboardPage, renderLoginPage } from "../src/ui.js";
+
+test("login page uses Vietnamese copy and no fake support links", () => {
+  const html = renderLoginPage();
+
+  assert.match(html, /<html lang="vi">/);
+  assert.match(html, />\s*Tài khoản\s*</);
+  assert.match(html, />\s*Mật khẩu\s*</);
+  assert.match(html, />Đăng nhập<\/button>/);
+  assert.match(html, /Sai tài khoản hoặc mật khẩu/);
+  assert.doesNotMatch(html, /Username|Password|Forgot password\?|Request access|Sign in|Login failed/);
+  assert.doesNotMatch(html, /class="form-links"/);
+});
 
 test("dashboard inline browser script is valid JavaScript", () => {
   const html = renderDashboardPage({ publicUrl: "https://example.test" });
@@ -51,7 +63,12 @@ test("dashboard starts at site list and remote disconnect returns home", () => {
   assert.match(html, /data-delete-gateway=/);
   assert.match(html, /\/api\/gateways\/" \+ encodeURIComponent\(gatewayId\)/);
   assert.match(html, /id="remoteDisconnectBtn"/);
-  assert.match(html, />Disconnection</);
+  assert.match(html, />Về danh sách site</);
+  assert.doesNotMatch(html, /Disconnection/);
+  assert.match(html, /Chưa có site kết nối/);
+  assert.match(html, /gateway\.id/);
+  assert.match(html, /GATEWAY_TOKEN hoặc PROVISIONING_TOKEN/);
+  assert.match(html, /\/api\/gateway\/heartbeat/);
   assert.doesNotMatch(html, /id="logoutBtn"/);
   assert.doesNotMatch(html, /id="backHomeBtn"/);
   assert.doesNotMatch(html, /id="remoteRefreshBtn"/);

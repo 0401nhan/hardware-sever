@@ -180,19 +180,6 @@ export function renderLoginPage() {
       box-shadow: 0 1px 0 rgba(200, 111, 56, 0.42);
     }
 
-    .form-links {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 600;
-    }
-
-    .form-links span {
-      min-width: 0;
-    }
-
     button {
       width: 100%;
       height: 36px;
@@ -267,7 +254,7 @@ export function renderLoginPage() {
     </div>
     <form id="loginForm">
       <label>
-        Username
+        T?i kho?n
         <span class="input-row">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M20 21a8 8 0 0 0-16 0" />
@@ -277,7 +264,7 @@ export function renderLoginPage() {
         </span>
       </label>
       <label>
-        Password
+        M?t kh?u
         <span class="input-row">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="7.5" cy="14" r="3.5" />
@@ -288,11 +275,7 @@ export function renderLoginPage() {
           <input name="password" type="password" autocomplete="current-password" placeholder="......." required>
         </span>
       </label>
-      <div class="form-links">
-        <span>Forgot password?</span>
-        <span>Request access</span>
-      </div>
-      <button type="submit">Sign in</button>
+      <button type="submit">??ng nh?p</button>
       <div class="error" id="error"></div>
     </form>
   </main>
@@ -313,7 +296,10 @@ export function renderLoginPage() {
         return;
       }
       const payload = await response.json().catch(() => ({}));
-      document.getElementById("error").textContent = payload.error || "Login failed";
+      const errorMessages = {
+        "Invalid username or password": "Sai t?i kho?n ho?c m?t kh?u"
+      };
+      document.getElementById("error").textContent = errorMessages[payload.error] || payload.error || "??ng nh?p th?t b?i";
     });
   </script>
 </body>
@@ -362,6 +348,7 @@ export function renderDashboardPage({ publicUrl }) {
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: var(--text);
       background: var(--bg);
+      overflow-x: hidden;
     }
     button, input, select, textarea { font: inherit; }
     button {
@@ -468,6 +455,8 @@ export function renderDashboardPage({ publicUrl }) {
       stroke-linejoin: round;
     }
     .app-shell {
+      width: 100%;
+      max-width: 100vw;
       min-height: 100vh;
       display: grid;
       grid-template-columns: 178px minmax(0, 1fr);
@@ -584,7 +573,7 @@ export function renderDashboardPage({ publicUrl }) {
       border-radius: 8px;
       background: rgba(255, 255, 255, 0.08);
     }
-    .workspace { min-width: 0; }
+    .workspace { min-width: 0; max-width: 100%; }
     header.topbar {
       position: sticky;
       top: 0;
@@ -734,12 +723,17 @@ export function renderDashboardPage({ publicUrl }) {
     main.content {
       width: 100%;
       max-width: none;
+      min-width: 0;
       margin: 0;
       padding: 10px;
+      overflow-x: hidden;
     }
     .home-page { display: none; }
-    .home-page.active { display: block; }
+    .home-page.active { display: block; min-width: 0; max-width: 100%; }
     .home-panel, .config-section {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
       margin-bottom: 8px;
       padding: 14px;
       border: 1px solid var(--line);
@@ -752,13 +746,20 @@ export function renderDashboardPage({ publicUrl }) {
       color: var(--muted);
       font-weight: 600;
       line-height: 1.45;
+      overflow-wrap: anywhere;
     }
     .panel-title-row, .section-header, .device-head {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
       gap: 10px;
+      min-width: 0;
       margin-bottom: 12px;
+    }
+    .panel-title-row > *,
+    .section-header > *,
+    .device-head > * {
+      min-width: 0;
     }
     .panel-title, h2 {
       margin: 0;
@@ -771,6 +772,7 @@ export function renderDashboardPage({ publicUrl }) {
       color: var(--muted);
       font-size: 13px;
       font-weight: 700;
+      overflow-wrap: anywhere;
     }
     .danger-text { color: var(--danger); }
     .actions, .template-actions, .register-actions {
@@ -1394,12 +1396,30 @@ export function renderDashboardPage({ publicUrl }) {
       font-weight: 700;
     }
     .empty-state {
+      max-width: 100%;
       padding: 22px;
       border: 1px dashed var(--line-strong);
       border-radius: 8px;
       background: #fbfcfd;
       color: var(--muted);
       font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+    div.empty-state {
+      display: grid;
+      gap: 6px;
+    }
+    div.empty-state strong {
+      display: block;
+      color: var(--muted-strong);
+      font-size: 14px;
+    }
+    div.empty-state span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+      line-height: 1.45;
     }
     @media (max-width: 1100px) {
       .app-shell { grid-template-columns: 220px minmax(0, 1fr); }
@@ -1425,6 +1445,8 @@ export function renderDashboardPage({ publicUrl }) {
       .kpi-grid, .status-strip, .health-grid, .metric-row { grid-template-columns: 1fr; }
     }
     @media (max-width: 620px) {
+      .app-shell, .workspace, main.content, .home-page, .home-panel, .config-section { max-width: 100vw; }
+      main.content { padding: 14px; }
       .overview, .grid, .gateway-grid { grid-template-columns: 1fr; }
       .wide { grid-column: span 1; }
       .gateway-stats { grid-template-columns: 1fr; }
@@ -2317,7 +2339,7 @@ export function renderDashboardPage({ publicUrl }) {
                 <option value="en">English</option>
               </select>
             </label>
-            <button id="remoteDisconnectBtn" class="subtle" type="button">Disconnection</button>
+            <button id="remoteDisconnectBtn" class="subtle" type="button">V? danh s?ch site</button>
           </div>
           <div class="status-chip">
             <button id="status" class="status" type="button" aria-label="Trạng thái: Đang tải..." data-message="Đang tải..." title="Đang tải..."></button>
@@ -3133,7 +3155,7 @@ export function renderDashboardPage({ publicUrl }) {
       setText("homeCloudState", online ? "Đồng bộ" : "-");
 
       if (!gateways.length) {
-        if (grid) grid.innerHTML = '<div class="empty-state">Chưa có site. Khi gateway gửi heartbeat, site sẽ tự xuất hiện ở đây.</div>';
+        if (grid) grid.innerHTML = '<div class="empty-state"><strong>Ch?a c? site k?t n?i.</strong><span>Tr?n IPC, ki?m tra gateway.id, GATEWAY_TOKEN ho?c PROVISIONING_TOKEN, r?i xem log Hardware-Gateway. Site s? xu?t hi?n sau khi heartbeat g?i v? /api/gateway/heartbeat.</span></div>';
         if (el("homeFocusGatewayName")) renderHomeFocus(null);
         renderHomeModules();
         applyAdminLanguage(el("homeView"));
