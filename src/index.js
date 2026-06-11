@@ -17,6 +17,9 @@ const PUBLIC_ASSETS = new Map([
   ["/logo/logo-mediumsize.png", "logo/logo-mediumsize.png"],
   ["/logo/logo-smallsize.png", "logo/logo-smallsize.png"],
 ]);
+const PUBLIC_TEXT_ASSETS = new Map([
+  ["/assets/admin-tailwind.css", "assets/admin-tailwind.css"],
+]);
 
 const config = {
   host: process.env.HOST || "0.0.0.0",
@@ -59,6 +62,10 @@ server = http.createServer(async (req, res) => {
 
     if ((req.method === "GET" || req.method === "HEAD") && PUBLIC_ASSETS.has(pathname)) {
       return sendFile(res, new URL(PUBLIC_ASSETS.get(pathname), PUBLIC_DIR), "image/png", req.method === "HEAD");
+    }
+
+    if ((req.method === "GET" || req.method === "HEAD") && PUBLIC_TEXT_ASSETS.has(pathname)) {
+      return sendFile(res, new URL(PUBLIC_TEXT_ASSETS.get(pathname), PUBLIC_DIR), "text/css; charset=utf-8", req.method === "HEAD");
     }
 
     if (req.method === "GET" && pathname === "/api/health") {

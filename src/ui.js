@@ -246,8 +246,9 @@ export function renderLoginPage() {
       }
     }
   </style>
+  <link rel="stylesheet" href="/assets/admin-tailwind.css?v=20260611-ui3">
 </head>
-<body>
+<body class="tailwind-ui login-screen server-login">
   <main>
     <div class="brand-row">
       <img class="brand-logo" src="/logo/logo-login-full.png" alt="electric bird">
@@ -2191,8 +2192,9 @@ export function renderDashboardPage({ publicUrl }) {
       }
     }
   </style>
+  <link rel="stylesheet" href="/assets/admin-tailwind.css?v=20260611-ui3">
 </head>
-<body>
+<body class="tailwind-ui admin-screen server-admin">
   <svg class="icon-sprite" aria-hidden="true">
     <symbol id="icon-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 10v10h14V10"></path><path d="M9 20v-6h6v6"></path></symbol>
     <symbol id="icon-menu" viewBox="0 0 24 24"><path d="M3 6h18"></path><path d="M3 12h18"></path><path d="M3 18h18"></path></symbol>

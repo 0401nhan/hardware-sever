@@ -7,6 +7,8 @@ import { renderDashboardPage, renderLoginPage } from "../src/ui.js";
 test("login page uses Vietnamese copy and no fake support links", () => {
   const html = renderLoginPage();
 
+  assert.match(html, /href="\/assets\/admin-tailwind\.css\?v=20260611-ui3"/);
+  assert.match(html, /<body class="tailwind-ui login-screen server-login">/);
   assert.match(html, /<html lang="vi">/);
   assert.match(html, />\s*Tài khoản\s*</);
   assert.match(html, />\s*Mật khẩu\s*</);
@@ -52,6 +54,8 @@ test("dashboard renders shared template library editor", () => {
 test("dashboard starts at site list and remote disconnect returns home", () => {
   const html = renderDashboardPage({ publicUrl: "https://example.test" });
 
+  assert.match(html, /href="\/assets\/admin-tailwind\.css\?v=20260611-ui3"/);
+  assert.match(html, /<body class="tailwind-ui admin-screen server-admin">/);
   assert.match(html, /id="homePageTitle">Site/);
   assert.match(html, /data-home-target="homeOverviewPanel"/);
   assert.deepEqual([...html.matchAll(/data-home-target="([^"]+)"/g)].map((match) => match[1]), ["homeOverviewPanel"]);
