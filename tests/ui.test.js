@@ -36,6 +36,12 @@ test("dashboard renders inverter control actions", () => {
   assert.match(html, /data-control-action="reboot"/);
   assert.match(html, /data-control-action="clear_power_limit"/);
   assert.match(html, /id="powerLimitForm"/);
+  assert.match(html, /id="controlScheduleMode"/);
+  assert.match(html, /value="daily"/);
+  assert.match(html, /value="weekly"/);
+  assert.match(html, /data-schedule-weekday="1"/);
+  assert.match(html, /function collectControlSchedule\(/);
+  assert.match(html, /commandScheduleLabel\(command\)/);
   assert.match(html, /\/api\/gateways\/" \+ encodeURIComponent\(selectedId\) \+ "\/control/);
   assert.match(html, /\/api\/gateways\/" \+ encodeURIComponent\(selectedId\) \+ "\/commands/);
 });

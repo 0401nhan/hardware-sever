@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 
 import { MongoClient } from "mongodb";
+import { commandStatusForNextRun, isRecurringSchedule, nextScheduledRun } from "./schedule.js";
 
 const DEFAULT_GATEWAY_OFFLINE_AFTER_MS = 90_000;
 const DEFAULT_TELEMETRY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -55,6 +56,11 @@ export class MongoHardwareStore {
         { unique: true, partialFilterExpression: { recordId: { $type: "string" } } },
       ),
       this.gatewayCommands.createIndex({ gatewayId: 1, status: 1, createdAt: 1 }),
+      this.gatewayCommands.createIndex({ gatewayId: 1, status: 1, nextRunAt: 1, createdAt: 1 }),
+      this.gatewayCommands.createIndex(
+        { gatewayId: 1, scheduleId: 1, runIndex: 1 },
+        { unique: true, partialFilterExpression: { scheduleId: { $type: "string" } } },
+      ),
       this.deviceTemplates.createIndex({ sortOrder: 1, id: 1 }),
     ]);
     await this.pruneTelemetry({ force: true });
@@ -273,20 +279,26 @@ export class MongoHardwareStore {
     }));
   }
 
-  async createGatewayCommand({ gatewayId, action, payload, createdBy = "admin" }) {
+  async createGatewayCommand({ gatewayId, action, payload, createdBy = "admin", schedule = null, nextRunAt = null, scheduleId = null, runIndex = 0 }) {
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
+    const commandScheduleId = schedule ? (scheduleId || crypto.randomUUID()) : null;
     await this.gatewayCommands.insertOne({
       _id: id,
       id,
       gatewayId,
       action,
       payload: sortKeys(payload),
-      status: "queued",
+      status: commandStatusForNextRun(nextRunAt, new Date(now)),
       message: "",
       result: null,
       createdBy,
       createdAt: now,
+      scheduledAt: schedule?.scheduledAt || nextRunAt || null,
+      nextRunAt: nextRunAt || null,
+      schedule: schedule ? sortKeys(schedule) : null,
+      scheduleId: commandScheduleId,
+      runIndex,
       deliveredAt: null,
       completedAt: null,
       updatedAt: now,
@@ -307,7 +319,15 @@ export class MongoHardwareStore {
   async nextGatewayCommand(gatewayId) {
     const now = new Date().toISOString();
     const result = await this.gatewayCommands.findOneAndUpdate(
-      { gatewayId, status: "queued" },
+      {
+        gatewayId,
+        status: { $in: ["queued", "scheduled"] },
+        $or: [
+          { nextRunAt: null },
+          { nextRunAt: { $exists: false } },
+          { nextRunAt: { $lte: now } },
+        ],
+      },
       {
         $set: {
           status: "delivered",
@@ -316,7 +336,7 @@ export class MongoHardwareStore {
         },
       },
       {
-        sort: { createdAt: 1 },
+        sort: { nextRunAt: 1, createdAt: 1 },
         returnDocument: "after",
       },
     );
@@ -348,7 +368,52 @@ export class MongoHardwareStore {
     if (appVersion) gatewaySet.appVersion = appVersion;
     await this.gateways.updateOne({ _id: gatewayId }, { $set: gatewaySet });
 
-    return this.getGatewayCommand(gatewayId, commandId);
+    const command = await this.getGatewayCommand(gatewayId, commandId);
+    await this.#enqueueNextScheduledCommand(command, status, now);
+    return command;
+  }
+
+  async #enqueueNextScheduledCommand(command, status, now) {
+    if (!command || !["applied", "failed"].includes(status) || !isRecurringSchedule(command.schedule)) return;
+
+    const nextRunIndex = Number(command.runIndex || 0) + 1;
+    const nextRunAt = nextScheduledRun(command.schedule, {
+      from: new Date(now),
+      runIndex: nextRunIndex,
+    });
+    if (!nextRunAt) return;
+
+    const id = crypto.randomUUID();
+    await this.gatewayCommands.updateOne(
+      {
+        gatewayId: command.gatewayId,
+        scheduleId: command.scheduleId,
+        runIndex: nextRunIndex,
+      },
+      {
+        $setOnInsert: {
+          _id: id,
+          id,
+          gatewayId: command.gatewayId,
+          action: command.action,
+          payload: sortKeys(command.payload),
+          status: commandStatusForNextRun(nextRunAt, new Date(now)),
+          message: "",
+          result: null,
+          createdBy: command.createdBy,
+          createdAt: now,
+          scheduledAt: command.schedule?.scheduledAt || nextRunAt,
+          nextRunAt,
+          schedule: sortKeys(command.schedule),
+          scheduleId: command.scheduleId,
+          runIndex: nextRunIndex,
+          deliveredAt: null,
+          completedAt: null,
+          updatedAt: now,
+        },
+      },
+      { upsert: true },
+    );
   }
 
   async seedDeviceTemplates(templates) {
@@ -597,6 +662,11 @@ function mapCommandDoc(row) {
     createdAt: row.createdAt,
     deliveredAt: row.deliveredAt,
     completedAt: row.completedAt,
+    scheduledAt: row.scheduledAt,
+    nextRunAt: row.nextRunAt,
+    schedule: row.schedule ?? null,
+    scheduleId: row.scheduleId,
+    runIndex: Number(row.runIndex || 0),
     updatedAt: row.updatedAt,
   };
 }

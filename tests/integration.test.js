@@ -303,6 +303,78 @@ test("admin can queue inverter control commands for gateway execution", async (t
   assert.equal(commands.body.commands[0].status, "applied");
 });
 
+test("admin can schedule inverter control commands", async (t) => {
+  const app = await startTestServer(t);
+  const sessionCookie = await login(app);
+
+  await createGateway(app, sessionCookie, {
+    id: "GW-SCHEDULE-001",
+    token: "gateway-secret",
+  });
+
+  const futureAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+  const scheduled = await requestJson(app.baseUrl, "/api/gateways/GW-SCHEDULE-001/control", {
+    method: "POST",
+    cookie: sessionCookie,
+    body: {
+      deviceName: "Huawei",
+      action: "limit_power",
+      percent: 50,
+      durationMinutes: 30,
+      schedule: {
+        mode: "once",
+        scheduledAt: futureAt,
+      },
+    },
+  });
+  assert.equal(scheduled.status, 200);
+  assert.equal(scheduled.body.command.status, "scheduled");
+  assert.equal(scheduled.body.command.schedule.mode, "once");
+  assert.equal(scheduled.body.command.nextRunAt, futureAt);
+
+  const earlyCheck = await requestJson(app.baseUrl, "/api/gateway/commands/check", {
+    method: "POST",
+    token: "gateway-secret",
+    body: {
+      gateway_id: "GW-SCHEDULE-001",
+      app_version: "0.1.12",
+    },
+  });
+  assert.equal(earlyCheck.status, 200);
+  assert.equal(earlyCheck.body.command, null);
+
+  const dueAt = new Date(Date.now() - 60 * 1000).toISOString();
+  const due = await requestJson(app.baseUrl, "/api/gateways/GW-SCHEDULE-001/control", {
+    method: "POST",
+    cookie: sessionCookie,
+    body: {
+      deviceName: "Huawei",
+      action: "clear_power_limit",
+      schedule: {
+        mode: "once",
+        scheduledAt: dueAt,
+      },
+    },
+  });
+  assert.equal(due.status, 200);
+  assert.equal(due.body.command.status, "queued");
+
+  const dueCheck = await requestJson(app.baseUrl, "/api/gateway/commands/check", {
+    method: "POST",
+    token: "gateway-secret",
+    body: {
+      gateway_id: "GW-SCHEDULE-001",
+      app_version: "0.1.12",
+    },
+  });
+  assert.equal(dueCheck.status, 200);
+  assert.equal(dueCheck.body.command.id, due.body.command.id);
+  assert.deepEqual(dueCheck.body.command.payload, {
+    deviceName: "Huawei",
+    action: "clear_power_limit",
+  });
+});
+
 test("telemetry ingest stores records and ignores duplicate record ids", async (t) => {
   const app = await startTestServer(t);
   const sessionCookie = await login(app);

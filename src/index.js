@@ -6,6 +6,7 @@ import http from "node:http";
 
 import { openDatabase } from "./db.js";
 import { readDeviceTemplateSeed } from "./deviceTemplates.js";
+import { normalizeCommandSchedule } from "./schedule.js";
 import { createDefaultGatewayConfig, validateGatewayConfig } from "./validation.js";
 import { renderDashboardPage, renderLoginPage } from "./ui.js";
 
@@ -427,11 +428,14 @@ server = http.createServer(async (req, res) => {
       }
 
       const payload = normalizeInverterControlPayload(body);
+      const schedule = normalizeCommandSchedule(body.schedule || body);
       const command = await store.createGatewayCommand({
         gatewayId,
         action: payload.action,
         payload,
         createdBy: config.adminUsername,
+        schedule: schedule?.schedule || null,
+        nextRunAt: schedule?.nextRunAt || null,
       });
 
       return sendJson(res, 200, {
@@ -670,6 +674,9 @@ function gatewayCommandPayload(command) {
     id: command.id,
     action: command.action,
     payload: command.payload,
+    schedule: command.schedule,
+    scheduledAt: command.scheduledAt,
+    nextRunAt: command.nextRunAt,
     createdAt: command.createdAt,
   };
 }

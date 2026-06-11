@@ -4,6 +4,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 
 import initSqlJs from "sql.js";
+import { commandStatusForNextRun, isRecurringSchedule, nextScheduledRun } from "./schedule.js";
 
 const require = createRequire(import.meta.url);
 const DEFAULT_GATEWAY_OFFLINE_AFTER_MS = 90_000;
@@ -84,6 +85,11 @@ export async function openDatabase(dbPath, tokenHashSecret, options = {}) {
       delivered_at TEXT,
       completed_at TEXT,
       updated_at TEXT NOT NULL,
+      scheduled_at TEXT,
+      next_run_at TEXT,
+      schedule_json TEXT,
+      schedule_id TEXT,
+      run_index INTEGER NOT NULL DEFAULT 0,
       FOREIGN KEY (gateway_id) REFERENCES gateways(id) ON DELETE CASCADE
     );
 
@@ -150,6 +156,7 @@ export async function openDatabase(dbPath, tokenHashSecret, options = {}) {
   `);
 
   ensureTemplateRegisterColumns(db);
+  ensureGatewayCommandScheduleColumns(db);
 
   const store = new HardwareStore(db, tokenHashSecret, options);
   store.pruneTelemetry({ force: true });
@@ -174,6 +181,33 @@ function ensureTemplateRegisterColumns(db) {
   if (!columns.has("poll_enabled")) {
     db.exec("ALTER TABLE template_registers ADD COLUMN poll_enabled INTEGER NOT NULL DEFAULT 1");
   }
+}
+
+function ensureGatewayCommandScheduleColumns(db) {
+  const columns = new Set(
+    db.prepare("PRAGMA table_info(gateway_commands)").all().map((row) => row.name),
+  );
+
+  const migrations = [
+    ["scheduled_at", "ALTER TABLE gateway_commands ADD COLUMN scheduled_at TEXT"],
+    ["next_run_at", "ALTER TABLE gateway_commands ADD COLUMN next_run_at TEXT"],
+    ["schedule_json", "ALTER TABLE gateway_commands ADD COLUMN schedule_json TEXT"],
+    ["schedule_id", "ALTER TABLE gateway_commands ADD COLUMN schedule_id TEXT"],
+    ["run_index", "ALTER TABLE gateway_commands ADD COLUMN run_index INTEGER NOT NULL DEFAULT 0"],
+  ];
+
+  for (const [column, statement] of migrations) {
+    if (!columns.has(column)) db.exec(statement);
+  }
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_gateway_commands_gateway_due
+      ON gateway_commands(gateway_id, status, next_run_at, created_at);
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_gateway_commands_schedule_run
+      ON gateway_commands(gateway_id, schedule_id, run_index)
+      WHERE schedule_id IS NOT NULL;
+  `);
 }
 
 export class HardwareStore {
@@ -401,9 +435,11 @@ export class HardwareStore {
     }));
   }
 
-  createGatewayCommand({ gatewayId, action, payload, createdBy = "admin" }) {
+  createGatewayCommand({ gatewayId, action, payload, createdBy = "admin", schedule = null, nextRunAt = null, scheduleId = null, runIndex = 0 }) {
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
+    const status = commandStatusForNextRun(nextRunAt, new Date(now));
+    const commandScheduleId = schedule ? (scheduleId || crypto.randomUUID()) : null;
 
     this.db.prepare(`
       INSERT INTO gateway_commands (
@@ -414,10 +450,29 @@ export class HardwareStore {
         status,
         created_by,
         created_at,
-        updated_at
+        updated_at,
+        scheduled_at,
+        next_run_at,
+        schedule_json,
+        schedule_id,
+        run_index
       )
-      VALUES (?, ?, ?, ?, 'queued', ?, ?, ?)
-    `).run(id, gatewayId, action, stableJson(payload), createdBy, now, now);
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id,
+      gatewayId,
+      action,
+      stableJson(payload),
+      status,
+      createdBy,
+      now,
+      now,
+      schedule?.scheduledAt || nextRunAt || null,
+      nextRunAt || null,
+      schedule ? stableJson(schedule) : null,
+      commandScheduleId,
+      runIndex,
+    );
 
     return this.getGatewayCommand(gatewayId, id);
   }
@@ -443,23 +498,25 @@ export class HardwareStore {
   }
 
   nextGatewayCommand(gatewayId) {
+    const now = new Date().toISOString();
     const row = this.db.prepare(`
       SELECT *
       FROM gateway_commands
-      WHERE gateway_id = ? AND status = 'queued'
-      ORDER BY created_at ASC
+      WHERE gateway_id = ?
+        AND status IN ('queued', 'scheduled')
+        AND (next_run_at IS NULL OR next_run_at <= ?)
+      ORDER BY COALESCE(next_run_at, created_at) ASC
       LIMIT 1
-    `).get(gatewayId);
+    `).get(gatewayId, now);
 
     if (!row) return null;
 
-    const now = new Date().toISOString();
     this.db.prepare(`
       UPDATE gateway_commands
       SET status = 'delivered',
           delivered_at = COALESCE(delivered_at, ?),
           updated_at = ?
-      WHERE id = ? AND status = 'queued'
+      WHERE id = ? AND status IN ('queued', 'scheduled')
     `).run(now, now, row.id);
 
     return this.getGatewayCommand(gatewayId, row.id);
@@ -488,7 +545,39 @@ export class HardwareStore {
       WHERE id = ?
     `).run(appVersion ?? "", now, now, gatewayId);
 
-    return this.getGatewayCommand(gatewayId, commandId);
+    const command = this.getGatewayCommand(gatewayId, commandId);
+    this.#enqueueNextScheduledCommand(command, status, now);
+    return command;
+  }
+
+  #enqueueNextScheduledCommand(command, status, now) {
+    if (!command || !["applied", "failed"].includes(status) || !isRecurringSchedule(command.schedule)) return;
+
+    const nextRunIndex = Number(command.runIndex || 0) + 1;
+    const nextRunAt = nextScheduledRun(command.schedule, {
+      from: new Date(now),
+      runIndex: nextRunIndex,
+    });
+    if (!nextRunAt) return;
+
+    const existing = this.db.prepare(`
+      SELECT id
+      FROM gateway_commands
+      WHERE gateway_id = ? AND schedule_id = ? AND run_index = ?
+      LIMIT 1
+    `).get(command.gatewayId, command.scheduleId, nextRunIndex);
+    if (existing) return;
+
+    this.createGatewayCommand({
+      gatewayId: command.gatewayId,
+      action: command.action,
+      payload: command.payload,
+      createdBy: command.createdBy,
+      schedule: command.schedule,
+      nextRunAt,
+      scheduleId: command.scheduleId,
+      runIndex: nextRunIndex,
+    });
   }
 
   seedDeviceTemplates(templates) {
@@ -888,6 +977,11 @@ function mapCommandRow(row) {
     createdAt: row.created_at,
     deliveredAt: row.delivered_at,
     completedAt: row.completed_at,
+    scheduledAt: row.scheduled_at,
+    nextRunAt: row.next_run_at,
+    schedule: row.schedule_json ? JSON.parse(row.schedule_json) : null,
+    scheduleId: row.schedule_id,
+    runIndex: Number(row.run_index || 0),
     updatedAt: row.updated_at,
   };
 }

@@ -2412,6 +2412,38 @@ export function renderDashboardPage({ publicUrl }) {
                   <label>Thời lượng phút<input id="powerLimitDurationMinutes" type="number" min="1" max="1440" step="1" value="15"></label>
                   <button class="primary" type="submit">Áp dụng giới hạn</button>
                 </form>
+                <div class="control-schedule">
+                  <div class="panel-title-row">
+                    <div>
+                      <h2 class="panel-title">Lịch hẹn lệnh</h2>
+                      <p>Áp dụng cho nút điều khiển và form giới hạn công suất.</p>
+                    </div>
+                  </div>
+                  <div class="schedule-grid">
+                    <label>Kiểu hẹn
+                      <select id="controlScheduleMode">
+                        <option value="now">Chạy ngay</option>
+                        <option value="once">Một lần</option>
+                        <option value="daily">Hằng ngày</option>
+                        <option value="weekly">Hằng tuần</option>
+                      </select>
+                    </label>
+                    <label class="schedule-once-field">Thời điểm chạy<input id="controlScheduleAt" type="datetime-local"></label>
+                    <label class="schedule-repeat-field">Giờ chạy<input id="controlScheduleTime" type="time" value="08:00"></label>
+                    <label class="schedule-repeat-field">Số lần tối đa<input id="controlScheduleMaxRuns" type="number" min="1" max="10000" step="1" placeholder="Không giới hạn"></label>
+                    <label class="schedule-repeat-field">Kết thúc sau ngày<input id="controlScheduleEndAt" type="date"></label>
+                  </div>
+                  <fieldset class="weekday-grid schedule-weekly-field">
+                    <legend>Ngày trong tuần</legend>
+                    <label><input type="checkbox" data-schedule-weekday="1" checked> T2</label>
+                    <label><input type="checkbox" data-schedule-weekday="2" checked> T3</label>
+                    <label><input type="checkbox" data-schedule-weekday="3" checked> T4</label>
+                    <label><input type="checkbox" data-schedule-weekday="4" checked> T5</label>
+                    <label><input type="checkbox" data-schedule-weekday="5" checked> T6</label>
+                    <label><input type="checkbox" data-schedule-weekday="6"> T7</label>
+                    <label><input type="checkbox" data-schedule-weekday="7"> CN</label>
+                  </fieldset>
+                </div>
               </div>
             </div>
           </section>
@@ -2427,6 +2459,7 @@ export function renderDashboardPage({ publicUrl }) {
                     <th>Tạo lúc</th>
                     <th>Hành động</th>
                     <th>Trạng thái</th>
+                    <th>Lịch</th>
                     <th>Chi tiết</th>
                     <th>Cập nhật</th>
                   </tr>
@@ -4173,7 +4206,24 @@ export function renderDashboardPage({ publicUrl }) {
       document.querySelectorAll("[data-control-action], #powerLimitForm button").forEach((button) => {
         button.disabled = disabled;
       });
+      document.querySelectorAll("#controlScheduleMode, #controlScheduleAt, #controlScheduleTime, #controlScheduleMaxRuns, #controlScheduleEndAt, [data-schedule-weekday]").forEach((input) => {
+        input.disabled = disabled;
+      });
+      updateControlScheduleFields();
       renderCommandHistory();
+    }
+
+    function updateControlScheduleFields() {
+      const mode = el("controlScheduleMode")?.value || "now";
+      document.querySelectorAll(".schedule-once-field").forEach((node) => {
+        node.classList.toggle("hidden", mode !== "once");
+      });
+      document.querySelectorAll(".schedule-repeat-field").forEach((node) => {
+        node.classList.toggle("hidden", !["daily", "weekly"].includes(mode));
+      });
+      document.querySelectorAll(".schedule-weekly-field").forEach((node) => {
+        node.classList.toggle("hidden", mode !== "weekly");
+      });
     }
 
     function inverterControlDevices() {
@@ -4200,7 +4250,7 @@ export function renderDashboardPage({ publicUrl }) {
     function renderCommandHistory() {
       const body = el("controlHistoryBody");
       if (!commands.length) {
-        body.innerHTML = '<tr><td colspan="5">Chưa có lệnh.</td></tr>';
+        body.innerHTML = '<tr><td colspan="6">Chưa có lệnh.</td></tr>';
         return;
       }
 
@@ -4209,6 +4259,7 @@ export function renderDashboardPage({ publicUrl }) {
           <td>\${escapeHtml(formatDateTime(command.createdAt))}</td>
           <td>\${escapeHtml(actionLabel(command.action))}</td>
           <td><span class="badge \${escapeHtml(command.status || "queued")}">\${escapeHtml(command.status || "queued")}</span></td>
+          <td class="command-detail">\${escapeHtml(commandScheduleLabel(command))}</td>
           <td class="command-detail">\${escapeHtml(commandDetail(command))}</td>
           <td>\${escapeHtml(formatDateTime(command.completedAt || command.updatedAt || command.deliveredAt))}</td>
         </tr>
@@ -4322,19 +4373,72 @@ export function renderDashboardPage({ publicUrl }) {
         return;
       }
 
-      setStatus("Đang queue " + actionLabel(action) + "...");
+      const schedule = collectControlSchedule();
+      setStatus((schedule ? "Đang hẹn " : "Đang queue ") + actionLabel(action) + "...");
       const payload = await requestJson("/api/gateways/" + encodeURIComponent(selectedId) + "/control", {
         method: "POST",
         body: JSON.stringify({
           deviceName,
           action,
           ...extra,
+          ...(schedule ? { schedule } : {}),
         }),
       });
 
       commands = [payload.command, ...commands.filter((command) => command.id !== payload.command.id)].slice(0, 100);
       renderCommandHistory();
-      setStatus("Đã queue " + actionLabel(payload.command.action), "ok");
+      setStatus((payload.command.status === "scheduled" ? "Đã hẹn " : "Đã queue ") + actionLabel(payload.command.action), "ok");
+    }
+
+    function collectControlSchedule() {
+      const mode = el("controlScheduleMode")?.value || "now";
+      if (mode === "now") return null;
+
+      const timezone = browserTimezone();
+      const schedule = { mode, timezone };
+
+      if (mode === "once") {
+        const localValue = el("controlScheduleAt").value;
+        if (!localValue) throw new Error("Hãy chọn thời điểm chạy");
+        schedule.scheduledAt = localDateTimeToIso(localValue);
+        return schedule;
+      }
+
+      if (!["daily", "weekly"].includes(mode)) {
+        throw new Error("Kiểu hẹn không hợp lệ");
+      }
+
+      schedule.timeOfDay = el("controlScheduleTime").value || "08:00";
+      const maxRuns = Number(el("controlScheduleMaxRuns").value);
+      if (Number.isFinite(maxRuns) && maxRuns > 0) schedule.maxRuns = Math.trunc(maxRuns);
+
+      const endAt = el("controlScheduleEndAt").value;
+      if (endAt) schedule.endAt = dateEndLocalToIso(endAt);
+
+      if (mode === "weekly") {
+        schedule.daysOfWeek = [...document.querySelectorAll("[data-schedule-weekday]:checked")]
+          .map((input) => Number(input.dataset.scheduleWeekday))
+          .filter((day) => Number.isInteger(day));
+        if (!schedule.daysOfWeek.length) throw new Error("Hãy chọn ít nhất một ngày trong tuần");
+      }
+
+      return schedule;
+    }
+
+    function localDateTimeToIso(value) {
+      const date = new Date(value);
+      if (!Number.isFinite(date.getTime())) throw new Error("Thời điểm chạy không hợp lệ");
+      return date.toISOString();
+    }
+
+    function dateEndLocalToIso(value) {
+      const date = new Date(value + "T23:59:59");
+      if (!Number.isFinite(date.getTime())) throw new Error("Ngày kết thúc không hợp lệ");
+      return date.toISOString();
+    }
+
+    function browserTimezone() {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Bangkok";
     }
 
     function submitPowerLimitForm() {
@@ -4383,6 +4487,37 @@ export function renderDashboardPage({ publicUrl }) {
       if (payload.delayMs !== undefined) parts.push(payload.delayMs + " ms delay");
       if (command.message) parts.push(command.message);
       return parts.join(" | ") || "-";
+    }
+
+    function commandScheduleLabel(command) {
+      const schedule = command.schedule || {};
+      if (!schedule.mode) return "Chạy ngay";
+
+      const nextRunAt = command.nextRunAt || command.scheduledAt;
+      const parts = [];
+      if (schedule.mode === "once") parts.push("Một lần");
+      if (schedule.mode === "daily") parts.push("Hằng ngày " + (schedule.timeOfDay || ""));
+      if (schedule.mode === "weekly") parts.push("Hằng tuần " + weekdayLabel(schedule.daysOfWeek) + " " + (schedule.timeOfDay || ""));
+      if (nextRunAt && ["scheduled", "queued", "delivered"].includes(command.status || "")) {
+        parts.push("lần tới " + formatDateTime(nextRunAt));
+      }
+      if (Number.isInteger(command.runIndex) && command.runIndex > 0) {
+        parts.push("lần " + (command.runIndex + 1));
+      }
+      return parts.filter(Boolean).join(" | ") || "-";
+    }
+
+    function weekdayLabel(days) {
+      const labels = {
+        1: "T2",
+        2: "T3",
+        3: "T4",
+        4: "T5",
+        5: "T6",
+        6: "T7",
+        7: "CN",
+      };
+      return (days || []).map((day) => labels[day] || day).join(", ");
     }
 
     function renderTemplatePicker() {
@@ -6165,6 +6300,10 @@ export function renderDashboardPage({ publicUrl }) {
       }
       if (target?.id === "controlDeviceName") {
         selectedControlDevice = target.value;
+        return;
+      }
+      if (target?.id === "controlScheduleMode") {
+        updateControlScheduleFields();
         return;
       }
       if (target?.id === "iec104EvnStation") {
