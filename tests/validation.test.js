@@ -173,6 +173,40 @@ test("accepts station model and station IEC104 mappings in remote config", () =>
   );
 });
 
+test("accepts IEC104 EVN source mapping in remote config", () => {
+  const config = validRtuConfig();
+  config.iec104 = {
+    enabled: true,
+    mode: "server",
+    host: "0.0.0.0",
+    port: 2404,
+    evnMapping: {
+      stationId: "station_1",
+      pOut: {
+        enabled: true,
+        source: "meter",
+        device: "meter_01",
+        register: "active_power_kw",
+      },
+      ainvD1: {
+        enabled: true,
+        source: "snapshot",
+        devices: ["inv_01"],
+        register: "daily_energy_yield_kwh",
+        snapshotStrategy: "daily_register_eod",
+      },
+    },
+  };
+
+  assert.doesNotThrow(() => validateGatewayConfig(config, "EB-ANHUNG-001"));
+
+  config.iec104.evnMapping.ainvD1.snapshotStrategy = "manual";
+  assert.throws(
+    () => validateGatewayConfig(config, "EB-ANHUNG-001"),
+    /iec104\.evnMapping\.ainvD1\.snapshotStrategy is unsupported/,
+  );
+});
+
 test("rejects invalid remote gateway polling settings", () => {
   const config = validRtuConfig();
   config.devices[0].pollIntervalMs = 100;

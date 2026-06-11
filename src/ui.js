@@ -2691,8 +2691,8 @@ export function renderDashboardPage({ publicUrl }) {
     <section class="config-section">
       <div class="section-header">
         <div class="section-title">
-          <h2>Register EVN yêu cầu</h2>
-          <p>Đánh dấu các thanh ghi Modbus bằng đúng Vai trò EVN để gateway tự cộng, chốt D-1 và sinh IOA cố định.</p>
+          <h2>Tín hiệu EVN yêu cầu</h2>
+          <p>Chọn nguồn device/register ở bảng Mapping IEC104 EVN; gateway tự cộng inverter và snapshot D-1 cuối ngày.</p>
         </div>
       </div>
       <div class="table-wrap">
@@ -2703,7 +2703,7 @@ export function renderDashboardPage({ publicUrl }) {
               <th>IOA</th>
               <th>Tín hiệu EVN</th>
               <th>Type ID</th>
-              <th>Vai trò register cần đánh dấu</th>
+              <th>Nguồn cấu hình</th>
               <th>Bắt buộc</th>
             </tr>
           </thead>
@@ -2736,6 +2736,22 @@ export function renderDashboardPage({ publicUrl }) {
           <button id="generateEvnIec104Btn" class="subtle" type="button">Cập nhật mapping EVN</button>
           <button class="primary" type="button" data-save-config>Lưu</button>
         </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Bật</th>
+              <th>IOA</th>
+              <th>Tín hiệu EVN</th>
+              <th>Nguồn</th>
+              <th>Thiết bị</th>
+              <th>Register</th>
+              <th>Snapshot</th>
+            </tr>
+          </thead>
+          <tbody id="iec104EvnSourcesBody"></tbody>
+        </table>
       </div>
       <div class="table-wrap">
         <table>
@@ -4469,7 +4485,6 @@ export function renderDashboardPage({ publicUrl }) {
               '<th>Hệ số</th>' +
               '<th>Độ lệch</th>' +
               '<th>Đơn vị</th>' +
-              '<th>Vai trò EVN</th>' +
               '<th></th>' +
             '</tr>' +
           '</thead>' +
@@ -4491,7 +4506,6 @@ export function renderDashboardPage({ publicUrl }) {
         '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="scale" type="number" step="any" value="' + (register.scale ?? 1) + '"></td>' +
         '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="offset" type="number" step="any" value="' + (register.offset ?? "") + '"></td>' +
         '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="unit" value="' + escapeHtml(register.unit || "") + '"></td>' +
-        '<td><select data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="evnRole">' + evnRoleOptions.map((item) => option(item.value, register.evnRole || "", item.label)).join("") + '</select></td>' +
         '<td><button type="button" class="danger" data-remove-template-register="' + templateIndex + ':' + registerIndex + '">Xóa</button></td>' +
       '</tr>';
     }
@@ -4663,7 +4677,6 @@ export function renderDashboardPage({ publicUrl }) {
                 <th>Kiểu</th>
                 <th>Hệ số</th>
                 <th>Đơn vị</th>
-                <th>Vai trò EVN</th>
                 <th></th>
               </tr>
             </thead>
@@ -4685,7 +4698,6 @@ export function renderDashboardPage({ publicUrl }) {
           <td><select data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="type">\${["uint16", "int16", "uint32", "int32", "uint64", "int64", "float32", "float64", "string", "bytes", "bitfield16", "bitfield32"].map((item) => option(item, register.type || "uint16")).join("")}</select></td>
           <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="scale" type="number" step="any" value="\${register.scale ?? 1}"></td>
           <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="unit" value="\${escapeHtml(register.unit || "")}"></td>
-          <td><select data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="evnRole">\${evnRoleOptions.map((item) => option(item.value, register.evnRole || "", item.label)).join("")}</select></td>
           <td><button type="button" class="danger" data-remove-register="\${deviceIndex}:\${registerIndex}">Xóa</button></td>
         </tr>
       \`;
@@ -4705,6 +4717,7 @@ export function renderDashboardPage({ publicUrl }) {
 
     function renderIec104() {
       renderEvnStationPicker();
+      renderEvnSourceMappings();
       renderIec104Points();
     }
 
@@ -4724,8 +4737,134 @@ export function renderDashboardPage({ publicUrl }) {
 
       picker.disabled = false;
       if (generateButton) generateButton.disabled = false;
-      const selected = picker.value || stations.find((station) => station.evnProfile?.enabled)?.id || stations[0].id || "";
+      const selected = picker.value || state.iec104?.evnMapping?.stationId || stations.find((station) => station.evnProfile?.enabled)?.id || stations[0].id || "";
       picker.innerHTML = stations.map((station) => option(station.id || "", selected, station.name || station.id || "Trạm")).join("");
+    }
+
+    const evnSourceRows = [
+      { key: "pOut", ioa: "1", label: "P-out", source: "meter", mode: "single", kind: "meter", required: true },
+      { key: "pinvOut", ioa: "2", label: "Pinv-out total", source: "inverter_total", mode: "multi", kind: "inverter", required: true },
+      { key: "ainvD1", ioa: "3", label: "Ainv_D-1 total", source: "snapshot", mode: "multi", kind: "inverter", required: true, snapshot: true },
+      { key: "qOut", ioa: "4", label: "Q-out", source: "inverter_total", mode: "multi", kind: "inverter" },
+      { key: "ua", ioa: "5", label: "Ua", source: "meter", mode: "single", kind: "meter" },
+      { key: "ub", ioa: "6", label: "Ub", source: "meter", mode: "single", kind: "meter" },
+      { key: "uc", ioa: "7", label: "Uc", source: "meter", mode: "single", kind: "meter" },
+      { key: "ia", ioa: "8", label: "Ia", source: "meter", mode: "single", kind: "meter" },
+      { key: "ib", ioa: "9", label: "Ib", source: "meter", mode: "single", kind: "meter" },
+      { key: "ic", ioa: "10", label: "Ic", source: "meter", mode: "single", kind: "meter" },
+      { key: "frequency", ioa: "11", label: "Frequency", source: "meter", mode: "single", kind: "meter" },
+      { key: "powerFactor", ioa: "12", label: "Power factor", source: "meter", mode: "single", kind: "meter" },
+      { key: "inverterPoints", ioa: "13/14 +2", label: "Per inverter P / D-1", source: "snapshot", mode: "inverterPoints", kind: "inverter", snapshot: true },
+    ];
+
+    function renderEvnSourceMappings() {
+      const body = el("iec104EvnSourcesBody");
+      if (!body) return;
+
+      const station = selectedEvnStation();
+      if (!station) {
+        body.innerHTML = '<tr><td colspan="7" class="empty-state">ChÆ°a cÃ³ tráº¡m EVN. Táº¡o tráº¡m trÆ°á»›c khi chá»n nguá»“n tÃ­n hiá»‡u.</td></tr>';
+        return;
+      }
+
+      const mapping = mergedClientEvnMapping(station, state.iec104?.evnMapping);
+      body.innerHTML = evnSourceRows.map((row) => renderEvnSourceRow(row, mapping[row.key] || {}, station)).join("");
+    }
+
+    function renderEvnSourceRow(row, signal, station) {
+      const enabled = signal.enabled === undefined ? true : Boolean(signal.enabled);
+      const required = row.required ? '<span class="badge online">Báº¯t buá»™c</span>' : '<span class="badge">Khuyáº¿n nghá»‹</span>';
+
+      return '' +
+        '<tr data-evn-source-row data-evn-key="' + escapeHtml(row.key) + '" data-evn-mode="' + escapeHtml(row.mode) + '" data-evn-source="' + escapeHtml(row.source) + '">' +
+          '<td><input data-evn-field="enabled" type="checkbox" ' + (enabled ? "checked" : "") + ' ' + (row.required ? "disabled" : "") + '><input data-evn-field="requiredEnabled" type="hidden" value="' + (row.required ? "true" : "") + '"></td>' +
+          '<td><strong>' + escapeHtml(row.ioa) + '</strong></td>' +
+          '<td>' + escapeHtml(row.label) + ' ' + required + '</td>' +
+          '<td>' + escapeHtml(evnSourceLabel(row.source)) + '</td>' +
+          '<td>' + renderEvnDeviceSelector(row, signal, station) + '</td>' +
+          '<td>' + renderEvnRegisterSelector(row, signal, station) + '</td>' +
+          '<td>' + (row.snapshot ? '<input data-evn-field="snapshotStrategy" type="hidden" value="daily_register_eod">Snapshot cuối ngày' : '-') + '</td>' +
+        '</tr>';
+    }
+
+    function renderEvnDeviceSelector(row, signal, station) {
+      const devices = evnDevicesForRow(row, station);
+      if (row.mode === "single") {
+        const selected = signal.device || devices[0]?.name || "";
+        return '<select data-evn-field="device">' + devices.map((device) => option(device.name || "", selected, device.name || "Thiáº¿t bá»‹")).join("") + '</select>';
+      }
+
+      const selected = new Set(signal.devices || devices.map((device) => device.name).filter(Boolean));
+      const size = Math.min(Math.max(devices.length, 2), 6);
+      return '<select data-evn-field="devices" multiple size="' + size + '">' + devices.map((device) => {
+        const name = device.name || "";
+        return '<option value="' + escapeHtml(name) + '" ' + (selected.has(name) ? "selected" : "") + '>' + escapeHtml(name || "Thiáº¿t bá»‹") + '</option>';
+      }).join("") + '</select>';
+    }
+
+    function renderEvnRegisterSelector(row, signal, station) {
+      const devices = selectedEvnDevices(row, signal, station);
+      if (row.mode === "inverterPoints") {
+        return '<div class="inline-field">' +
+          '<select data-evn-field="powerRegister">' + evnRegisterOptions(devices, signal.powerRegister) + '</select>' +
+          '<select data-evn-field="energyRegister">' + evnRegisterOptions(devices, signal.energyRegister) + '</select>' +
+        '</div>';
+      }
+
+      return '<select data-evn-field="register">' + evnRegisterOptions(devices, signal.register) + '</select>';
+    }
+
+    function collectEvnMapping() {
+      const picker = el("iec104EvnStation");
+      const station = selectedEvnStation();
+      const mapping = {
+        ...(state.iec104?.evnMapping || {}),
+        stationId: picker?.value || station?.id || "",
+      };
+
+      document.querySelectorAll("[data-evn-source-row]").forEach((row) => {
+        const key = row.dataset.evnKey;
+        const mode = row.dataset.evnMode;
+        const required = row.querySelector("[data-evn-field='requiredEnabled']")?.value === "true";
+        const enabled = required || Boolean(row.querySelector("[data-evn-field='enabled']")?.checked);
+        const value = (field) => row.querySelector("[data-evn-field='" + field + "']")?.value?.trim?.() || "";
+        const selectedValues = (field) => [...row.querySelector("[data-evn-field='" + field + "']")?.selectedOptions || []].map((item) => item.value).filter(Boolean);
+
+        if (mode === "single") {
+          mapping[key] = {
+            enabled,
+            source: row.dataset.evnSource,
+            device: value("device"),
+            register: value("register"),
+            scale: Number(mapping[key]?.scale ?? 1),
+          };
+          return;
+        }
+
+        if (mode === "inverterPoints") {
+          mapping[key] = {
+            enabled,
+            devices: selectedValues("devices"),
+            powerRegister: value("powerRegister"),
+            energyRegister: value("energyRegister"),
+            snapshotStrategy: "daily_register_eod",
+            powerScale: Number(mapping[key]?.powerScale ?? 1),
+            energyScale: Number(mapping[key]?.energyScale ?? 1),
+          };
+          return;
+        }
+
+        mapping[key] = {
+          enabled,
+          source: row.dataset.evnSource,
+          devices: selectedValues("devices"),
+          register: value("register"),
+          ...(row.dataset.evnSource === "snapshot" ? { snapshotStrategy: "daily_register_eod" } : {}),
+          scale: Number(mapping[key]?.scale ?? 1),
+        };
+      });
+
+      return mapping;
     }
 
     function renderIec104Points() {
@@ -4833,9 +4972,11 @@ export function renderDashboardPage({ publicUrl }) {
         return;
       }
 
-      const mapping = buildClientEvnIec104Mapping(station);
+      const evnMapping = mergedClientEvnMapping(station, state.iec104?.evnMapping);
+      const mapping = buildClientEvnIec104Mapping(station, evnMapping);
       state.iec104 = {
         ...(state.iec104 || {}),
+        evnMapping,
         points: mapping.points,
         controls: mapping.controls,
       };
@@ -4847,30 +4988,36 @@ export function renderDashboardPage({ publicUrl }) {
 
       renderStations();
       renderEvnStationPicker();
+      renderEvnSourceMappings();
       renderIec104Points();
       setStatus("Đã cập nhật mapping EVN cho " + (station.name || station.id), "ok");
     }
 
-    function buildClientEvnIec104Mapping(station) {
+    function buildClientEvnIec104Mapping(station, evnMapping) {
       const stationId = station?.id || "";
-      const stationDevices = devicesForStationConfig(station);
-      const inverterDevices = stationDevices.filter(isClientInverterDevice);
+      const mapping = mergedClientEvnMapping(station, evnMapping);
+      const inverterDevices = selectedDevicesByName(mapping.inverterPoints?.devices).filter(isClientInverterDevice);
+      const optionalPoints = [
+        ["qOut", 4, "q_out_kvar", "reactive_power_kvar"],
+        ["ua", 5, "phase_a_voltage_v", "phase_a_voltage_v"],
+        ["ub", 6, "phase_b_voltage_v", "phase_b_voltage_v"],
+        ["uc", 7, "phase_c_voltage_v", "phase_c_voltage_v"],
+        ["ia", 8, "phase_a_current_a", "phase_a_current_a"],
+        ["ib", 9, "phase_b_current_a", "phase_b_current_a"],
+        ["ic", 10, "phase_c_current_a", "phase_c_current_a"],
+        ["frequency", 11, "grid_frequency_hz", "grid_frequency_hz"],
+        ["powerFactor", 12, "power_factor", "power_factor"],
+      ]
+        .filter(([key]) => mapping[key]?.enabled !== false)
+        .map(([, ioa, name, measurement]) => stationPoint(ioa, name, stationId, measurement));
 
       return {
         points: [
           stationPoint(1, "p_out_kw", stationId, "active_power_kw"),
           stationPoint(2, "pinv_out_kw", stationId, "inverter_total_active_power_kw"),
           stationPoint(3, "ainv_d_minus_1_kwh", stationId, "inverter_total_yesterday_energy_kwh"),
-          stationPoint(4, "q_out_kvar", stationId, "reactive_power_kvar"),
-          stationPoint(5, "phase_a_voltage_v", stationId, "phase_a_voltage_v"),
-          stationPoint(6, "phase_b_voltage_v", stationId, "phase_b_voltage_v"),
-          stationPoint(7, "phase_c_voltage_v", stationId, "phase_c_voltage_v"),
-          stationPoint(8, "phase_a_current_a", stationId, "phase_a_current_a"),
-          stationPoint(9, "phase_b_current_a", stationId, "phase_b_current_a"),
-          stationPoint(10, "phase_c_current_a", stationId, "phase_c_current_a"),
-          stationPoint(11, "grid_frequency_hz", stationId, "grid_frequency_hz"),
-          stationPoint(12, "power_factor", stationId, "power_factor"),
-          ...inverterDevices.flatMap((device, index) => clientInverterPoints(device, index)),
+          ...optionalPoints,
+          ...inverterDevices.flatMap((device, index) => clientInverterPoints(device, index, mapping.inverterPoints)),
         ],
         controls: [
           {
@@ -4916,9 +5063,11 @@ export function renderDashboardPage({ publicUrl }) {
       };
     }
 
-    function clientInverterPoints(device, index) {
+    function clientInverterPoints(device, index, inverterMapping = {}) {
       const firstIoa = 13 + (index * 2);
       const inverterNumber = index + 1;
+      const override = inverterMapping.overrides?.[device.name] || {};
+      const powerMeasurement = override.powerRegister || inverterMapping.powerRegister || clientMeasurementName(device, ["active_power_kw", "active_power_total_kw", "ac_power_kw"]);
 
       return [
         {
@@ -4926,18 +5075,125 @@ export function renderDashboardPage({ publicUrl }) {
           name: "inverter_" + inverterNumber + "_active_power_kw",
           source: "device",
           device: device.name || "",
-          measurement: clientMeasurementName(device, ["active_power_kw", "active_power_total_kw", "ac_power_kw"], ["inverter_active_power_kw"]),
+          measurement: powerMeasurement,
           type: "float",
+          ...(Number.isFinite(Number(inverterMapping.powerScale)) ? { scale: Number(inverterMapping.powerScale) } : {}),
         },
         {
           ioa: firstIoa + 1,
-          name: "inverter_" + inverterNumber + "_daily_energy_kwh",
+          name: "inverter_" + inverterNumber + "_yesterday_energy_kwh",
           source: "device",
           device: device.name || "",
-          measurement: clientMeasurementName(device, ["daily_energy_yield_kwh", "daily_energy_kwh", "energy_today_kwh"], ["inverter_daily_energy_kwh"]),
+          measurement: "evn_yesterday_energy_kwh",
           type: "float",
         },
       ];
+    }
+
+    function selectedEvnStation() {
+      const stationId = el("iec104EvnStation")?.value || state.iec104?.evnMapping?.stationId || state.stations?.[0]?.id || "";
+      return (state.stations || []).find((item) => item.id === stationId) || null;
+    }
+
+    function mergedClientEvnMapping(station, current = {}) {
+      const defaults = defaultClientEvnMapping(station);
+      const merged = {
+        ...defaults,
+        ...current,
+        stationId: current?.stationId || station?.id || defaults.stationId || "",
+      };
+
+      for (const key of ["pOut", "pinvOut", "ainvD1", "qOut", "ua", "ub", "uc", "ia", "ib", "ic", "frequency", "powerFactor"]) {
+        merged[key] = {
+          ...(defaults[key] || {}),
+          ...(current?.[key] || {}),
+        };
+      }
+
+      merged.inverterPoints = {
+        ...defaults.inverterPoints,
+        ...(current?.inverterPoints || {}),
+      };
+
+      return merged;
+    }
+
+    function defaultClientEvnMapping(station) {
+      const stationDevices = devicesForStationConfig(station);
+      const meterDevice = stationDevices.find(isClientMeterDevice) || stationDevices.find((device) => !isClientInverterDevice(device)) || {};
+      const inverterDevices = stationDevices.filter(isClientInverterDevice);
+      const inverterNames = inverterDevices.map((device) => device.name).filter(Boolean);
+      const firstInverter = inverterDevices[0] || {};
+
+      return {
+        stationId: station?.id || "",
+        pOut: { enabled: true, source: "meter", device: meterDevice.name || "", register: clientMeasurementName(meterDevice, ["active_power_kw", "meter_active_power_kw", "grid_export_power_kw", "export_power_kw", "p_out_kw"]), scale: 1 },
+        pinvOut: { enabled: true, source: "inverter_total", devices: inverterNames, register: clientMeasurementName(firstInverter, ["active_power_kw", "active_power_total_kw", "ac_power_kw", "output_power_kw"]), scale: 1 },
+        ainvD1: { enabled: true, source: "snapshot", devices: inverterNames, register: clientMeasurementName(firstInverter, ["daily_energy_yield_kwh", "daily_energy_kwh", "energy_today_kwh", "yield_today_kwh"]), snapshotStrategy: "daily_register_eod", scale: 1 },
+        qOut: { enabled: true, source: "inverter_total", devices: inverterNames, register: clientMeasurementName(firstInverter, ["reactive_power_kvar", "reactive_power_total_kvar", "q_out_kvar", "reactive_power_var"]), scale: 1 },
+        ua: { enabled: true, source: "meter", device: meterDevice.name || "", register: clientMeasurementName(meterDevice, ["phase_a_voltage_v", "ua_v", "voltage_l1_v"]), scale: 1 },
+        ub: { enabled: true, source: "meter", device: meterDevice.name || "", register: clientMeasurementName(meterDevice, ["phase_b_voltage_v", "ub_v", "voltage_l2_v"]), scale: 1 },
+        uc: { enabled: true, source: "meter", device: meterDevice.name || "", register: clientMeasurementName(meterDevice, ["phase_c_voltage_v", "uc_v", "voltage_l3_v"]), scale: 1 },
+        ia: { enabled: true, source: "meter", device: meterDevice.name || "", register: clientMeasurementName(meterDevice, ["phase_a_current_a", "ia_a", "current_l1_a"]), scale: 1 },
+        ib: { enabled: true, source: "meter", device: meterDevice.name || "", register: clientMeasurementName(meterDevice, ["phase_b_current_a", "ib_a", "current_l2_a"]), scale: 1 },
+        ic: { enabled: true, source: "meter", device: meterDevice.name || "", register: clientMeasurementName(meterDevice, ["phase_c_current_a", "ic_a", "current_l3_a"]), scale: 1 },
+        frequency: { enabled: true, source: "meter", device: meterDevice.name || "", register: clientMeasurementName(meterDevice, ["grid_frequency_hz", "frequency_hz", "freq_hz"]), scale: 1 },
+        powerFactor: { enabled: true, source: "meter", device: meterDevice.name || "", register: clientMeasurementName(meterDevice, ["power_factor", "pf", "total_power_factor"]), scale: 1 },
+        inverterPoints: {
+          enabled: true,
+          devices: inverterNames,
+          powerRegister: clientMeasurementName(firstInverter, ["active_power_kw", "active_power_total_kw", "ac_power_kw", "output_power_kw"]),
+          energyRegister: clientMeasurementName(firstInverter, ["daily_energy_yield_kwh", "daily_energy_kwh", "energy_today_kwh", "yield_today_kwh"]),
+          snapshotStrategy: "daily_register_eod",
+          powerScale: 1,
+          energyScale: 1,
+        },
+      };
+    }
+
+    function evnDevicesForRow(row, station) {
+      const devices = devicesForStationConfig(station);
+      if (row.kind === "inverter") return devices.filter(isClientInverterDevice);
+      if (row.kind === "meter") return devices.filter(isClientMeterDevice);
+      return devices;
+    }
+
+    function selectedEvnDevices(row, signal, station) {
+      const devices = evnDevicesForRow(row, station);
+      if (row.mode === "single") {
+        const selected = signal.device || devices[0]?.name || "";
+        return devices.filter((device) => device.name === selected);
+      }
+
+      const selected = new Set(signal.devices || devices.map((device) => device.name).filter(Boolean));
+      return devices.filter((device) => selected.has(device.name));
+    }
+
+    function evnRegisterOptions(devices, selected) {
+      const names = new Set();
+      for (const device of devices || []) {
+        for (const register of device.registers || []) {
+          if (register.name) names.add(register.name);
+        }
+      }
+      if (selected) names.add(selected);
+      if (!names.size) names.add("");
+
+      return [...names].map((name) => option(name, selected || "", name || "ChÆ°a cÃ³ register")).join("");
+    }
+
+    function selectedDevicesByName(names = []) {
+      const selected = new Set(names || []);
+      return (state.devices || []).filter((device) => device.name && selected.has(device.name));
+    }
+
+    function evnSourceLabel(source) {
+      return {
+        meter: "Meter",
+        device: "Device",
+        inverter_total: "Tổng inverter",
+        snapshot: "Snapshot cuối ngày",
+      }[source] || source || "-";
     }
 
     function devicesForStationConfig(station) {
@@ -4961,14 +5217,21 @@ export function renderDashboardPage({ publicUrl }) {
         || text.includes("sma");
     }
 
-    function clientMeasurementName(device, preferredNames, evnRoles = []) {
+    function isClientMeterDevice(device) {
+      const text = [device.name, device.category, device.type, device.manufacturer, device.model, device.templateId]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return text.includes("meter")
+        || text.includes("powerlogic")
+        || text.includes("acrel")
+        || text.includes("pm5")
+        || text.includes("pm2");
+    }
+
+    function clientMeasurementName(device, preferredNames) {
       const registers = device.registers || [];
-
-      for (const role of evnRoles) {
-        const tagged = registers.find((register) => register.evnRole === role && register.name);
-        if (tagged) return tagged.name;
-      }
-
       const registerNames = registers.map((register) => register.name).filter(Boolean);
       for (const name of preferredNames) {
         if (registerNames.includes(name)) return name;
@@ -5124,6 +5387,7 @@ export function renderDashboardPage({ publicUrl }) {
         keepAliveMs: numberValue("iec104KeepAliveMs"),
         periodicMs: numberValue("iec104PeriodicMs"),
         spontaneous: true,
+        evnMapping: collectEvnMapping(),
         points: collectIec104Points(),
       };
       state.storage = {
@@ -5936,6 +6200,22 @@ export function renderDashboardPage({ publicUrl }) {
       }
       if (target?.id === "controlDeviceName") {
         selectedControlDevice = target.value;
+        return;
+      }
+      if (target?.id === "iec104EvnStation") {
+        state.iec104 = {
+          ...(state.iec104 || {}),
+          evnMapping: mergedClientEvnMapping(selectedEvnStation(), { stationId: target.value }),
+        };
+        renderEvnSourceMappings();
+        return;
+      }
+      if (target?.matches?.("[data-evn-source-row] [data-evn-field]")) {
+        state.iec104 = {
+          ...(state.iec104 || {}),
+          evnMapping: collectEvnMapping(),
+        };
+        renderEvnSourceMappings();
         return;
       }
       if (target?.matches?.("[data-iec104-point-row] [data-field='source'], [data-iec104-point-row] [data-field='device'], [data-iec104-point-row] [data-field='station']")) {

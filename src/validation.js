@@ -9,6 +9,8 @@ const SUPPORTED_IEC104_CONTROL_TYPES = new Set(["single", "setpoint"]);
 const SUPPORTED_IEC104_CONTROL_VALUE_FIELDS = new Set(["value", "percent", "kw", "watts"]);
 const SUPPORTED_IEC104_SIMULATOR_MODES = new Set(["fallback", "always"]);
 const SUPPORTED_INVERTER_CONTROL_ACTIONS = new Set(["start", "stop", "reboot", "limit_power", "clear_power_limit"]);
+const SUPPORTED_EVN_SIGNAL_SOURCES = new Set(["meter", "device", "inverter_total", "snapshot"]);
+const SUPPORTED_EVN_SNAPSHOT_STRATEGIES = new Set(["daily_register_eod", "cumulative_delta"]);
 const SUPPORTED_REGISTER_TYPES = new Set([
   "uint16",
   "int16",
@@ -214,6 +216,7 @@ function validateIec104(iec104 = {}) {
   validateInteger(iec104.selectTimeoutMs, "iec104.selectTimeoutMs", { min: 0, optional: true });
   validateBoolean(iec104.spontaneous, "iec104.spontaneous", { optional: true });
   validateIec104Simulator(iec104.simulator);
+  validateIec104EvnMapping(iec104.evnMapping, "iec104.evnMapping");
 
   if (iec104.points !== undefined && !Array.isArray(iec104.points)) {
     throw new Error("Invalid gateway config. iec104.points must be an array");
@@ -318,6 +321,79 @@ function validateIec104Point(point, pointPath) {
   validateEnum(point.type, `${pointPath}.type`, SUPPORTED_IEC104_POINT_TYPES, { optional: true });
   validateBoolean(point.inverted, `${pointPath}.inverted`, { optional: true });
   validateString(point.name, `${pointPath}.name`, { optional: true });
+  validateNumber(point.scale, `${pointPath}.scale`, { optional: true });
+  validateNumber(point.offset, `${pointPath}.offset`, { optional: true });
+}
+
+function validateIec104EvnMapping(evnMapping, mappingPath) {
+  if (evnMapping === undefined || evnMapping === null) return;
+
+  if (typeof evnMapping !== "object" || Array.isArray(evnMapping)) {
+    throw new Error(`Invalid gateway config. ${mappingPath} must be an object`);
+  }
+
+  validateString(evnMapping.stationId ?? evnMapping.station, `${mappingPath}.stationId`, { optional: true });
+
+  for (const key of ["pOut", "pinvOut", "ainvD1", "qOut", "ua", "ub", "uc", "ia", "ib", "ic", "frequency", "powerFactor"]) {
+    validateEvnSignal(evnMapping[key], `${mappingPath}.${key}`);
+  }
+
+  validateEvnInverterPoints(evnMapping.inverterPoints, `${mappingPath}.inverterPoints`);
+}
+
+function validateEvnSignal(signal, signalPath) {
+  if (signal === undefined || signal === null) return;
+
+  if (typeof signal !== "object" || Array.isArray(signal)) {
+    throw new Error(`Invalid gateway config. ${signalPath} must be an object`);
+  }
+
+  validateBoolean(signal.enabled, `${signalPath}.enabled`, { optional: true });
+  validateEnum(signal.source, `${signalPath}.source`, SUPPORTED_EVN_SIGNAL_SOURCES, { optional: true });
+  validateString(signal.device, `${signalPath}.device`, { optional: true });
+  validateStringArray(signal.devices, `${signalPath}.devices`, { optional: true });
+  validateString(signal.register ?? signal.measurement, `${signalPath}.register`, { optional: true });
+  validateEnum(signal.snapshotStrategy, `${signalPath}.snapshotStrategy`, SUPPORTED_EVN_SNAPSHOT_STRATEGIES, { optional: true });
+  validateNumber(signal.scale, `${signalPath}.scale`, { optional: true });
+  validateEvnOverrides(signal.overrides, `${signalPath}.overrides`);
+}
+
+function validateEvnInverterPoints(signal, signalPath) {
+  if (signal === undefined || signal === null) return;
+
+  if (typeof signal !== "object" || Array.isArray(signal)) {
+    throw new Error(`Invalid gateway config. ${signalPath} must be an object`);
+  }
+
+  validateBoolean(signal.enabled, `${signalPath}.enabled`, { optional: true });
+  validateStringArray(signal.devices, `${signalPath}.devices`, { optional: true });
+  validateString(signal.powerRegister, `${signalPath}.powerRegister`, { optional: true });
+  validateString(signal.energyRegister, `${signalPath}.energyRegister`, { optional: true });
+  validateEnum(signal.snapshotStrategy, `${signalPath}.snapshotStrategy`, SUPPORTED_EVN_SNAPSHOT_STRATEGIES, { optional: true });
+  validateNumber(signal.powerScale, `${signalPath}.powerScale`, { optional: true });
+  validateNumber(signal.energyScale, `${signalPath}.energyScale`, { optional: true });
+  validateEvnOverrides(signal.overrides, `${signalPath}.overrides`);
+}
+
+function validateEvnOverrides(overrides, overridesPath) {
+  if (overrides === undefined || overrides === null) return;
+
+  if (typeof overrides !== "object" || Array.isArray(overrides)) {
+    throw new Error(`Invalid gateway config. ${overridesPath} must be an object`);
+  }
+
+  for (const [deviceName, override] of Object.entries(overrides)) {
+    const path = `${overridesPath}.${deviceName}`;
+    if (!override || typeof override !== "object" || Array.isArray(override)) {
+      throw new Error(`Invalid gateway config. ${path} must be an object`);
+    }
+    validateString(override.register, `${path}.register`, { optional: true });
+    validateString(override.powerRegister, `${path}.powerRegister`, { optional: true });
+    validateString(override.energyRegister, `${path}.energyRegister`, { optional: true });
+    validateNumber(override.scale, `${path}.scale`, { optional: true });
+    validateNumber(override.powerScale, `${path}.powerScale`, { optional: true });
+    validateNumber(override.energyScale, `${path}.energyScale`, { optional: true });
+  }
 }
 
 function validateIec104Control(control, controlPath) {

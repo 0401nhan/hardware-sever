@@ -132,7 +132,9 @@ test("dashboard starts at site list and remote disconnect returns home", () => {
   assert.match(html, /id="generateEvnIec104Btn"/);
   assert.match(html, /id="iec104Enabled" type="checkbox" checked/);
   assert.match(html, /type="hidden" value="server"/);
-  assert.match(html, /data-field="evnRole"/);
+  assert.match(html, /id="iec104EvnSourcesBody"/);
+  assert.match(html, /data-evn-field="register"/);
+  assert.doesNotMatch(html, /data-field="evnRole"/);
   assert.match(html, /data-field="evnEnabled"/);
   assert.match(html, /multiple size=/);
   assert.doesNotMatch(html, /id="addIec104PointBtn"/);
