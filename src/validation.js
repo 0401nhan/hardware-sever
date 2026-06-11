@@ -164,6 +164,13 @@ export function createDefaultGatewayConfig(gatewayId, publicUrl) {
     },
     storage: {
       queuePath: "/data/queue.jsonl",
+      archive: {
+        enabled: true,
+        path: "/data/telemetry-5m.sqlite",
+        intervalMs: 300000,
+        retentionMs: 604800000,
+        compactIntervalMs: 60000,
+      },
       queue: {
         maxRecords: 100000,
         maxBytes: 52428800,
@@ -341,15 +348,23 @@ function validateIec104Control(control, controlPath) {
 
 function validateStorage(storage) {
   const queue = storage.queue || {};
+  const archive = storage.archive || {};
 
   validateInteger(queue.maxRecords ?? storage.queueMaxRecords, "storage.queue.maxRecords", { min: 1, optional: true });
   validateInteger(queue.maxBytes ?? storage.queueMaxBytes, "storage.queue.maxBytes", { min: 1024, optional: true });
   validateInteger(queue.retentionMs ?? storage.queueRetentionMs, "storage.queue.retentionMs", { min: 0, optional: true });
   validateInteger(queue.compactIntervalMs ?? storage.queueCompactIntervalMs, "storage.queue.compactIntervalMs", { min: 0, optional: true });
+  validateBoolean(archive.enabled, "storage.archive.enabled", { optional: true });
+  validateInteger(archive.intervalMs, "storage.archive.intervalMs", { min: 60000, optional: true });
+  validateInteger(archive.retentionMs, "storage.archive.retentionMs", { min: 0, optional: true });
+  validateInteger(archive.compactIntervalMs, "storage.archive.compactIntervalMs", { min: 0, optional: true });
 
   const corruptPath = queue.corruptPath ?? storage.queueCorruptPath;
   if (corruptPath !== undefined && !corruptPath) {
     throw new Error("Invalid gateway config. storage.queue.corruptPath must not be empty");
+  }
+  if (archive.path !== undefined && !archive.path) {
+    throw new Error("Invalid gateway config. storage.archive.path must not be empty");
   }
 }
 

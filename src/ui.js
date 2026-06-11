@@ -254,7 +254,7 @@ export function renderLoginPage() {
     </div>
     <form id="loginForm">
       <label>
-        T?i kho?n
+        Tài khoản
         <span class="input-row">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M20 21a8 8 0 0 0-16 0" />
@@ -264,7 +264,7 @@ export function renderLoginPage() {
         </span>
       </label>
       <label>
-        M?t kh?u
+        Mật khẩu
         <span class="input-row">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="7.5" cy="14" r="3.5" />
@@ -275,7 +275,7 @@ export function renderLoginPage() {
           <input name="password" type="password" autocomplete="current-password" placeholder="......." required>
         </span>
       </label>
-      <button type="submit">??ng nh?p</button>
+      <button type="submit">Đăng nhập</button>
       <div class="error" id="error"></div>
     </form>
   </main>
@@ -297,9 +297,9 @@ export function renderLoginPage() {
       }
       const payload = await response.json().catch(() => ({}));
       const errorMessages = {
-        "Invalid username or password": "Sai t?i kho?n ho?c m?t kh?u"
+        "Invalid username or password": "Sai tài khoản hoặc mật khẩu"
       };
-      document.getElementById("error").textContent = errorMessages[payload.error] || payload.error || "??ng nh?p th?t b?i";
+      document.getElementById("error").textContent = errorMessages[payload.error] || payload.error || "Đăng nhập thất bại";
     });
   </script>
 </body>
@@ -2339,7 +2339,7 @@ export function renderDashboardPage({ publicUrl }) {
                 <option value="en">English</option>
               </select>
             </label>
-            <button id="remoteDisconnectBtn" class="subtle" type="button">V? danh s?ch site</button>
+            <button id="remoteDisconnectBtn" class="subtle" type="button">Về danh sách site</button>
           </div>
           <div class="status-chip">
             <button id="status" class="status" type="button" aria-label="Trạng thái: Đang tải..." data-message="Đang tải..." title="Đang tải..."></button>
@@ -3155,7 +3155,7 @@ export function renderDashboardPage({ publicUrl }) {
       setText("homeCloudState", online ? "Đồng bộ" : "-");
 
       if (!gateways.length) {
-        if (grid) grid.innerHTML = '<div class="empty-state"><strong>Ch?a c? site k?t n?i.</strong><span>Tr?n IPC, ki?m tra gateway.id, GATEWAY_TOKEN ho?c PROVISIONING_TOKEN, r?i xem log Hardware-Gateway. Site s? xu?t hi?n sau khi heartbeat g?i v? /api/gateway/heartbeat.</span></div>';
+        if (grid) grid.innerHTML = '<div class="empty-state"><strong>Chưa có site kết nối.</strong><span>Trên IPC, kiểm tra gateway.id, GATEWAY_TOKEN hoặc PROVISIONING_TOKEN, rồi xem log Hardware-Gateway. Site sẽ xuất hiện sau khi heartbeat gửi về /api/gateway/heartbeat.</span></div>';
         if (el("homeFocusGatewayName")) renderHomeFocus(null);
         renderHomeModules();
         applyAdminLanguage(el("homeView"));
@@ -3623,6 +3623,13 @@ export function renderDashboardPage({ publicUrl }) {
         },
         storage: {
           queuePath: "/data/queue.jsonl",
+          archive: {
+            enabled: true,
+            path: "/data/telemetry-5m.sqlite",
+            intervalMs: 300000,
+            retentionMs: 604800000,
+            compactIntervalMs: 60000,
+          },
           queue: {
             maxRecords: 100000,
             maxBytes: 52428800,
@@ -4232,6 +4239,7 @@ export function renderDashboardPage({ publicUrl }) {
       if (!body || !state) return;
 
       const queue = state.storage?.queue || {};
+      const archive = state.storage?.archive || {};
       const mongo = state.mongo || {};
       const remoteConfig = state.remoteConfig || {};
       const records = homeTelemetry.get(selectedId) || [];
@@ -4242,6 +4250,9 @@ export function renderDashboardPage({ publicUrl }) {
       setText("runtimeIec104", state.iec104?.enabled ? ((state.iec104.mode || "server") + " / enabled") : "Tắt");
       const rows = [
         ["Đường dẫn queue", state.storage?.queuePath || "-", "File queue local trên IPC"],
+        ["Đường dẫn archive 5 phút", archive.path || "-", "SQLite local lưu snapshot 5 phút để xuất CSV trên gateway"],
+        ["Chu kỳ archive", formatMs(archive.intervalMs || 300000), "Chu kỳ lấy mẫu CSV"],
+        ["Thời gian giữ archive", formatMs(archive.retentionMs || 604800000), "Tự xóa dữ liệu archive quá thời gian này"],
         ["Đường dẫn điện năng D-1", state.storage?.stationEnergyPath || "-", "File chốt điện năng hôm qua cho IEC104 EVN"],
         ["Max records", queue.maxRecords || "-", "Giới hạn số bản ghi queue"],
         ["Max bytes", queue.maxBytes ? formatBytes(queue.maxBytes) : "-", "Giới hạn dung lượng queue"],
