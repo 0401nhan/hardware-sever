@@ -2691,43 +2691,6 @@ export function renderDashboardPage({ publicUrl }) {
     <section class="config-section">
       <div class="section-header">
         <div class="section-title">
-          <h2>Tín hiệu EVN yêu cầu</h2>
-          <p>Chọn nguồn device/register ở bảng Mapping IEC104 EVN; gateway tự cộng inverter và snapshot D-1 cuối ngày.</p>
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Nhóm</th>
-              <th>IOA</th>
-              <th>Tín hiệu EVN</th>
-              <th>Type ID</th>
-              <th>Nguồn cấu hình</th>
-              <th>Bắt buộc</th>
-            </tr>
-          </thead>
-          <tbody id="evnRequiredRegistersBody">
-            <tr><td>Đo lường</td><td>1</td><td>P-out - tổng công suất tác dụng phát lên lưới</td><td>T13 M_ME_NC_1</td><td><code>station_active_power_kw</code></td><td>Bắt buộc</td></tr>
-            <tr><td>Đo lường</td><td>2</td><td>Pinv-out - tổng công suất phát ra từ inverter</td><td>T13 M_ME_NC_1</td><td><code>inverter_active_power_kw</code> trên từng inverter</td><td>Bắt buộc</td></tr>
-            <tr><td>Đo lường</td><td>3</td><td>Ainv_D-1 - điện năng inverter ngày liền trước</td><td>T13 M_ME_NC_1</td><td><code>inverter_daily_energy_kwh</code>; gateway chốt lúc 23:59</td><td>Bắt buộc</td></tr>
-            <tr><td>Điều khiển</td><td>11</td><td>Cho phép điều khiển P-out</td><td>T45 C_SC_NA_1</td><td>Không cần register đo; dùng lệnh điều khiển trạm</td><td>Bắt buộc</td></tr>
-            <tr><td>Điều khiển</td><td>12</td><td>SetPoint P-out theo %</td><td>T50 C_SE_NC_1</td><td>Register control giới hạn công suất inverter theo %</td><td>Bắt buộc</td></tr>
-            <tr><td>Điều khiển</td><td>13</td><td>SetPoint P-out theo kW</td><td>T50 C_SE_NC_1</td><td>Register control giới hạn công suất inverter theo kW</td><td>Bắt buộc</td></tr>
-            <tr><td>Đo lường</td><td>4</td><td>Q-out - công suất phản kháng tại điểm đấu nối</td><td>T13 M_ME_NC_1</td><td><code>station_reactive_power_kvar</code></td><td>Khuyến nghị</td></tr>
-            <tr><td>Đo lường</td><td>5 / 6 / 7</td><td>Ua / Ub / Uc</td><td>T13 M_ME_NC_1</td><td><code>phase_a_voltage_v</code>, <code>phase_b_voltage_v</code>, <code>phase_c_voltage_v</code></td><td>Khuyến nghị</td></tr>
-            <tr><td>Đo lường</td><td>8 / 9 / 10</td><td>Ia / Ib / Ic</td><td>T13 M_ME_NC_1</td><td><code>phase_a_current_a</code>, <code>phase_b_current_a</code>, <code>phase_c_current_a</code></td><td>Khuyến nghị</td></tr>
-            <tr><td>Đo lường</td><td>11 / 12</td><td>Tần số lưới / hệ số công suất</td><td>T13 M_ME_NC_1</td><td><code>grid_frequency_hz</code>, <code>power_factor</code></td><td>Khuyến nghị</td></tr>
-            <tr><td>Inverter</td><td>13,14 rồi +2 mỗi inverter</td><td>P inverter n / A inverter n D-1</td><td>T13 M_ME_NC_1</td><td><code>inverter_active_power_kw</code>, <code>inverter_daily_energy_kwh</code></td><td>Khuyến nghị</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="section-footnote">IOA đo lường và IOA điều khiển có thể trùng số nhưng khác Type ID theo bảng EVN. Điều khiển Q-out là tùy yêu cầu EVN và chưa sinh tự động khi gateway chưa có register điều khiển Q.</p>
-    </section>
-
-    <section class="config-section">
-      <div class="section-header">
-        <div class="section-title">
           <h2>Mapping IEC104 EVN cố định</h2>
           <p>IOA EVN là cố định; chọn trạm rồi cập nhật mapping để sinh point và lệnh điều khiển.</p>
         </div>
