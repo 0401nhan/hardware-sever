@@ -4763,7 +4763,7 @@ export function renderDashboardPage({ publicUrl }) {
 
       const station = selectedEvnStation();
       if (!station) {
-        body.innerHTML = '<tr><td colspan="7" class="empty-state">ChÆ°a cÃ³ tráº¡m EVN. Táº¡o tráº¡m trÆ°á»›c khi chá»n nguá»“n tÃ­n hiá»‡u.</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" class="empty-state">Chưa có trạm EVN. Tạo trạm trước khi chọn nguồn tín hiệu.</td></tr>';
         return;
       }
 
@@ -4773,7 +4773,7 @@ export function renderDashboardPage({ publicUrl }) {
 
     function renderEvnSourceRow(row, signal, station) {
       const enabled = signal.enabled === undefined ? true : Boolean(signal.enabled);
-      const required = row.required ? '<span class="badge online">Báº¯t buá»™c</span>' : '<span class="badge">Khuyáº¿n nghá»‹</span>';
+      const required = row.required ? '<span class="badge online">Bắt buộc</span>' : '<span class="badge">Khuyến nghị</span>';
 
       return '' +
         '<tr data-evn-source-row data-evn-key="' + escapeHtml(row.key) + '" data-evn-mode="' + escapeHtml(row.mode) + '" data-evn-source="' + escapeHtml(row.source) + '">' +
@@ -4791,14 +4791,14 @@ export function renderDashboardPage({ publicUrl }) {
       const devices = evnDevicesForRow(row, station);
       if (row.mode === "single") {
         const selected = signal.device || devices[0]?.name || "";
-        return '<select data-evn-field="device">' + devices.map((device) => option(device.name || "", selected, device.name || "Thiáº¿t bá»‹")).join("") + '</select>';
+        return '<select data-evn-field="device">' + devices.map((device) => option(device.name || "", selected, device.name || "Thiết bị")).join("") + '</select>';
       }
 
       const selected = new Set(signal.devices || devices.map((device) => device.name).filter(Boolean));
       const size = Math.min(Math.max(devices.length, 2), 6);
       return '<select data-evn-field="devices" multiple size="' + size + '">' + devices.map((device) => {
         const name = device.name || "";
-        return '<option value="' + escapeHtml(name) + '" ' + (selected.has(name) ? "selected" : "") + '>' + escapeHtml(name || "Thiáº¿t bá»‹") + '</option>';
+        return '<option value="' + escapeHtml(name) + '" ' + (selected.has(name) ? "selected" : "") + '>' + escapeHtml(name || "Thiết bị") + '</option>';
       }).join("") + '</select>';
     }
 
@@ -5179,7 +5179,7 @@ export function renderDashboardPage({ publicUrl }) {
       if (selected) names.add(selected);
       if (!names.size) names.add("");
 
-      return [...names].map((name) => option(name, selected || "", name || "ChÆ°a cÃ³ register")).join("");
+      return [...names].map((name) => option(name, selected || "", name || "Chưa có register")).join("");
     }
 
     function selectedDevicesByName(names = []) {
