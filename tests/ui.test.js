@@ -7,7 +7,7 @@ import { renderDashboardPage, renderLoginPage } from "../src/ui.js";
 test("login page uses Vietnamese copy and no fake support links", () => {
   const html = renderLoginPage();
 
-  assert.match(html, /href="\/assets\/admin-tailwind\.css\?v=20260611-ui3"/);
+  assert.match(html, /href="\/assets\/admin-tailwind\.css\?v=20260611-ui4"/);
   assert.match(html, /<body class="tailwind-ui login-screen server-login">/);
   assert.match(html, /<html lang="vi">/);
   assert.match(html, />\s*Tài khoản\s*</);
@@ -60,7 +60,7 @@ test("dashboard renders shared template library editor", () => {
 test("dashboard starts at site list and remote disconnect returns home", () => {
   const html = renderDashboardPage({ publicUrl: "https://example.test" });
 
-  assert.match(html, /href="\/assets\/admin-tailwind\.css\?v=20260611-ui3"/);
+  assert.match(html, /href="\/assets\/admin-tailwind\.css\?v=20260611-ui4"/);
   assert.match(html, /<body class="tailwind-ui admin-screen server-admin">/);
   assert.match(html, /id="homePageTitle">Site/);
   assert.match(html, /data-home-target="homeOverviewPanel"/);
@@ -144,6 +144,8 @@ test("dashboard starts at site list and remote disconnect returns home", () => {
   assert.match(html, /type="hidden" value="server"/);
   assert.match(html, /id="iec104EvnSourcesBody"/);
   assert.match(html, /data-evn-field="register"/);
+  assert.match(html, /Register từng thiết bị/);
+  assert.match(html, /data-evn-override-field="powerRegister"/);
   assert.doesNotMatch(html, /data-field="evnRole"/);
   assert.match(html, /data-field="evnEnabled"/);
   assert.match(html, /multiple size=/);

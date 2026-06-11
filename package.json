@@ -1,6 +1,6 @@
 {
   "name": "hardware-server",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "Electric Bird hardware cloud server for gateway registry, telemetry, and remote config.",
   "type": "module",
   "main": "app.js",

@@ -704,6 +704,36 @@
   white-space: nowrap;
 }
 
+.tailwind-ui .evn-register-stack {
+  @apply grid gap-2;
+  min-width: 280px;
+}
+
+.tailwind-ui .evn-device-overrides {
+  @apply rounded-md border border-slate-200 bg-slate-50 px-2 py-1;
+}
+
+.tailwind-ui .evn-device-overrides summary {
+  @apply cursor-pointer text-xs font-extrabold text-slate-600;
+}
+
+.tailwind-ui .evn-override-list {
+  @apply mt-2 grid gap-2;
+}
+
+.tailwind-ui .evn-override-row {
+  @apply grid items-center gap-2;
+  grid-template-columns: minmax(110px, 0.9fr) minmax(130px, 1fr);
+}
+
+.tailwind-ui .evn-override-row.multi-register {
+  grid-template-columns: minmax(110px, 0.8fr) minmax(130px, 1fr) minmax(130px, 1fr);
+}
+
+.tailwind-ui .evn-override-row span {
+  @apply truncate text-xs font-extrabold text-slate-500;
+}
+
 .tailwind-ui .toggle-switch {
   @apply inline-grid min-h-[38px] w-fit grid-cols-[auto_auto_auto] items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 text-xs font-extrabold text-slate-600;
 }
