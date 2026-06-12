@@ -50,6 +50,34 @@ test("accepts RTU auto-discovery and register control metadata", () => {
   assert.doesNotThrow(() => validateGatewayConfig(config, "EB-ANHUNG-001"));
 });
 
+test("accepts Modbus TCP devices without RS485 ports", () => {
+  const config = validRtuConfig();
+  config.ports = {};
+  config.devices = [
+    {
+      name: "sma_01",
+      type: "inverter",
+      protocol: "modbus-tcp",
+      host: "192.168.1.50",
+      tcpPort: 502,
+      unitId: 3,
+      pollIntervalMs: 5000,
+      registers: [
+        {
+          name: "active_power_total_w",
+          function: "input",
+          address: 30775,
+          length: 2,
+          type: "int32",
+          unit: "W",
+        },
+      ],
+    },
+  ];
+
+  assert.doesNotThrow(() => validateGatewayConfig(config, "EB-ANHUNG-001"));
+});
+
 test("accepts IEC 60870-5-104 remote config mappings", () => {
   const config = validRtuConfig();
   config.iec104 = {

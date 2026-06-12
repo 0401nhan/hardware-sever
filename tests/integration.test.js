@@ -277,6 +277,7 @@ test("admin can queue inverter control commands for gateway execution", async (t
   assert.equal(running.status, 200);
   assert.equal(running.body.command.status, "running");
 
+  const beforeApplied = Date.now();
   const applied = await requestJson(app.baseUrl, "/api/gateway/commands/status", {
     method: "POST",
     token: "gateway-secret",
@@ -291,6 +292,7 @@ test("admin can queue inverter control commands for gateway execution", async (t
       app_version: "0.1.12",
     },
   });
+  const afterApplied = Date.now();
   assert.equal(applied.status, 200);
   assert.equal(applied.body.command.status, "applied");
   assert.equal(applied.body.command.result.writes[0].register, "active_power_percentage_derating_percent");
@@ -299,8 +301,21 @@ test("admin can queue inverter control commands for gateway execution", async (t
     cookie: sessionCookie,
   });
   assert.equal(commands.status, 200);
-  assert.equal(commands.body.commands.length, 1);
-  assert.equal(commands.body.commands[0].status, "applied");
+  assert.equal(commands.body.commands.length, 2);
+
+  const appliedCommand = commands.body.commands.find((command) => command.id === queued.body.command.id);
+  const clearCommand = commands.body.commands.find((command) => command.action === "clear_power_limit");
+  assert.equal(appliedCommand.status, "applied");
+  assert.equal(clearCommand.status, "scheduled");
+  assert.equal(clearCommand.windowRole, "end");
+  assert.equal(clearCommand.sourceCommandId, queued.body.command.id);
+  assert.deepEqual(clearCommand.payload, {
+    action: "clear_power_limit",
+    deviceName: "Huawei",
+  });
+  const clearRunAt = Date.parse(clearCommand.nextRunAt);
+  assert.ok(clearRunAt >= beforeApplied + 15 * 60 * 1000 - 1000);
+  assert.ok(clearRunAt <= afterApplied + 15 * 60 * 1000 + 1000);
 });
 
 test("admin can schedule inverter control commands", async (t) => {
@@ -373,6 +388,112 @@ test("admin can schedule inverter control commands", async (t) => {
     deviceName: "Huawei",
     action: "clear_power_limit",
   });
+
+  const recurring = await requestJson(app.baseUrl, "/api/gateways/GW-SCHEDULE-001/control", {
+    method: "POST",
+    cookie: sessionCookie,
+    body: {
+      deviceName: "Huawei",
+      action: "start",
+      schedule: {
+        mode: "daily",
+        timezone: "Asia/Bangkok",
+        timeOfDay: bangkokTimeOfDay(Date.now() + 60 * 60 * 1000),
+        endTimeOfDay: bangkokTimeOfDay(Date.now() + 2 * 60 * 60 * 1000),
+      },
+    },
+  });
+  assert.equal(recurring.status, 200);
+  assert.equal(recurring.body.command.status, "scheduled");
+  assert.equal(recurring.body.command.schedule.mode, "daily");
+
+  const cancelled = await requestJson(app.baseUrl, `/api/gateways/GW-SCHEDULE-001/commands/${encodeURIComponent(recurring.body.command.id)}`, {
+    method: "DELETE",
+    cookie: sessionCookie,
+  });
+  assert.equal(cancelled.status, 200);
+  assert.equal(cancelled.body.ok, true);
+  assert.equal(cancelled.body.series, true);
+  assert.equal(cancelled.body.command.status, "cancelled");
+  assert.ok(cancelled.body.command.cancelledAt);
+  assert.ok(cancelled.body.command.seriesCancelledAt);
+  assert.equal(cancelled.body.cancelled.length, 1);
+
+  const cancelledCheck = await requestJson(app.baseUrl, "/api/gateway/commands/check", {
+    method: "POST",
+    token: "gateway-secret",
+    body: {
+      gateway_id: "GW-SCHEDULE-001",
+      app_version: "0.1.12",
+    },
+  });
+  assert.equal(cancelledCheck.status, 200);
+  assert.equal(cancelledCheck.body.command, null);
+});
+
+test("admin cannot schedule overlapping power limit commands for the same target", async (t) => {
+  const app = await startTestServer(t);
+  const sessionCookie = await login(app);
+
+  await createGateway(app, sessionCookie, {
+    id: "GW-CONFLICT-001",
+    token: "gateway-secret",
+  });
+
+  const scheduled = await requestJson(app.baseUrl, "/api/gateways/GW-CONFLICT-001/control", {
+    method: "POST",
+    cookie: sessionCookie,
+    body: {
+      deviceName: "Huawei",
+      action: "limit_power",
+      percent: 50,
+      durationMinutes: 120,
+      schedule: {
+        mode: "daily",
+        timezone: "Asia/Bangkok",
+        timeOfDay: "08:00",
+        endTimeOfDay: "10:00",
+      },
+    },
+  });
+  assert.equal(scheduled.status, 200);
+
+  const duplicate = await requestJson(app.baseUrl, "/api/gateways/GW-CONFLICT-001/control", {
+    method: "POST",
+    cookie: sessionCookie,
+    body: {
+      deviceName: "Huawei",
+      action: "limit_power",
+      percent: 40,
+      durationMinutes: 120,
+      schedule: {
+        mode: "daily",
+        timezone: "Asia/Bangkok",
+        timeOfDay: "09:00",
+        endTimeOfDay: "11:00",
+      },
+    },
+  });
+  assert.equal(duplicate.status, 409);
+  assert.match(duplicate.body.error, /Lịch tiết giảm trùng/);
+
+  const otherTarget = await requestJson(app.baseUrl, "/api/gateways/GW-CONFLICT-001/control", {
+    method: "POST",
+    cookie: sessionCookie,
+    body: {
+      deviceName: "SMA",
+      action: "limit_power",
+      percent: 40,
+      durationMinutes: 120,
+      schedule: {
+        mode: "daily",
+        timezone: "Asia/Bangkok",
+        timeOfDay: "09:00",
+        endTimeOfDay: "11:00",
+      },
+    },
+  });
+  assert.equal(otherTarget.status, 200);
 });
 
 test("telemetry ingest stores records and ignores duplicate record ids", async (t) => {
@@ -614,6 +735,15 @@ function onceExit(child) {
 
     child.once("exit", resolve);
   });
+}
+
+function bangkokTimeOfDay(timestamp) {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Bangkok",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(timestamp));
 }
 
 function delay(ms) {

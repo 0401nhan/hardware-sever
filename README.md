@@ -105,9 +105,10 @@ GATEWAY_TOKEN=<gateway-token>
 2. The server auto-creates a gateway record when it receives the first heartbeat.
 3. Open the dashboard and select the new gateway.
 4. Edit `Setting Communication`.
-5. Save a new config version.
-6. Gateway polls `/api/gateway/config/check`.
-7. Gateway validates, saves to local SQLite, restarts, and reports status.
+5. Add Modbus RTU devices with an RS485/COM port, or Modbus TCP devices with `host`, `tcpPort`, and `unitId`.
+6. Save a new config version.
+7. Gateway polls `/api/gateway/config/check`.
+8. Gateway validates, saves to local SQLite, restarts, and reports status.
 
 ## Remote Inverter Control
 

@@ -25,8 +25,14 @@ export function normalizeCommandSchedule(input, { now = new Date() } = {}) {
 
   if (mode === "once") {
     schedule.scheduledAt = isoDateField(input.scheduledAt ?? input.at, "schedule.scheduledAt");
+    if (input.scheduledUntil) {
+      schedule.scheduledUntil = isoDateField(input.scheduledUntil, "schedule.scheduledUntil");
+    }
   } else {
     schedule.timeOfDay = normalizeTimeOfDay(input.timeOfDay ?? input.time);
+    if (input.endTimeOfDay || input.endTime) {
+      schedule.endTimeOfDay = normalizeTimeOfDay(input.endTimeOfDay ?? input.endTime);
+    }
     if (mode === "weekly") {
       schedule.daysOfWeek = normalizeDaysOfWeek(input.daysOfWeek);
     }
@@ -64,6 +70,30 @@ export function nextScheduledRun(schedule, { from = new Date(), runIndex = 0 } =
   if (endAt && nextRunAt.getTime() > endAt.getTime()) return null;
 
   return nextRunAt.toISOString();
+}
+
+export function scheduledWindowEndRun(schedule, startRunAt) {
+  const start = parseDate(startRunAt);
+  if (!schedule || !start) return null;
+
+  let endRunAt = null;
+
+  if (schedule.mode === "once") {
+    endRunAt = parseDate(schedule.scheduledUntil);
+  } else if (isRecurringSchedule(schedule) && schedule.endTimeOfDay) {
+    const offsetMinutes = timezoneOffsetMinutes(schedule.timezone);
+    const parts = localParts(start, offsetMinutes);
+    const time = parseTimeOfDay(schedule.endTimeOfDay);
+
+    endRunAt = localToUtcDate(parts.year, parts.month, parts.day, time.hour, time.minute, offsetMinutes);
+    if (endRunAt.getTime() <= start.getTime()) {
+      endRunAt = addLocalDays(endRunAt, 1, offsetMinutes, time);
+    }
+  }
+
+  if (!endRunAt || endRunAt.getTime() <= start.getTime()) return null;
+
+  return endRunAt.toISOString();
 }
 
 export function isRecurringSchedule(schedule) {
