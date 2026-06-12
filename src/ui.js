@@ -246,7 +246,7 @@ export function renderLoginPage() {
       }
     }
   </style>
-  <link rel="stylesheet" href="/assets/admin-tailwind.css?v=20260611-ui4">
+  <link rel="stylesheet" href="/assets/admin-tailwind.css?v=20260611-ui5">
 </head>
 <body class="tailwind-ui login-screen server-login">
   <main>
@@ -2192,7 +2192,7 @@ export function renderDashboardPage({ publicUrl }) {
       }
     }
   </style>
-  <link rel="stylesheet" href="/assets/admin-tailwind.css?v=20260611-ui4">
+  <link rel="stylesheet" href="/assets/admin-tailwind.css?v=20260611-ui5">
 </head>
 <body class="tailwind-ui admin-screen server-admin">
   <svg class="icon-sprite" aria-hidden="true">
@@ -2408,15 +2408,15 @@ export function renderDashboardPage({ publicUrl }) {
                       <option value="watts">W</option>
                     </select>
                   </label>
-                  <label>Giá trị giới hạn<input id="powerLimitValue" type="number" min="0" step="0.1" value="60"></label>
-                  <label>Thời lượng phút<input id="powerLimitDurationMinutes" type="number" min="1" max="1440" step="1" value="15"></label>
+                  <label>Giá trị giới hạn<input id="powerLimitValue" type="number" min="0" max="100" step="0.1" value="60"></label>
+                  <label class="schedule-now-field">Thời lượng phút<input id="powerLimitDurationMinutes" type="number" min="1" max="1440" step="1" value="15"></label>
                   <button class="primary" type="submit">Áp dụng giới hạn</button>
                 </form>
                 <div class="control-schedule">
                   <div class="panel-title-row">
                     <div>
                       <h2 class="panel-title">Lịch hẹn lệnh</h2>
-                      <p>Áp dụng cho nút điều khiển và form giới hạn công suất.</p>
+                      <p>Áp dụng cho nút điều khiển và form giới hạn công suất. Với giới hạn công suất, hệ thống tự tính thời lượng từ giờ bắt đầu đến giờ kết thúc.</p>
                     </div>
                   </div>
                   <div class="schedule-grid">
@@ -2429,7 +2429,9 @@ export function renderDashboardPage({ publicUrl }) {
                       </select>
                     </label>
                     <label class="schedule-once-field">Thời điểm chạy<input id="controlScheduleAt" type="datetime-local"></label>
+                    <label class="schedule-once-field">Kết thúc giới hạn<input id="controlScheduleUntil" type="datetime-local"></label>
                     <label class="schedule-repeat-field">Giờ chạy<input id="controlScheduleTime" type="time" value="08:00"></label>
+                    <label class="schedule-repeat-field">Đến giờ<input id="controlScheduleEndTime" type="time" value="17:00"></label>
                     <label class="schedule-repeat-field">Số lần tối đa<input id="controlScheduleMaxRuns" type="number" min="1" max="10000" step="1" placeholder="Không giới hạn"></label>
                     <label class="schedule-repeat-field">Kết thúc sau ngày<input id="controlScheduleEndAt" type="date"></label>
                   </div>
@@ -2443,6 +2445,7 @@ export function renderDashboardPage({ publicUrl }) {
                     <label><input type="checkbox" data-schedule-weekday="6"> T7</label>
                     <label><input type="checkbox" data-schedule-weekday="7"> CN</label>
                   </fieldset>
+                  <p id="controlScheduleSummary" class="section-footnote"></p>
                 </div>
               </div>
             </div>
@@ -2462,6 +2465,7 @@ export function renderDashboardPage({ publicUrl }) {
                     <th>Lịch</th>
                     <th>Chi tiết</th>
                     <th>Cập nhật</th>
+                    <th>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody id="controlHistoryBody"></tbody>
@@ -2587,7 +2591,7 @@ export function renderDashboardPage({ publicUrl }) {
               <div class="section-header">
                 <div class="section-title">
                   <h2>RS485 / COM</h2>
-                  <p>Cấu hình cổng serial và kết nối Modbus RTU.</p>
+                  <p>Cấu hình cổng serial cho Modbus RTU; Modbus TCP dùng host/port trong thiết bị.</p>
                 </div>
                 <div class="actions">
                   <button id="addPortBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-plus"></use></svg>Thêm cổng</button>
@@ -2651,7 +2655,7 @@ export function renderDashboardPage({ publicUrl }) {
               <div class="section-header">
                 <div class="section-title">
                   <h2>Thiết bị Modbus</h2>
-                  <p>Thiết bị, slave ID, chu kỳ polling và bản đồ thanh ghi trên RS485/COM.</p>
+                  <p>Thiết bị, slave/unit ID, chu kỳ polling và bản đồ thanh ghi trên RS485/COM hoặc Ethernet TCP.</p>
                 </div>
                 <div class="actions template-actions">
                   <select id="newDeviceTemplate" aria-label="Mẫu thiết bị"><option value="">Thiết bị trống</option></select>
@@ -2842,8 +2846,11 @@ export function renderDashboardPage({ publicUrl }) {
       "Lưu lịch sử": "Save history",
       "Cấu hình gateway": "Gateway configuration",
       "Cấu hình RS485 / COM": "RS485 / COM configuration",
+      "Cấu hình cổng serial cho Modbus RTU; Modbus TCP dùng host/port trong thiết bị.": "Serial port settings for Modbus RTU; Modbus TCP uses host/port on each device.",
       "Cấu hình trạm": "Station configuration",
       "Thiết bị Modbus": "Modbus devices",
+      "Thiết bị, slave/unit ID, chu kỳ polling và bản đồ thanh ghi trên RS485/COM hoặc Ethernet TCP.": "Devices, slave/unit IDs, polling intervals, and register maps on RS485/COM or Ethernet TCP.",
+      "Định danh thiết bị, chế độ RTU/TCP và bản đồ thanh ghi": "Device identity, RTU/TCP mode, and register maps",
       "EVN IEC104": "EVN IEC104",
       "Mặc định EVN": "EVN defaults",
       "Tạo mapping EVN": "Generate EVN mapping",
@@ -2958,7 +2965,7 @@ export function renderDashboardPage({ publicUrl }) {
       gatewaySubtab: ["Gateway", "Upload server, queue và vòng polling"],
       rs485PortsSubtab: ["RS485 / COM", "Thiết lập serial dùng cho thiết bị Modbus RTU"],
       stationsSubtab: ["Trạm", "Topology trạm và nhóm điều khiển EVN"],
-      modbusDevicesSubtab: ["Thiết bị Modbus", "Định danh thiết bị, chế độ kết nối và bản đồ thanh ghi"],
+      modbusDevicesSubtab: ["Thiết bị Modbus", "Định danh thiết bị, chế độ RTU/TCP và bản đồ thanh ghi"],
       rawYamlSubtab: ["YAML thô", "Cấu hình gateway hiện đang lưu"],
       libraryTab: ["Mẫu", "Mẫu thiết bị Modbus có thể tái sử dụng"],
       iec104Subtab: ["IEC 60870-5-104", "Bật IEC104 và cấu hình ánh xạ điểm"],
@@ -3432,13 +3439,14 @@ export function renderDashboardPage({ publicUrl }) {
       if (!body) return;
       body.innerHTML = gateways.map((gateway) => {
         const iec104 = homeConfigs.get(gateway.id)?.config?.iec104 || {};
-        const endpoint = (iec104.mode || "client") === "server"
+        const mode = iec104.mode || "server";
+        const endpoint = mode === "server"
           ? (iec104.host || "0.0.0.0") + ":" + (iec104.port || 2404)
           : (iec104.remoteHost || "-") + ":" + (iec104.remotePort || 2404);
         return '<tr>' +
           '<td>' + escapeHtml(gateway.id) + '</td>' +
           '<td><span class="badge ' + (iec104.enabled ? "online" : "offline") + '">' + escapeHtml(String(Boolean(iec104.enabled))) + '</span></td>' +
-          '<td>' + escapeHtml(iec104.mode || "client") + '</td>' +
+          '<td>' + escapeHtml(mode) + '</td>' +
           '<td>' + escapeHtml(endpoint) + '</td>' +
           '<td>' + escapeHtml((iec104.commonAddress || 1) + " / " + (iec104.originatorAddress || 0)) + '</td>' +
           '<td>' + escapeHtml(String((iec104.points || []).length)) + '</td>' +
@@ -3780,7 +3788,7 @@ export function renderDashboardPage({ publicUrl }) {
       const ports = Object.keys(state.ports || {});
 
       if (!groups.length && !ports.length) {
-        return '<div class="topology-empty">Chưa cấu hình trạm, IPC, RS485/COM hoặc thiết bị</div>';
+        return '<div class="topology-empty">Chưa cấu hình trạm, IPC, RS485/COM, Ethernet TCP hoặc thiết bị</div>';
       }
 
       return groups.map((group) => renderTopologyStation(group, readings)).join("");
@@ -3850,7 +3858,7 @@ export function renderDashboardPage({ publicUrl }) {
       const portGroups = topologyPortGroups(group);
       const portHtml = portGroups.length
         ? portGroups.map((portGroup) => renderTopologyPort(portGroup, readings)).join("")
-        : '<div class="topology-empty">Chưa gán RS485/COM hoặc thiết bị cho trạm này</div>';
+        : '<div class="topology-empty">Chưa gán RS485/COM, Ethernet TCP hoặc thiết bị cho trạm này</div>';
 
       return \`
         <article class="topology-station">
@@ -3900,6 +3908,7 @@ export function renderDashboardPage({ publicUrl }) {
       const statuses = portGroup.devices.map((device) => runtimeStatus(readings.get(device.name), device));
       const portStatus = statusFromChildren(statuses, portGroup.devices.length ? "loss" : "warning");
       const port = state.ports?.[portGroup.name] || {};
+      const isTcp = portGroup.name === "TCP";
       const deviceHtml = portGroup.devices.length
         ? portGroup.devices.map((device) => renderTopologyDevice(device, readings.get(device.name))).join("")
         : '<div class="topology-empty">Chưa có thiết bị trên RS485/COM này</div>';
@@ -3907,9 +3916,9 @@ export function renderDashboardPage({ publicUrl }) {
       return \`
         <div class="topology-station">
           \${renderTopologyNode({
-            icon: "icon-network",
-            type: "RS485 / COM",
-            title: portGroup.name,
+            icon: isTcp ? "icon-server" : "icon-network",
+            type: isTcp ? "Ethernet TCP" : "RS485 / COM",
+            title: isTcp ? "Modbus TCP" : portGroup.name,
             meta: topologyPortMeta(portGroup.name, port) + " | " + topologyComLabel(portGroup, port) + " | " + topologyComMeta(portGroup, port),
             status: portStatus,
           })}
@@ -4012,6 +4021,15 @@ export function renderDashboardPage({ publicUrl }) {
       const model = [device.manufacturer, device.model].filter(Boolean).join(" - ") || device.type || "modbus";
       const registers = (device.registers || []).filter(isPollableRegister);
       const metricItems = monitoringMetricItems(device, reading, status);
+      const isTcp = (device.protocol || reading?.protocol) === "modbus-tcp";
+      const endpointLabel = isTcp ? "TCP" : "Cổng";
+      const endpointValue = isTcp
+        ? (device.host || reading?.host || "-") + ":" + (device.tcpPort || reading?.tcpPort || 502)
+        : (device.port || reading?.port || "-");
+      const idLabel = isTcp ? "Unit ID" : "Slave ID";
+      const idValue = isTcp
+        ? (device.unitId ?? device.slaveId ?? reading?.unitId ?? reading?.slaveId ?? "-")
+        : (device.slaveId ?? reading?.slaveId ?? "-");
       const rows = registers.length
         ? registers.map((register) => renderMeasurementRow(register, reading)).join("")
         : '<tr><td colspan="4">Chưa cấu hình thanh ghi</td></tr>';
@@ -4029,8 +4047,8 @@ export function renderDashboardPage({ publicUrl }) {
             <span class="monitor-status \${escapeHtml(status.badgeClass)}">\${escapeHtml(status.label)}</span>
           </div>
           <div class="monitor-meta">
-            <div><span>Cổng</span><strong>\${escapeHtml(device.port || reading?.port || "-")}</strong></div>
-            <div><span>Slave ID</span><strong>\${escapeHtml(device.slaveId ?? reading?.slaveId ?? "-")}</strong></div>
+            <div><span>\${escapeHtml(endpointLabel)}</span><strong>\${escapeHtml(endpointValue)}</strong></div>
+            <div><span>\${escapeHtml(idLabel)}</span><strong>\${escapeHtml(idValue)}</strong></div>
             <div><span>Cập nhật</span><strong>\${escapeHtml(formatDateTime(reading?.collectedAt || reading?.updatedAt))}</strong></div>
           </div>
           <div class="monitor-key-grid">
@@ -4206,7 +4224,7 @@ export function renderDashboardPage({ publicUrl }) {
       document.querySelectorAll("[data-control-action], #powerLimitForm button").forEach((button) => {
         button.disabled = disabled;
       });
-      document.querySelectorAll("#controlScheduleMode, #controlScheduleAt, #controlScheduleTime, #controlScheduleMaxRuns, #controlScheduleEndAt, [data-schedule-weekday]").forEach((input) => {
+      document.querySelectorAll("#controlScheduleMode, #controlScheduleAt, #controlScheduleUntil, #controlScheduleTime, #controlScheduleEndTime, #controlScheduleMaxRuns, #controlScheduleEndAt, [data-schedule-weekday]").forEach((input) => {
         input.disabled = disabled;
       });
       updateControlScheduleFields();
@@ -4215,6 +4233,9 @@ export function renderDashboardPage({ publicUrl }) {
 
     function updateControlScheduleFields() {
       const mode = el("controlScheduleMode")?.value || "now";
+      document.querySelectorAll(".schedule-now-field").forEach((node) => {
+        node.classList.toggle("hidden", mode !== "now");
+      });
       document.querySelectorAll(".schedule-once-field").forEach((node) => {
         node.classList.toggle("hidden", mode !== "once");
       });
@@ -4224,6 +4245,7 @@ export function renderDashboardPage({ publicUrl }) {
       document.querySelectorAll(".schedule-weekly-field").forEach((node) => {
         node.classList.toggle("hidden", mode !== "weekly");
       });
+      updateControlScheduleSummary();
     }
 
     function inverterControlDevices() {
@@ -4250,7 +4272,7 @@ export function renderDashboardPage({ publicUrl }) {
     function renderCommandHistory() {
       const body = el("controlHistoryBody");
       if (!commands.length) {
-        body.innerHTML = '<tr><td colspan="6">Chưa có lệnh.</td></tr>';
+        body.innerHTML = '<tr><td colspan="7">Chưa có lệnh.</td></tr>';
         return;
       }
 
@@ -4262,8 +4284,48 @@ export function renderDashboardPage({ publicUrl }) {
           <td class="command-detail">\${escapeHtml(commandScheduleLabel(command))}</td>
           <td class="command-detail">\${escapeHtml(commandDetail(command))}</td>
           <td>\${escapeHtml(formatDateTime(command.completedAt || command.updatedAt || command.deliveredAt))}</td>
+          <td class="actions-cell">\${commandActionHtml(command)}</td>
         </tr>
       \`).join("");
+    }
+
+    function commandActionHtml(command) {
+      if (!canCancelCommand(command)) return "";
+
+      const label = ["daily", "weekly"].includes(command.schedule?.mode) ? "Hủy lịch" : "Hủy";
+      return '<button type="button" class="danger" data-cancel-command="' + escapeHtml(command.id) + '">' + escapeHtml(label) + '</button>';
+    }
+
+    function canCancelCommand(command) {
+      if (!command?.id || command.status === "cancelled" || command.seriesCancelledAt) return false;
+      if (["queued", "scheduled", "running", "delivered"].includes(command.status || "")) return true;
+      return Boolean(command.scheduleId && ["daily", "weekly"].includes(command.schedule?.mode));
+    }
+
+    async function cancelCommand(commandId) {
+      if (!selectedId || !commandId) return;
+
+      const command = commands.find((item) => item.id === commandId);
+      const label = ["daily", "weekly"].includes(command?.schedule?.mode) ? "hủy toàn bộ lịch lặp này" : "hủy lệnh này";
+      if (!confirm("Xác nhận " + label + "?")) return;
+
+      const payload = await requestJson("/api/gateways/" + encodeURIComponent(selectedId) + "/commands/" + encodeURIComponent(commandId), {
+        method: "DELETE",
+      });
+
+      const byId = new Map(commands.map((item) => [item.id, item]));
+      for (const cancelled of payload.cancelled || []) {
+        byId.set(cancelled.id, cancelled);
+      }
+      if (payload.command) {
+        byId.set(payload.command.id, payload.command);
+      }
+      commands = Array.from(byId.values())
+        .sort((left, right) => Date.parse(right.createdAt || 0) - Date.parse(left.createdAt || 0))
+        .slice(0, 100);
+      renderCommandHistory();
+      renderRemoteEvents();
+      setStatus(payload.series ? "Đã hủy lịch lặp" : "Đã hủy lệnh", "ok");
     }
 
     function renderRemoteStorage() {
@@ -4401,6 +4463,8 @@ export function renderDashboardPage({ publicUrl }) {
         const localValue = el("controlScheduleAt").value;
         if (!localValue) throw new Error("Hãy chọn thời điểm chạy");
         schedule.scheduledAt = localDateTimeToIso(localValue);
+        const untilValue = el("controlScheduleUntil").value;
+        if (untilValue) schedule.scheduledUntil = localDateTimeToIso(untilValue);
         return schedule;
       }
 
@@ -4409,6 +4473,7 @@ export function renderDashboardPage({ publicUrl }) {
       }
 
       schedule.timeOfDay = el("controlScheduleTime").value || "08:00";
+      schedule.endTimeOfDay = el("controlScheduleEndTime").value || "17:00";
       const maxRuns = Number(el("controlScheduleMaxRuns").value);
       if (Number.isFinite(maxRuns) && maxRuns > 0) schedule.maxRuns = Math.trunc(maxRuns);
 
@@ -4441,10 +4506,97 @@ export function renderDashboardPage({ publicUrl }) {
       return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Bangkok";
     }
 
+    function collectPowerLimitTiming() {
+      const schedule = collectControlSchedule();
+      const mode = el("controlScheduleMode")?.value || "now";
+
+      if (mode === "now") {
+        return {
+          durationMinutes: Number(el("powerLimitDurationMinutes").value),
+          schedule: null,
+          window: null,
+        };
+      }
+
+      if (mode === "once") {
+        const startValue = el("controlScheduleAt").value;
+        const endValue = el("controlScheduleUntil").value;
+        if (!startValue || !endValue) throw new Error("Hãy chọn thời điểm bắt đầu và kết thúc");
+        const start = new Date(startValue);
+        const end = new Date(endValue);
+        if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
+          throw new Error("Thời điểm bắt đầu hoặc kết thúc không hợp lệ");
+        }
+        const durationMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
+        if (durationMinutes <= 0) throw new Error("Thời điểm kết thúc phải sau thời điểm bắt đầu");
+        return {
+          durationMinutes,
+          schedule,
+          window: {
+            start: start.toISOString(),
+            end: end.toISOString(),
+          },
+        };
+      }
+
+      const startTime = el("controlScheduleTime").value || "08:00";
+      const endTime = el("controlScheduleEndTime").value || "";
+      if (!endTime) throw new Error("Hãy chọn giờ kết thúc");
+      return {
+        durationMinutes: durationBetweenTimes(startTime, endTime),
+        schedule,
+        window: {
+          startTime,
+          endTime,
+          timezone: schedule.timezone,
+        },
+      };
+    }
+
+    function updateControlScheduleSummary() {
+      const summary = el("controlScheduleSummary");
+      if (!summary) return;
+
+      try {
+        const mode = el("controlScheduleMode")?.value || "now";
+        if (mode === "now") {
+          const minutes = Number(el("powerLimitDurationMinutes")?.value || 0);
+          summary.textContent = minutes > 0 ? "Chạy ngay trong " + minutes + " phút." : "Chạy ngay khi bấm áp dụng.";
+          return;
+        }
+        const timing = collectPowerLimitTiming();
+        const schedule = timing.schedule || {};
+        const parts = [];
+        if (mode === "once") parts.push("Một lần " + formatDateTime(schedule.scheduledAt));
+        if (mode === "daily") parts.push("Hằng ngày " + schedule.timeOfDay + " - " + schedule.endTimeOfDay);
+        if (mode === "weekly") parts.push("Hằng tuần " + weekdayLabel(schedule.daysOfWeek) + " " + schedule.timeOfDay + " - " + schedule.endTimeOfDay);
+        parts.push("thời lượng " + timing.durationMinutes + " phút");
+        summary.textContent = parts.join(" | ");
+      } catch (error) {
+        summary.textContent = error.message;
+      }
+    }
+
+    function durationBetweenTimes(startTime, endTime) {
+      const start = timeToMinutes(startTime);
+      const end = timeToMinutes(endTime);
+      let duration = end - start;
+      if (duration <= 0) duration += 1440;
+      return duration;
+    }
+
+    function timeToMinutes(value) {
+      const match = String(value || "").match(/^(\d{2}):(\d{2})$/);
+      if (!match) throw new Error("Giờ phải dùng định dạng HH:mm");
+      const hours = Number(match[1]);
+      const minutes = Number(match[2]);
+      if (hours > 23 || minutes > 59) throw new Error("Giờ không hợp lệ");
+      return hours * 60 + minutes;
+    }
+
     function submitPowerLimitForm() {
       const mode = el("powerLimitMode").value;
       const value = Number(el("powerLimitValue").value);
-      const durationMinutes = Number(el("powerLimitDurationMinutes").value);
 
       if (!["percent", "kw", "watts"].includes(mode)) {
         setStatus("Kiểu giới hạn không hợp lệ", "error");
@@ -4454,15 +4606,46 @@ export function renderDashboardPage({ publicUrl }) {
         setStatus("Giá trị giới hạn phải lớn hơn hoặc bằng 0", "error");
         return;
       }
-      if (!Number.isFinite(durationMinutes) || durationMinutes <= 0 || durationMinutes > 1440) {
+      if (mode === "percent" && value > 100) {
+        setStatus("Phần trăm giới hạn phải từ 0 đến 100", "error");
+        return;
+      }
+
+      let timing;
+      try {
+        timing = collectPowerLimitTiming();
+      } catch (error) {
+        setStatus(error.message, "error");
+        return;
+      }
+
+      if (!Number.isFinite(timing.durationMinutes) || timing.durationMinutes <= 0 || timing.durationMinutes > 1440) {
         setStatus("Thời lượng phải từ 1 đến 1440 phút", "error");
         return;
       }
 
       queueInverterControl("limit_power", {
         [mode]: value,
-        durationMinutes,
+        durationMinutes: timing.durationMinutes,
+        ...(timing.window ? { scheduleWindow: timing.window } : {}),
+        ...(timing.schedule ? { schedule: timing.schedule } : {}),
       }).catch((error) => setStatus(error.message, "error"));
+    }
+
+    function updatePowerLimitValueConstraints() {
+      const input = el("powerLimitValue");
+      const mode = el("powerLimitMode")?.value || "percent";
+      if (!input) return;
+
+      if (mode === "percent") {
+        input.max = "100";
+        input.placeholder = "0 - 100";
+        const value = Number(input.value);
+        if (Number.isFinite(value) && value > 100) input.value = "100";
+      } else {
+        input.removeAttribute("max");
+        input.placeholder = "";
+      }
     }
 
     function actionLabel(action) {
@@ -4485,6 +4668,12 @@ export function renderDashboardPage({ publicUrl }) {
       if (payload.durationMinutes !== undefined) parts.push(payload.durationMinutes + " min");
       if (payload.durationSeconds !== undefined) parts.push(payload.durationSeconds + " sec");
       if (payload.delayMs !== undefined) parts.push(payload.delayMs + " ms delay");
+      if (payload.scheduleWindow?.startTime && payload.scheduleWindow?.endTime) {
+        parts.push(payload.scheduleWindow.startTime + " - " + payload.scheduleWindow.endTime);
+      }
+      if (payload.scheduleWindow?.start && payload.scheduleWindow?.end) {
+        parts.push(formatDateTime(payload.scheduleWindow.start) + " - " + formatDateTime(payload.scheduleWindow.end));
+      }
       if (command.message) parts.push(command.message);
       return parts.join(" | ") || "-";
     }
@@ -4496,8 +4685,8 @@ export function renderDashboardPage({ publicUrl }) {
       const nextRunAt = command.nextRunAt || command.scheduledAt;
       const parts = [];
       if (schedule.mode === "once") parts.push("Một lần");
-      if (schedule.mode === "daily") parts.push("Hằng ngày " + (schedule.timeOfDay || ""));
-      if (schedule.mode === "weekly") parts.push("Hằng tuần " + weekdayLabel(schedule.daysOfWeek) + " " + (schedule.timeOfDay || ""));
+      if (schedule.mode === "daily") parts.push("Hằng ngày " + (schedule.timeOfDay || "") + (schedule.endTimeOfDay ? " - " + schedule.endTimeOfDay : ""));
+      if (schedule.mode === "weekly") parts.push("Hằng tuần " + weekdayLabel(schedule.daysOfWeek) + " " + (schedule.timeOfDay || "") + (schedule.endTimeOfDay ? " - " + schedule.endTimeOfDay : ""));
       if (nextRunAt && ["scheduled", "queued", "delivered"].includes(command.status || "")) {
         parts.push("lần tới " + formatDateTime(nextRunAt));
       }
@@ -4553,7 +4742,7 @@ export function renderDashboardPage({ publicUrl }) {
             '<label>Model <input data-template="' + index + '" data-field="model" value="' + escapeHtml(template.model || "") + '"></label>' +
             '<label>Nhóm <input data-template="' + index + '" data-field="category" value="' + escapeHtml(template.category || "") + '"></label>' +
             '<label>Kiểu <select data-template="' + index + '" data-field="type">' + templateTypeOptionsHtml(template.type, template.category) + '</select></label>' +
-            '<label>Giao thức <input data-template="' + index + '" data-field="protocol" value="' + escapeHtml(template.protocol || "modbus-rtu") + '"></label>' +
+            '<label>Giao thức <select data-template="' + index + '" data-field="protocol">' + ["modbus-rtu", "modbus-tcp"].map((name) => option(name, template.protocol || "modbus-rtu")).join("") + '</select></label>' +
             '<label>Chu kỳ poll ms <input data-template="' + index + '" data-field="pollIntervalMs" type="number" min="500" value="' + (template.pollIntervalMs || 5000) + '"></label>' +
             '<label class="wide">Ghi chú <input data-template="' + index + '" data-field="notes" value="' + escapeHtml(template.notes || "") + '"></label>' +
           '</div>' +
@@ -4599,8 +4788,8 @@ export function renderDashboardPage({ publicUrl }) {
         '<td><select data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="function">' + ["holding", "input"].map((item) => option(item, register.function || "holding")).join("") + '</select></td>' +
         '<td><select data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="access">' + ["ro", "rw", "wo"].map((item) => option(item, register.access || "ro")).join("") + '</select></td>' +
         '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="poll" type="checkbox" ' + (register.poll === false ? "" : "checked") + '></td>' +
-        '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="address" type="number" min="0" value="' + (register.address || 0) + '"></td>' +
-        '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="length" type="number" min="1" value="' + (register.length || 1) + '"></td>' +
+        '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="address" type="number" min="0" max="65535" value="' + (register.address || 0) + '"></td>' +
+        '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="length" type="number" min="1" max="125" value="' + (register.length || 1) + '"></td>' +
         '<td><select data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="type">' + ["uint16", "int16", "uint32", "int32", "uint64", "int64", "float32", "float64", "string", "bytes", "bitfield16", "bitfield32"].map((item) => option(item, register.type || "uint16")).join("") + '</select></td>' +
         '<td><select data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="wordOrder">' + ["", "be", "le", "high-low", "low-high"].map((item) => option(item, register.wordOrder || "", item || "mặc định")).join("") + '</select></td>' +
         '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="scale" type="number" step="any" value="' + (register.scale ?? 1) + '"></td>' +
@@ -4683,11 +4872,11 @@ export function renderDashboardPage({ publicUrl }) {
         row.innerHTML = \`
           <td><input data-port="\${escapeHtml(name)}" data-field="name" value="\${escapeHtml(name)}"></td>
           <td><input data-port="\${escapeHtml(name)}" data-field="path" value="\${escapeHtml(port.path || "")}"></td>
-          <td><input data-port="\${escapeHtml(name)}" data-field="baudRate" type="number" value="\${port.baudRate || 9600}"></td>
+          <td><input data-port="\${escapeHtml(name)}" data-field="baudRate" type="number" min="1" step="1" value="\${port.baudRate || 9600}"></td>
           <td><select data-port="\${escapeHtml(name)}" data-field="parity">\${["none", "even", "odd", "mark", "space"].map((item) => option(item, port.parity || "none")).join("")}</select></td>
-          <td><input data-port="\${escapeHtml(name)}" data-field="dataBits" type="number" value="\${port.dataBits || 8}"></td>
-          <td><input data-port="\${escapeHtml(name)}" data-field="stopBits" type="number" value="\${port.stopBits || 1}"></td>
-          <td><input data-port="\${escapeHtml(name)}" data-field="timeoutMs" type="number" value="\${port.timeoutMs || 1000}"></td>
+          <td><input data-port="\${escapeHtml(name)}" data-field="dataBits" type="number" min="5" max="8" step="1" value="\${port.dataBits || 8}"></td>
+          <td><input data-port="\${escapeHtml(name)}" data-field="stopBits" type="number" min="1" max="2" step="1" value="\${port.stopBits || 1}"></td>
+          <td><input data-port="\${escapeHtml(name)}" data-field="timeoutMs" type="number" min="100" step="100" value="\${port.timeoutMs || 1000}"></td>
           <td><button type="button" data-remove-port="\${escapeHtml(name)}" class="danger">Xóa</button></td>
         \`;
         body.appendChild(row);
@@ -4793,8 +4982,8 @@ export function renderDashboardPage({ publicUrl }) {
           <td><select data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="function">\${["holding", "input"].map((item) => option(item, register.function || "holding")).join("")}</select></td>
           <td><select data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="access">\${["ro", "rw", "wo"].map((item) => option(item, register.access || "ro")).join("")}</select></td>
           <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="poll" type="checkbox" \${register.poll === false ? "" : "checked"}></td>
-          <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="address" type="number" min="0" value="\${register.address || 0}"></td>
-          <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="length" type="number" min="1" value="\${register.length || 1}"></td>
+          <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="address" type="number" min="0" max="65535" value="\${register.address || 0}"></td>
+          <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="length" type="number" min="1" max="125" value="\${register.length || 1}"></td>
           <td><select data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="type">\${["uint16", "int16", "uint32", "int32", "uint64", "int64", "float32", "float64", "string", "bytes", "bitfield16", "bitfield32"].map((item) => option(item, register.type || "uint16")).join("")}</select></td>
           <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="scale" type="number" step="any" value="\${register.scale ?? 1}"></td>
           <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="unit" value="\${escapeHtml(register.unit || "")}"></td>
@@ -5945,6 +6134,12 @@ export function renderDashboardPage({ publicUrl }) {
           model: device.model || "",
           templateId: device.templateId || "",
           stationId: device.stationId || "",
+          protocol: device.protocol || "",
+          port: device.port || "",
+          host: device.host || "",
+          tcpPort: device.tcpPort ?? device.tcp_port ?? null,
+          unitId: device.unitId ?? device.unit_id ?? null,
+          slaveId: device.slaveId ?? device.slave_id ?? null,
           status: Object.keys(record.measurements || {}).length ? "online" : "waiting",
           measurements: record.measurements || {},
           units: record.units || {},
@@ -6332,6 +6527,9 @@ export function renderDashboardPage({ publicUrl }) {
         if (["stop", "reboot"].includes(action) && !confirm("Queue " + actionLabel(action) + " for " + (el("controlDeviceName").value || "selected inverter") + "?")) return;
         queueInverterControl(action).catch((error) => setStatus(error.message, "error"));
       }
+      if (target.dataset.cancelCommand) {
+        cancelCommand(target.dataset.cancelCommand).catch((error) => setStatus(error.message, "error"));
+      }
       if (target.id === "addStationBtn") addStation();
       if (target.id === "addPortBtn") addPort();
       if (target.id === "addDeviceBtn") addDevice();
@@ -6370,6 +6568,15 @@ export function renderDashboardPage({ publicUrl }) {
         updateControlScheduleFields();
         return;
       }
+      if (target?.id === "powerLimitMode") {
+        updatePowerLimitValueConstraints();
+        return;
+      }
+      if (["controlScheduleAt", "controlScheduleUntil", "controlScheduleTime", "controlScheduleEndTime", "controlScheduleMaxRuns", "controlScheduleEndAt"].includes(target?.id)
+        || target?.matches?.("[data-schedule-weekday]")) {
+        updateControlScheduleSummary();
+        return;
+      }
       if (target?.id === "iec104EvnStation") {
         state.iec104 = {
           ...(state.iec104 || {}),
@@ -6396,6 +6603,15 @@ export function renderDashboardPage({ publicUrl }) {
       if (deviceCard) deviceCard.dataset.protocolMode = target.value || "modbus-rtu";
     });
 
+    document.addEventListener("input", (event) => {
+      if (["powerLimitDurationMinutes", "controlScheduleAt", "controlScheduleUntil", "controlScheduleTime", "controlScheduleEndTime", "controlScheduleMaxRuns", "controlScheduleEndAt"].includes(event.target?.id)) {
+        updateControlScheduleSummary();
+      }
+      if (event.target?.id === "powerLimitValue") {
+        updatePowerLimitValueConstraints();
+      }
+    });
+
     el("gatewayForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       const form = new FormData(event.currentTarget);
@@ -6415,8 +6631,10 @@ export function renderDashboardPage({ publicUrl }) {
 
     el("powerLimitForm").addEventListener("submit", (event) => {
       event.preventDefault();
+      updatePowerLimitValueConstraints();
       submitPowerLimitForm();
     });
+    updatePowerLimitValueConstraints();
 
     async function logout() {
       await fetch("/api/logout", { method: "POST" });

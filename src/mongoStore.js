@@ -1,12 +1,19 @@
 import crypto from "node:crypto";
 
 import { MongoClient } from "mongodb";
-import { commandStatusForNextRun, isRecurringSchedule, nextScheduledRun } from "./schedule.js";
+import { commandStatusForNextRun, isRecurringSchedule, nextScheduledRun, scheduledWindowEndRun } from "./schedule.js";
 
 const DEFAULT_GATEWAY_OFFLINE_AFTER_MS = 90_000;
 const DEFAULT_TELEMETRY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const DEFAULT_TELEMETRY_PRUNE_INTERVAL_MS = 60 * 60 * 1000;
 const TELEMETRY_TTL_INDEX_NAME = "idx_telemetry_created_at_ttl";
+const WINDOW_END_ACTIONS = Object.freeze({
+  limit_power: "clear_power_limit",
+  start: "stop",
+  stop: "start",
+});
+const DAY_MINUTES = 24 * 60;
+const WEEK_MINUTES = 7 * DAY_MINUTES;
 
 function isMongoDuplicateKey(error) {
   return error?.code === 11000;
@@ -60,6 +67,10 @@ export class MongoHardwareStore {
       this.gatewayCommands.createIndex(
         { gatewayId: 1, scheduleId: 1, runIndex: 1 },
         { unique: true, partialFilterExpression: { scheduleId: { $type: "string" } } },
+      ),
+      this.gatewayCommands.createIndex(
+        { gatewayId: 1, sourceCommandId: 1, windowRole: 1 },
+        { unique: true, partialFilterExpression: { sourceCommandId: { $type: "string" } } },
       ),
       this.deviceTemplates.createIndex({ sortOrder: 1, id: 1 }),
     ]);
@@ -279,10 +290,34 @@ export class MongoHardwareStore {
     }));
   }
 
-  async createGatewayCommand({ gatewayId, action, payload, createdBy = "admin", schedule = null, nextRunAt = null, scheduleId = null, runIndex = 0 }) {
+  async createGatewayCommand({
+    gatewayId,
+    action,
+    payload,
+    createdBy = "admin",
+    schedule = null,
+    nextRunAt = null,
+    scheduleId = null,
+    runIndex = 0,
+    windowRole = "start",
+    sourceCommandId = null,
+  }) {
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
     const commandScheduleId = schedule ? (scheduleId || crypto.randomUUID()) : null;
+    if (shouldCheckLimitPowerScheduleConflict({ action, schedule, scheduleId, runIndex, windowRole, sourceCommandId })) {
+      const commands = (await this.gatewayCommands.find({ gatewayId }).toArray()).map(mapCommandDoc);
+      const conflict = findLimitPowerScheduleConflict(commands, {
+        gatewayId,
+        action,
+        payload,
+        schedule,
+        nextRunAt,
+        scheduledAt: schedule?.scheduledAt || nextRunAt || null,
+        windowRole: windowRole || "start",
+      });
+      if (conflict) throw scheduleConflictError(conflict);
+    }
     await this.gatewayCommands.insertOne({
       _id: id,
       id,
@@ -299,6 +334,10 @@ export class MongoHardwareStore {
       schedule: schedule ? sortKeys(schedule) : null,
       scheduleId: commandScheduleId,
       runIndex,
+      windowRole: windowRole || "start",
+      sourceCommandId: sourceCommandId || null,
+      cancelledAt: null,
+      seriesCancelledAt: null,
       deliveredAt: null,
       completedAt: null,
       updatedAt: now,
@@ -369,11 +408,55 @@ export class MongoHardwareStore {
     await this.gateways.updateOne({ _id: gatewayId }, { $set: gatewaySet });
 
     const command = await this.getGatewayCommand(gatewayId, commandId);
+    await this.#enqueueWindowEndCommand(command, status, now);
+    await this.#enqueueDurationClearCommand(command, status, now);
     await this.#enqueueNextScheduledCommand(command, status, now);
     return command;
   }
 
+  async cancelGatewayCommand({ gatewayId, commandId }) {
+    const commands = (await this.gatewayCommands.find({ gatewayId }).toArray()).map(mapCommandDoc);
+    const command = commands.find((item) => item.id === commandId);
+    if (!command) return null;
+
+    const now = new Date().toISOString();
+    const baseScheduleId = commandBaseScheduleId(command, commands);
+    const seriesSchedule = commandSeriesSchedule(command, baseScheduleId, commands);
+    const cancelSeries = Boolean(baseScheduleId && isRecurringSchedule(seriesSchedule));
+    const targets = commands.filter((item) => shouldCancelCommand(item, command, {
+      baseScheduleId,
+      cancelSeries,
+      commands,
+    }));
+
+    await Promise.all(targets.map((item) => {
+      const active = isActiveCommand(item);
+      return this.gatewayCommands.updateOne(
+        { _id: item.id, gatewayId },
+        {
+          $set: {
+            status: active ? "cancelled" : item.status,
+            message: active ? (cancelSeries ? "Recurring schedule cancelled" : "Scheduled command cancelled") : item.message,
+            completedAt: active ? (item.completedAt || now) : item.completedAt,
+            cancelledAt: item.cancelledAt || now,
+            seriesCancelledAt: cancelSeries ? (item.seriesCancelledAt || now) : item.seriesCancelledAt,
+            updatedAt: now,
+          },
+        },
+      );
+    }));
+
+    return {
+      command: await this.getGatewayCommand(gatewayId, commandId),
+      cancelled: (await Promise.all(targets.map((item) => this.getGatewayCommand(gatewayId, item.id)))).filter(Boolean),
+      scheduleId: baseScheduleId || command.scheduleId,
+      series: cancelSeries,
+    };
+  }
+
   async #enqueueNextScheduledCommand(command, status, now) {
+    if (command?.windowRole === "end") return;
+    if (command?.cancelledAt || command?.seriesCancelledAt) return;
     if (!command || !["applied", "failed"].includes(status) || !isRecurringSchedule(command.schedule)) return;
 
     const nextRunIndex = Number(command.runIndex || 0) + 1;
@@ -407,6 +490,86 @@ export class MongoHardwareStore {
           schedule: sortKeys(command.schedule),
           scheduleId: command.scheduleId,
           runIndex: nextRunIndex,
+          windowRole: "start",
+          sourceCommandId: null,
+          deliveredAt: null,
+          completedAt: null,
+          updatedAt: now,
+        },
+      },
+      { upsert: true },
+    );
+  }
+
+  async #enqueueWindowEndCommand(command, status, now) {
+    if (command?.cancelledAt || command?.seriesCancelledAt) return;
+    if (!command || status !== "applied" || (command.windowRole || "start") !== "start") return;
+
+    const action = WINDOW_END_ACTIONS[command.action];
+    if (!action) return;
+
+    const nextRunAt = scheduledWindowEndRun(command.schedule, command.nextRunAt || command.scheduledAt || now);
+    if (!nextRunAt) return;
+
+    await this.#upsertFollowUpCommand(command, {
+      action,
+      nextRunAt,
+      now,
+      schedule: command.schedule,
+      scheduleId: command.scheduleId ? `${command.scheduleId}:end:${command.runIndex || 0}` : null,
+      runIndex: Number(command.runIndex || 0),
+      windowRole: "end",
+    });
+  }
+
+  async #enqueueDurationClearCommand(command, status, now) {
+    if (command?.cancelledAt || command?.seriesCancelledAt) return;
+    if (!command || status !== "applied" || command.action !== "limit_power" || command.windowRole === "end") return;
+    if (scheduledWindowEndRun(command.schedule, command.nextRunAt || command.scheduledAt || now)) return;
+
+    const durationMs = controlDurationMs(command.payload);
+    if (!durationMs) return;
+
+    await this.#upsertFollowUpCommand(command, {
+      action: "clear_power_limit",
+      nextRunAt: new Date(Date.parse(now) + durationMs).toISOString(),
+      now,
+      schedule: null,
+      scheduleId: command.scheduleId ? `${command.scheduleId}:duration-clear:${command.runIndex || 0}` : null,
+      runIndex: 0,
+      windowRole: "end",
+    });
+  }
+
+  async #upsertFollowUpCommand(command, { action, nextRunAt, now, schedule, scheduleId, runIndex, windowRole }) {
+    const id = crypto.randomUUID();
+    const sourceCommandId = command.id;
+
+    await this.gatewayCommands.updateOne(
+      {
+        gatewayId: command.gatewayId,
+        sourceCommandId,
+        windowRole,
+      },
+      {
+        $setOnInsert: {
+          _id: id,
+          id,
+          gatewayId: command.gatewayId,
+          action,
+          payload: sortKeys(controlFollowUpPayload(command.payload, action)),
+          status: commandStatusForNextRun(nextRunAt, new Date(now)),
+          message: "",
+          result: null,
+          createdBy: command.createdBy || "admin",
+          createdAt: now,
+          scheduledAt: nextRunAt,
+          nextRunAt,
+          schedule: schedule ? sortKeys(schedule) : null,
+          scheduleId,
+          runIndex,
+          windowRole,
+          sourceCommandId,
           deliveredAt: null,
           completedAt: null,
           updatedAt: now,
@@ -667,6 +830,10 @@ function mapCommandDoc(row) {
     schedule: row.schedule ?? null,
     scheduleId: row.scheduleId,
     runIndex: Number(row.runIndex || 0),
+    windowRole: row.windowRole || "start",
+    sourceCommandId: row.sourceCommandId ?? null,
+    cancelledAt: row.cancelledAt ?? null,
+    seriesCancelledAt: row.seriesCancelledAt ?? null,
     updatedAt: row.updatedAt,
   };
 }
@@ -687,6 +854,286 @@ function sortKeys(value) {
     result[key] = sortKeys(value[key]);
     return result;
   }, {});
+}
+
+function controlFollowUpPayload(payload, action) {
+  const result = { action };
+
+  for (const field of ["deviceName", "device", "stationId", "station"]) {
+    if (payload?.[field] !== undefined) result[field] = payload[field];
+  }
+
+  return result;
+}
+
+function controlDurationMs(payload) {
+  let seconds;
+
+  if (payload?.durationSeconds !== undefined) {
+    seconds = Number(payload.durationSeconds);
+  } else if (payload?.durationMinutes !== undefined) {
+    seconds = Number(payload.durationMinutes) * 60;
+  } else if (payload?.durationHours !== undefined) {
+    seconds = Number(payload.durationHours) * 3600;
+  }
+
+  const durationMs = seconds * 1000;
+  return Number.isFinite(durationMs) && durationMs > 0 ? durationMs : null;
+}
+
+function shouldCheckLimitPowerScheduleConflict({ action, schedule, scheduleId, runIndex, windowRole, sourceCommandId }) {
+  return action === "limit_power"
+    && Boolean(schedule)
+    && (windowRole || "start") === "start"
+    && !sourceCommandId
+    && !scheduleId
+    && Number(runIndex || 0) === 0;
+}
+
+function findLimitPowerScheduleConflict(commands, candidate) {
+  return commands.find((command) => (
+    command.action === "limit_power"
+    && (command.windowRole || "start") === "start"
+    && isActiveCommand(command)
+    && !command.cancelledAt
+    && !command.seriesCancelledAt
+    && command.schedule
+    && sameControlTarget(command.payload, candidate.payload)
+    && schedulesOverlap(command, candidate)
+  )) || null;
+}
+
+function scheduleConflictError(conflict) {
+  const error = new Error(`Lịch tiết giảm trùng với lịch đang tồn tại (${scheduleConflictLabel(conflict)}). Hãy hủy lịch cũ hoặc chọn khung giờ khác.`);
+  error.statusCode = 409;
+  return error;
+}
+
+function scheduleConflictLabel(command) {
+  const target = controlTargetKey(command.payload).replace(/^(device|station):/, "");
+  const schedule = command.schedule || {};
+  if (schedule.mode === "once") {
+    return `${target} ${command.scheduledAt || schedule.scheduledAt || ""}`;
+  }
+  if (schedule.mode === "weekly") {
+    return `${target} weekly ${Array.isArray(schedule.daysOfWeek) ? schedule.daysOfWeek.join(",") : ""} ${schedule.timeOfDay || ""}-${schedule.endTimeOfDay || ""}`;
+  }
+  return `${target} ${schedule.mode || "schedule"} ${schedule.timeOfDay || ""}-${schedule.endTimeOfDay || ""}`;
+}
+
+function sameControlTarget(left, right) {
+  return controlTargetKey(left) === controlTargetKey(right);
+}
+
+function controlTargetKey(payload) {
+  const station = stringValue(payload?.stationId ?? payload?.station).toLowerCase();
+  if (station) return `station:${station}`;
+
+  const device = stringValue(payload?.deviceName ?? payload?.device).toLowerCase();
+  if (device) return `device:${device}`;
+
+  return "default";
+}
+
+function schedulesOverlap(left, right) {
+  const leftWindow = scheduleWindow(left);
+  const rightWindow = scheduleWindow(right);
+  if (!leftWindow || !rightWindow) return false;
+  if (!dateSpansOverlap(leftWindow, rightWindow)) return false;
+
+  if (leftWindow.mode === "once" && rightWindow.mode === "once") {
+    return intervalsOverlap(leftWindow, rightWindow);
+  }
+  if (leftWindow.mode === "recurring" && rightWindow.mode === "recurring") {
+    return weeklyIntervalsOverlap(leftWindow.intervals, rightWindow.intervals);
+  }
+
+  const once = leftWindow.mode === "once" ? leftWindow : rightWindow;
+  const recurring = leftWindow.mode === "recurring" ? leftWindow : rightWindow;
+  return onceOverlapsRecurring(once, recurring);
+}
+
+function scheduleWindow(command) {
+  const schedule = command.schedule;
+  if (!schedule) return null;
+
+  if (schedule.mode === "once") {
+    const start = parseTimestamp(schedule.scheduledAt || command.nextRunAt || command.scheduledAt);
+    if (!Number.isFinite(start)) return null;
+    const scheduledUntil = parseTimestamp(schedule.scheduledUntil);
+    const durationMs = controlDurationMs(command.payload);
+    const end = Number.isFinite(scheduledUntil) ? scheduledUntil : start + (durationMs || 1);
+    return {
+      mode: "once",
+      start,
+      end: Math.max(end, start + 1),
+      startAt: start,
+      endAt: Math.max(end, start + 1),
+    };
+  }
+
+  if (!isRecurringSchedule(schedule)) return null;
+  const startAt = parseTimestamp(command.nextRunAt || command.scheduledAt);
+  if (!Number.isFinite(startAt)) return null;
+  const endAt = parseTimestamp(schedule.endAt);
+  const intervals = recurringWeeklyIntervals(schedule, controlDurationMs(command.payload));
+  if (!intervals.length) return null;
+
+  return {
+    mode: "recurring",
+    startAt,
+    endAt: Number.isFinite(endAt) ? endAt : Number.POSITIVE_INFINITY,
+    timezone: schedule.timezone,
+    intervals,
+  };
+}
+
+function recurringWeeklyIntervals(schedule, durationMs) {
+  const startMinute = timeToMinutes(schedule.timeOfDay);
+  if (!Number.isFinite(startMinute)) return [];
+
+  const endMinute = timeToMinutes(schedule.endTimeOfDay);
+  let durationMinutes = Number.isFinite(endMinute)
+    ? endMinute - startMinute
+    : Math.ceil((durationMs || 1) / 60000);
+  if (durationMinutes <= 0) durationMinutes += DAY_MINUTES;
+
+  const days = schedule.mode === "weekly" ? (schedule.daysOfWeek || []) : [1, 2, 3, 4, 5, 6, 7];
+  const intervals = [];
+  for (const day of days) {
+    if (!Number.isInteger(day) || day < 1 || day > 7) continue;
+    const start = (day - 1) * DAY_MINUTES + startMinute;
+    pushWeekInterval(intervals, start, start + durationMinutes);
+  }
+  return intervals;
+}
+
+function onceOverlapsRecurring(once, recurring) {
+  if (once.end - once.start >= WEEK_MINUTES * 60000) return true;
+  return weeklyIntervalsOverlap(
+    absoluteIntervalToWeeklyIntervals(once.start, once.end, recurring.timezone),
+    recurring.intervals,
+  );
+}
+
+function absoluteIntervalToWeeklyIntervals(startMs, endMs, timezone) {
+  const durationMinutes = Math.max(1, Math.ceil((endMs - startMs) / 60000));
+  const offsetMinutes = scheduleTimezoneOffsetMinutes(timezone);
+  const local = new Date(startMs + offsetMinutes * 60000);
+  const weekday = isoWeekday(local.getUTCFullYear(), local.getUTCMonth() + 1, local.getUTCDate());
+  const start = (weekday - 1) * DAY_MINUTES + local.getUTCHours() * 60 + local.getUTCMinutes();
+  const intervals = [];
+  pushWeekInterval(intervals, start, start + durationMinutes);
+  return intervals;
+}
+
+function pushWeekInterval(intervals, start, end) {
+  const duration = end - start;
+  if (duration >= WEEK_MINUTES) {
+    intervals.push({ start: 0, end: WEEK_MINUTES });
+    return;
+  }
+
+  let cursor = start;
+  let remaining = Math.max(1, duration);
+  while (remaining > 0) {
+    const normalizedStart = ((cursor % WEEK_MINUTES) + WEEK_MINUTES) % WEEK_MINUTES;
+    const chunk = Math.min(remaining, WEEK_MINUTES - normalizedStart);
+    intervals.push({ start: normalizedStart, end: normalizedStart + chunk });
+    cursor += chunk;
+    remaining -= chunk;
+  }
+}
+
+function weeklyIntervalsOverlap(left, right) {
+  return left.some((leftInterval) => right.some((rightInterval) => intervalsOverlap(leftInterval, rightInterval)));
+}
+
+function intervalsOverlap(left, right) {
+  return left.start < right.end && right.start < left.end;
+}
+
+function dateSpansOverlap(left, right) {
+  return left.startAt < right.endAt && right.startAt < left.endAt;
+}
+
+function parseTimestamp(value) {
+  const timestamp = Date.parse(String(value || ""));
+  return Number.isFinite(timestamp) ? timestamp : Number.NaN;
+}
+
+function timeToMinutes(value) {
+  const match = String(value || "").match(/^(\d{2}):(\d{2})$/);
+  if (!match) return Number.NaN;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  return hours <= 23 && minutes <= 59 ? hours * 60 + minutes : Number.NaN;
+}
+
+function scheduleTimezoneOffsetMinutes(timezone) {
+  const normalized = String(timezone || "").trim().toLowerCase();
+  if (normalized === "utc" || normalized === "z") return 0;
+  if (normalized === "asia/bangkok" || normalized === "asia/ho_chi_minh") return 7 * 60;
+
+  const match = normalized.match(/^utc([+-])(\d{1,2})(?::?(\d{2}))?$/);
+  if (!match) return 7 * 60;
+
+  const sign = match[1] === "-" ? -1 : 1;
+  const hours = Number(match[2]);
+  const minutes = Number(match[3] || 0);
+  if (!Number.isInteger(hours) || hours > 14 || !Number.isInteger(minutes) || minutes > 59) return 7 * 60;
+  return sign * (hours * 60 + minutes);
+}
+
+function isoWeekday(year, month, day) {
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  return weekday === 0 ? 7 : weekday;
+}
+
+function commandBaseScheduleId(command, commands) {
+  if (command?.sourceCommandId) {
+    const source = commands.find((item) => item.id === command.sourceCommandId);
+    if (source?.scheduleId) return source.scheduleId;
+  }
+
+  if (!command?.scheduleId) return null;
+  return String(command.scheduleId).replace(/:(end|duration-clear):\d+$/, "");
+}
+
+function commandSeriesSchedule(command, baseScheduleId, commands) {
+  if (isRecurringSchedule(command?.schedule)) return command.schedule;
+
+  const source = commands.find((item) => item.id === command?.sourceCommandId);
+  if (isRecurringSchedule(source?.schedule)) return source.schedule;
+
+  if (!baseScheduleId) return null;
+  const baseCommand = commands.find((item) => item.scheduleId === baseScheduleId && isRecurringSchedule(item.schedule));
+  return baseCommand?.schedule || null;
+}
+
+function shouldCancelCommand(item, command, { baseScheduleId, cancelSeries, commands }) {
+  if (item.id === command.id) return true;
+  if (!baseScheduleId) return false;
+
+  if (cancelSeries) {
+    return commandBelongsToSeries(item, baseScheduleId, commands);
+  }
+
+  return item.scheduleId === command.scheduleId
+    && Number(item.runIndex || 0) === Number(command.runIndex || 0);
+}
+
+function commandBelongsToSeries(command, baseScheduleId, commands) {
+  if (command.scheduleId === baseScheduleId || String(command.scheduleId || "").startsWith(`${baseScheduleId}:`)) {
+    return true;
+  }
+
+  const source = commands.find((item) => item.id === command.sourceCommandId);
+  return source?.scheduleId === baseScheduleId;
+}
+
+function isActiveCommand(command) {
+  return ["queued", "scheduled", "running", "delivered"].includes(command.status || "");
 }
 
 function safeEqual(left, right) {

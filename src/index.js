@@ -415,6 +415,32 @@ server = http.createServer(async (req, res) => {
       });
     }
 
+    const gatewayCommandMatch = pathname.match(/^\/api\/gateways\/([^/]+)\/commands\/([^/]+)$/);
+    if (gatewayCommandMatch && req.method === "DELETE") {
+      const gatewayId = decodeURIComponent(gatewayCommandMatch[1]);
+      const commandId = decodeURIComponent(gatewayCommandMatch[2]);
+
+      if (!await store.getGateway(gatewayId)) {
+        return sendJson(res, 404, {
+          ok: false,
+          error: "Gateway not found",
+        });
+      }
+
+      const result = await store.cancelGatewayCommand({ gatewayId, commandId });
+      if (!result) {
+        return sendJson(res, 404, {
+          ok: false,
+          error: "Command not found",
+        });
+      }
+
+      return sendJson(res, 200, {
+        ok: true,
+        ...result,
+      });
+    }
+
     const gatewayControlMatch = pathname.match(/^\/api\/gateways\/([^/]+)\/control$/);
     if (gatewayControlMatch && req.method === "POST") {
       const gatewayId = decodeURIComponent(gatewayControlMatch[1]);

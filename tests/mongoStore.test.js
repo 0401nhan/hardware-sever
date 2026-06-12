@@ -72,6 +72,186 @@ test("Mongo store creates telemetry TTL index and prunes old telemetry records",
   assert.ok(inserted.createdAtDate instanceof Date);
 });
 
+test("Mongo store schedules one duration clear command after applied limit power", async () => {
+  const db = new FakeDb();
+  const store = new MongoHardwareStore({ db: () => db, async close() {} }, "test", "secret");
+  const command = await store.createGatewayCommand({
+    gatewayId: "GW-MONGO-CMD",
+    action: "limit_power",
+    payload: {
+      action: "limit_power",
+      deviceName: "Huawei",
+      percent: 60,
+      durationMinutes: 10,
+    },
+  });
+
+  await store.updateGatewayCommandStatus({
+    gatewayId: "GW-MONGO-CMD",
+    commandId: command.id,
+    status: "applied",
+  });
+  await store.updateGatewayCommandStatus({
+    gatewayId: "GW-MONGO-CMD",
+    commandId: command.id,
+    status: "applied",
+  });
+
+  const clearCommands = db.collection("gateway_commands").docs.filter((doc) => doc.sourceCommandId === command.id);
+  assert.equal(clearCommands.length, 1);
+  assert.equal(clearCommands[0].action, "clear_power_limit");
+  assert.equal(clearCommands[0].status, "scheduled");
+  assert.equal(clearCommands[0].windowRole, "end");
+  assert.deepEqual(clearCommands[0].payload, {
+    action: "clear_power_limit",
+    deviceName: "Huawei",
+  });
+});
+
+test("Mongo store cancels recurring command series without enqueueing the next run", async () => {
+  const db = new FakeDb();
+  const store = new MongoHardwareStore({ db: () => db, async close() {} }, "test", "secret");
+  const command = await store.createGatewayCommand({
+    gatewayId: "GW-MONGO-RECURRING",
+    action: "start",
+    payload: {
+      action: "start",
+      deviceName: "Huawei",
+    },
+    schedule: {
+      mode: "daily",
+      timezone: "Asia/Bangkok",
+      timeOfDay: "08:00",
+      endTimeOfDay: "17:00",
+    },
+    nextRunAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+  });
+
+  const cancelled = await store.cancelGatewayCommand({
+    gatewayId: "GW-MONGO-RECURRING",
+    commandId: command.id,
+  });
+  assert.equal(cancelled.series, true);
+  assert.equal(cancelled.command.status, "cancelled");
+  assert.ok(cancelled.command.cancelledAt);
+  assert.ok(cancelled.command.seriesCancelledAt);
+
+  await store.updateGatewayCommandStatus({
+    gatewayId: "GW-MONGO-RECURRING",
+    commandId: command.id,
+    status: "applied",
+  });
+
+  const recurringRuns = db.collection("gateway_commands").docs.filter((doc) => (
+    doc.gatewayId === "GW-MONGO-RECURRING"
+    && doc.scheduleId === command.scheduleId
+  ));
+  assert.equal(recurringRuns.length, 1);
+});
+
+test("Mongo store cancels recurring series from a duration clear follow-up", async () => {
+  const db = new FakeDb();
+  const store = new MongoHardwareStore({ db: () => db, async close() {} }, "test", "secret");
+  const command = await store.createGatewayCommand({
+    gatewayId: "GW-MONGO-FOLLOW-UP",
+    action: "limit_power",
+    payload: {
+      action: "limit_power",
+      deviceName: "Huawei",
+      percent: 60,
+      durationMinutes: 10,
+    },
+    schedule: {
+      mode: "daily",
+      timezone: "Asia/Bangkok",
+      timeOfDay: "08:00",
+    },
+    nextRunAt: new Date(Date.now() - 60 * 1000).toISOString(),
+  });
+
+  await store.updateGatewayCommandStatus({
+    gatewayId: "GW-MONGO-FOLLOW-UP",
+    commandId: command.id,
+    status: "applied",
+  });
+
+  const followUp = db.collection("gateway_commands").docs.find((doc) => doc.sourceCommandId === command.id && doc.windowRole === "end");
+  assert.ok(followUp);
+
+  const cancelled = await store.cancelGatewayCommand({
+    gatewayId: "GW-MONGO-FOLLOW-UP",
+    commandId: followUp.id,
+  });
+  assert.equal(cancelled.series, true);
+  assert.equal(cancelled.command.status, "cancelled");
+
+  const commands = db.collection("gateway_commands").docs.filter((doc) => doc.gatewayId === "GW-MONGO-FOLLOW-UP");
+  assert.equal(commands.find((doc) => doc.id === command.id).seriesCancelledAt, cancelled.command.seriesCancelledAt);
+  assert.equal(commands.find((doc) => doc.runIndex === 1).status, "cancelled");
+});
+
+test("Mongo store rejects overlapping power limit schedules for the same target", async () => {
+  const db = new FakeDb();
+  const store = new MongoHardwareStore({ db: () => db, async close() {} }, "test", "secret");
+  await store.createGatewayCommand({
+    gatewayId: "GW-MONGO-CONFLICT",
+    action: "limit_power",
+    payload: {
+      action: "limit_power",
+      deviceName: "Huawei",
+      percent: 50,
+      durationMinutes: 120,
+    },
+    schedule: {
+      mode: "daily",
+      timezone: "Asia/Bangkok",
+      timeOfDay: "08:00",
+      endTimeOfDay: "10:00",
+    },
+    nextRunAt: "2026-06-11T01:00:00.000Z",
+  });
+
+  await assert.rejects(
+    () => store.createGatewayCommand({
+      gatewayId: "GW-MONGO-CONFLICT",
+      action: "limit_power",
+      payload: {
+        action: "limit_power",
+        deviceName: "Huawei",
+        percent: 40,
+        durationMinutes: 120,
+      },
+      schedule: {
+        mode: "daily",
+        timezone: "Asia/Bangkok",
+        timeOfDay: "09:00",
+        endTimeOfDay: "11:00",
+      },
+      nextRunAt: "2026-06-11T02:00:00.000Z",
+    }),
+    (error) => error.statusCode === 409 && /Lịch tiết giảm trùng/.test(error.message),
+  );
+
+  const otherTarget = await store.createGatewayCommand({
+    gatewayId: "GW-MONGO-CONFLICT",
+    action: "limit_power",
+    payload: {
+      action: "limit_power",
+      deviceName: "SMA",
+      percent: 40,
+      durationMinutes: 120,
+    },
+    schedule: {
+      mode: "daily",
+      timezone: "Asia/Bangkok",
+      timeOfDay: "09:00",
+      endTimeOfDay: "11:00",
+    },
+    nextRunAt: "2026-06-11T02:00:00.000Z",
+  });
+  assert.equal(otherTarget.action, "limit_power");
+});
+
 class FakeDb {
   constructor(seed = {}) {
     this.collections = new Map(Object.entries(seed).map(([name, docs]) => [name, new FakeCollection(docs)]));
@@ -122,6 +302,14 @@ class FakeCollection {
     };
   }
 
+  async insertOne(doc) {
+    this.docs.push({ ...doc });
+    return {
+      insertedId: doc._id,
+      acknowledged: true,
+    };
+  }
+
   async updateOne(filter, update, options = {}) {
     let doc = this.docs.find((item) => matches(item, filter));
 
@@ -148,6 +336,8 @@ class FakeCollection {
 
   find(filter = {}) {
     return {
+      toArray: async () => this.docs.filter((doc) => matches(doc, filter))
+        .map((doc) => ({ ...doc })),
       sort: (sortSpec = {}) => ({
         limit: (limit) => ({
           toArray: async () => sortDocs(this.docs.filter((doc) => matches(doc, filter)), sortSpec)

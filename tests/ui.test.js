@@ -7,7 +7,7 @@ import { renderDashboardPage, renderLoginPage } from "../src/ui.js";
 test("login page uses Vietnamese copy and no fake support links", () => {
   const html = renderLoginPage();
 
-  assert.match(html, /href="\/assets\/admin-tailwind\.css\?v=20260611-ui4"/);
+  assert.match(html, /href="\/assets\/admin-tailwind\.css\?v=20260611-ui5"/);
   assert.match(html, /<body class="tailwind-ui login-screen server-login">/);
   assert.match(html, /<html lang="vi">/);
   assert.match(html, />\s*Tài khoản\s*</);
@@ -36,11 +36,22 @@ test("dashboard renders inverter control actions", () => {
   assert.match(html, /data-control-action="reboot"/);
   assert.match(html, /data-control-action="clear_power_limit"/);
   assert.match(html, /id="powerLimitForm"/);
+  assert.match(html, /id="powerLimitValue" type="number" min="0" max="100"/);
   assert.match(html, /id="controlScheduleMode"/);
+  assert.match(html, /id="controlScheduleUntil"/);
+  assert.match(html, /id="controlScheduleEndTime"/);
+  assert.match(html, /id="controlScheduleSummary"/);
   assert.match(html, /value="daily"/);
   assert.match(html, /value="weekly"/);
   assert.match(html, /data-schedule-weekday="1"/);
+  assert.match(html, /function collectPowerLimitTiming\(/);
+  assert.match(html, /function updatePowerLimitValueConstraints\(/);
   assert.match(html, /function collectControlSchedule\(/);
+  assert.match(html, /data-field="baudRate" type="number" min="1" step="1"/);
+  assert.match(html, /data-field="dataBits" type="number" min="5" max="8" step="1"/);
+  assert.match(html, /data-field="address" type="number" min="0" max="65535"/);
+  assert.match(html, /data-field="length" type="number" min="1" max="125"/);
+  assert.match(html, /data-template="' \+ index \+ '" data-field="protocol"/);
   assert.match(html, /commandScheduleLabel\(command\)/);
   assert.match(html, /\/api\/gateways\/" \+ encodeURIComponent\(selectedId\) \+ "\/control/);
   assert.match(html, /\/api\/gateways\/" \+ encodeURIComponent\(selectedId\) \+ "\/commands/);
@@ -60,11 +71,13 @@ test("dashboard renders shared template library editor", () => {
 test("dashboard starts at site list and remote disconnect returns home", () => {
   const html = renderDashboardPage({ publicUrl: "https://example.test" });
 
-  assert.match(html, /href="\/assets\/admin-tailwind\.css\?v=20260611-ui4"/);
+  assert.match(html, /href="\/assets\/admin-tailwind\.css\?v=20260611-ui5"/);
   assert.match(html, /<body class="tailwind-ui admin-screen server-admin">/);
   assert.match(html, /id="homePageTitle">Site/);
   assert.match(html, /data-home-target="homeOverviewPanel"/);
   assert.deepEqual([...html.matchAll(/data-home-target="([^"]+)"/g)].map((match) => match[1]), ["homeOverviewPanel"]);
+  assert.match(html, /const mode = iec104\.mode \|\| "server"/);
+  assert.match(html, /escapeHtml\(mode\)/);
   assert.doesNotMatch(html, /id="homeGatewayPanel"/);
   assert.doesNotMatch(html, /id="homeTelemetryPanel"/);
   assert.doesNotMatch(html, /id="homeConfigPanel"/);
@@ -105,6 +118,9 @@ test("dashboard starts at site list and remote disconnect returns home", () => {
   assert.match(html, /monitor-key-grid/);
   assert.match(html, /id="refreshTelemetryBtn"/);
   assert.match(html, /id="controlHistoryBody"/);
+  assert.match(html, /function cancelCommand\(/);
+  assert.match(html, /data-cancel-command/);
+  assert.match(html, /method: "DELETE"/);
   assert.doesNotMatch(html, /id="commandRefreshBtn"/);
   assert.match(html, /id="refreshRuntimeBtn"/);
   assert.match(html, /id="storageSyncBody"/);
