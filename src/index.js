@@ -31,6 +31,7 @@ const config = {
   adminUsername: process.env.ADMIN_USERNAME || "admin",
   adminPassword: process.env.ADMIN_PASSWORD || "admin",
   sessionSecret: process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD || "development-session-secret",
+  sessionTtlMs: positiveIntegerEnv("ADMIN_SESSION_TTL_MS", 7 * 24 * 60 * 60 * 1000),
   tokenHashSecret: process.env.TOKEN_HASH_SECRET || process.env.ADMIN_PASSWORD || "development-token-secret",
   provisioningToken: process.env.PROVISIONING_TOKEN || "replace-me",
   autoRegisterGateways: String(process.env.AUTO_REGISTER_GATEWAYS || "true").toLowerCase() === "true",
@@ -581,7 +582,7 @@ function isAdminAuthenticated(req) {
 function buildSessionCookie(req) {
   const payload = Buffer.from(JSON.stringify({
     username: config.adminUsername,
-    expiresAt: Date.now() + 12 * 60 * 60 * 1000,
+    expiresAt: Date.now() + config.sessionTtlMs,
   })).toString("base64url");
   const token = `${payload}.${sign(payload, config.sessionSecret)}`;
   const secure = secureCookieAttribute(req);
@@ -591,7 +592,7 @@ function buildSessionCookie(req) {
     "Path=/",
     "HttpOnly",
     "SameSite=Lax",
-    "Max-Age=43200",
+    `Max-Age=${Math.floor(config.sessionTtlMs / 1000)}`,
     secure,
   ].filter(Boolean).join("; ");
 }
