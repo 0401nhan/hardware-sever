@@ -50,6 +50,52 @@ test("accepts RTU auto-discovery and register control metadata", () => {
   assert.doesNotThrow(() => validateGatewayConfig(config, "EB-ANHUNG-001"));
 });
 
+test("accepts and validates per-device inverter control maps", () => {
+  const config = validRtuConfig();
+  config.devices[0].type = "inverter";
+  config.devices[0].controls = {
+    limit_power: {
+      writes: [
+        {
+          register: "limit_enable",
+          value: 1,
+        },
+        {
+          register: "limit_percent",
+          valueFrom: "percent",
+        },
+      ],
+    },
+  };
+  config.devices[0].registers = [
+    {
+      name: "limit_enable",
+      function: "holding",
+      access: "rw",
+      poll: false,
+      address: 100,
+      type: "uint16",
+    },
+    {
+      name: "limit_percent",
+      function: "holding",
+      access: "rw",
+      poll: false,
+      address: 101,
+      type: "uint16",
+      scale: 0.1,
+    },
+  ];
+
+  assert.doesNotThrow(() => validateGatewayConfig(config, "EB-ANHUNG-001"));
+
+  config.devices[0].controls.limit_power.writes[1].valueFrom = "amps";
+  assert.throws(
+    () => validateGatewayConfig(config, "EB-ANHUNG-001"),
+    /meter_01\.controls\.limit_power\.writes\[1\]\.valueFrom is unsupported/,
+  );
+});
+
 test("accepts Modbus TCP devices without RS485 ports", () => {
   const config = validRtuConfig();
   config.ports = {};

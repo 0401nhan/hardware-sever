@@ -9,6 +9,7 @@ const SUPPORTED_IEC104_CONTROL_TYPES = new Set(["single", "setpoint"]);
 const SUPPORTED_IEC104_CONTROL_VALUE_FIELDS = new Set(["value", "percent", "kw", "watts"]);
 const SUPPORTED_IEC104_SIMULATOR_MODES = new Set(["fallback", "always"]);
 const SUPPORTED_INVERTER_CONTROL_ACTIONS = new Set(["start", "stop", "reboot", "limit_power", "clear_power_limit"]);
+const SUPPORTED_INVERTER_CONTROL_VALUE_SOURCES = new Set(["value", "percent", "kw", "watts", "durationSeconds"]);
 const SUPPORTED_EVN_SIGNAL_SOURCES = new Set(["meter", "device", "inverter_total", "snapshot"]);
 const SUPPORTED_EVN_SNAPSHOT_STRATEGIES = new Set(["daily_register_eod", "cumulative_delta"]);
 const SUPPORTED_REGISTER_TYPES = new Set([
@@ -104,7 +105,73 @@ export function validateGatewayConfig(config, expectedGatewayId) {
     device.registers.forEach((register, index) => {
       validateRegister(register, `${device.name}.registers[${index}]`);
     });
+    validateDeviceControls(device.controls, `${device.name}.controls`);
   }
+}
+
+function validateDeviceControls(controls, controlsPath) {
+  if (controls === undefined || controls === null) return;
+
+  if (typeof controls !== "object" || Array.isArray(controls)) {
+    throw new Error(`Invalid gateway config. ${controlsPath} must be an object`);
+  }
+
+  for (const [action, control] of Object.entries(controls)) {
+    validateEnum(action, `${controlsPath}.${action}`, SUPPORTED_INVERTER_CONTROL_ACTIONS);
+    validateDeviceControl(control, `${controlsPath}.${action}`);
+  }
+}
+
+function validateDeviceControl(control, controlPath) {
+  if (Array.isArray(control)) {
+    control.forEach((write, index) => validateDeviceControlWrite(write, `${controlPath}[${index}]`));
+    return;
+  }
+
+  if (!control || typeof control !== "object") {
+    throw new Error(`Invalid gateway config. ${controlPath} must be an object or array`);
+  }
+
+  if (Array.isArray(control.writes)) {
+    control.writes.forEach((write, index) => validateDeviceControlWrite(write, `${controlPath}.writes[${index}]`));
+    return;
+  }
+
+  validateDeviceControlWrite(control, controlPath);
+}
+
+function validateDeviceControlWrite(write, writePath) {
+  if (!write || typeof write !== "object" || Array.isArray(write)) {
+    throw new Error(`Invalid gateway config. ${writePath} must be an object`);
+  }
+
+  const register = write.register ?? write.registerName;
+  const isDelay = write.delayMs !== undefined && !register;
+
+  if (isDelay) {
+    validateInteger(write.delayMs, `${writePath}.delayMs`, { min: 0, max: 300000 });
+    return;
+  }
+
+  validateString(register, `${writePath}.register`);
+  validateEnum(write.valueFrom, `${writePath}.valueFrom`, SUPPORTED_INVERTER_CONTROL_VALUE_SOURCES, { optional: true });
+  validateBoolean(write.required, `${writePath}.required`, { optional: true });
+  validateNumber(write.multiplier, `${writePath}.multiplier`, { optional: true });
+  validateNumber(write.offset, `${writePath}.offset`, { optional: true });
+
+  if (write.value !== undefined) validateControlValue(write.value, `${writePath}.value`);
+  if (write.value === undefined && write.valueFrom === undefined && write.required !== false) {
+    throw new Error(`Invalid gateway config. ${writePath}.value or ${writePath}.valueFrom is required`);
+  }
+}
+
+function validateControlValue(value, valuePath) {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => validateNumber(item, `${valuePath}[${index}]`));
+    return;
+  }
+
+  validateNumber(value, valuePath);
 }
 
 export function createDefaultGatewayConfig(gatewayId, publicUrl) {

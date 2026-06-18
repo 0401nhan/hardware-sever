@@ -24,6 +24,12 @@ test("dashboard inline browser script is valid JavaScript", () => {
 
   assert.ok(script);
   assert.doesNotThrow(() => new vm.Script(script, { filename: "dashboard-inline.js" }));
+  assert.match(html, /data-monitor-detail=/);
+  assert.match(html, /function openMonitoringDetails\(/);
+  assert.match(html, /function restoreMonitoringDetails\(/);
+  assert.match(html, /function refreshRemoteTelemetry\(/);
+  assert.match(html, /target\.id === "refreshTelemetryBtn" && selectedId\) refreshRemoteTelemetry\(\)/);
+  assert.doesNotMatch(html, /target\.id === "refreshTelemetryBtn" && selectedId\) openRemote\(selectedId\)/);
 });
 
 test("dashboard renders inverter control actions", () => {

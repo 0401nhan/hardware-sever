@@ -1189,10 +1189,19 @@ function normalizeTemplate(template, index) {
     protocol: stringValue(template.protocol) || "modbus-rtu",
     pollIntervalMs: numberValue(template.pollIntervalMs ?? template.defaultPollIntervalMs, 5000),
     notes: stringValue(template.notes),
+    ...(plainObject(template.controls) ? { controls: cloneJson(template.controls) } : {}),
     registers: Array.isArray(template.registers)
       ? template.registers.map(normalizeRegister)
       : [],
   };
+}
+
+function plainObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value);
+}
+
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value));
 }
 
 function normalizeRegister(register) {

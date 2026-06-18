@@ -249,58 +249,144 @@ export function renderLoginPage() {
   <link rel="stylesheet" href="/assets/admin-tailwind.css?v=20260611-ui5">
 </head>
 <body class="tailwind-ui login-screen server-login">
+  <label class="language-select" aria-label="Ngôn ngữ">
+    <select id="languageSelect">
+      <option value="vi">Tiếng Việt</option>
+      <option value="en">English</option>
+    </select>
+  </label>
   <main>
-    <div class="brand-row">
-      <img class="brand-logo" src="/logo/logo-login-full.png" alt="electric bird">
+    <div class="brand">
+      <span class="brand-mark"><img src="/logo/logo-login-mark.png" alt="Electricbird logo"></span>
+      <div>
+        <p class="eyebrow" data-i18n="brandName">Electricbird</p>
+        <p class="product-name" data-i18n="productName">Hardware Server</p>
+      </div>
     </div>
+
+    <h1 class="login-title" data-i18n="loginTitle">Đăng nhập</h1>
     <form id="loginForm">
-      <label>
-        Tài khoản
-        <span class="input-row">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M20 21a8 8 0 0 0-16 0" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
-          <input name="username" autocomplete="username" placeholder="admin" required>
-        </span>
+      <label><span data-i18n="usernameLabel">Tài khoản</span>
+        <input id="username" name="username" autocomplete="username" placeholder="Tài khoản" required autofocus>
       </label>
-      <label>
-        Mật khẩu
-        <span class="input-row">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="7.5" cy="14" r="3.5" />
-            <path d="M11 14h10" />
-            <path d="M17 14v-3" />
-            <path d="M20 14v-2" />
+      <label class="password-row"><span data-i18n="passwordLabel">Mật khẩu</span>
+        <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Mật khẩu" required>
+        <button id="togglePasswordBtn" class="toggle-password" type="button" aria-label="Hiện mật khẩu">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
           </svg>
-          <input name="password" type="password" autocomplete="current-password" placeholder="......." required>
-        </span>
+        </button>
       </label>
-      <button type="submit">Đăng nhập</button>
-      <div class="error" id="error"></div>
+      <button id="loginBtn" type="submit" data-i18n="loginButton">Đăng nhập</button>
     </form>
+    <p id="status" class="status"></p>
   </main>
   <script>
-    document.getElementById("loginForm").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const form = new FormData(event.currentTarget);
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: form.get("username"),
-          password: form.get("password")
-        })
+    const form = document.getElementById("loginForm");
+    const button = document.getElementById("loginBtn");
+    const username = document.getElementById("username");
+    const password = document.getElementById("password");
+    const status = document.getElementById("status");
+    const languageSelect = document.getElementById("languageSelect");
+    const togglePassword = document.getElementById("togglePasswordBtn");
+    const translations = {
+      en: {
+        pageTitle: "Electricbird Hardware Server Login",
+        brandName: "Electricbird",
+        productName: "Hardware Server",
+        loginTitle: "User Login",
+        usernameLabel: "Username",
+        passwordLabel: "Password",
+        usernamePlaceholder: "Username",
+        passwordPlaceholder: "Password",
+        loginButton: "Login",
+        showPassword: "Show password",
+        hidePassword: "Hide password",
+        invalidLogin: "Invalid username or password",
+        loginFailed: "Login failed",
+      },
+      vi: {
+        pageTitle: "Đăng nhập Electricbird Hardware Server",
+        brandName: "Electricbird",
+        productName: "Hardware Server",
+        loginTitle: "Đăng nhập",
+        usernameLabel: "Tài khoản",
+        passwordLabel: "Mật khẩu",
+        usernamePlaceholder: "Tài khoản",
+        passwordPlaceholder: "Mật khẩu",
+        loginButton: "Đăng nhập",
+        showPassword: "Hiện mật khẩu",
+        hidePassword: "Ẩn mật khẩu",
+        invalidLogin: "Tài khoản hoặc mật khẩu không đúng",
+        loginFailed: "Đăng nhập thất bại",
+      },
+    };
+    let currentLanguage = "vi";
+
+    function updatePasswordToggleLabel() {
+      const copy = translations[currentLanguage];
+      togglePassword.setAttribute(
+        "aria-label",
+        password.type === "password" ? copy.showPassword : copy.hidePassword
+      );
+    }
+
+    function setLanguage(language) {
+      currentLanguage = translations[language] ? language : "vi";
+      const copy = translations[currentLanguage];
+
+      document.documentElement.lang = currentLanguage;
+      document.title = copy.pageTitle;
+      languageSelect.value = currentLanguage;
+      username.placeholder = copy.usernamePlaceholder;
+      password.placeholder = copy.passwordPlaceholder;
+
+      document.querySelectorAll("[data-i18n]").forEach((node) => {
+        node.textContent = copy[node.dataset.i18n] || node.textContent;
       });
-      if (response.ok) {
-        location.href = "/";
-        return;
+
+      updatePasswordToggleLabel();
+      localStorage.setItem("loginLanguage", currentLanguage);
+    }
+
+    togglePassword.addEventListener("click", () => {
+      password.type = password.type === "password" ? "text" : "password";
+      updatePasswordToggleLabel();
+    });
+
+    languageSelect.addEventListener("change", (event) => {
+      setLanguage(event.target.value);
+    });
+
+    setLanguage(localStorage.getItem("loginLanguage") || "vi");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      status.textContent = "";
+      status.className = "status";
+      button.disabled = true;
+      const form = new FormData(event.currentTarget);
+      try {
+        const response = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: form.get("username"),
+            password: form.get("password")
+          })
+        });
+        if (response.ok) {
+          location.href = "/";
+          return;
+        }
+        const payload = await response.json().catch(() => ({}));
+        const copy = translations[currentLanguage];
+        status.textContent = payload.error === "Invalid username or password" ? copy.invalidLogin : (payload.error || copy.loginFailed);
+        status.className = "status error";
+      } finally {
+        button.disabled = false;
       }
-      const payload = await response.json().catch(() => ({}));
-      const errorMessages = {
-        "Invalid username or password": "Sai tài khoản hoặc mật khẩu"
-      };
-      document.getElementById("error").textContent = errorMessages[payload.error] || payload.error || "Đăng nhập thất bại";
     });
   </script>
 </body>
@@ -455,6 +541,28 @@ export function renderDashboardPage({ publicUrl }) {
       stroke-linecap: round;
       stroke-linejoin: round;
     }
+    button.icon-only {
+      display: inline-grid;
+      width: 38px;
+      min-width: 38px;
+      padding: 0;
+      place-items: center;
+    }
+    .actions button.icon-only,
+    .inline-actions button.icon-only,
+    .register-actions button.icon-only,
+    .actions-cell button.icon-only {
+      flex: 0 0 38px;
+    }
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
     .app-shell {
       width: 100%;
       max-width: 100vw;
@@ -559,20 +667,55 @@ export function renderDashboardPage({ publicUrl }) {
     }
     .nav-child a:hover, .nav-child a.active { background: rgba(255, 255, 255, 0.08); color: #fff; }
     .sidebar-footer {
-      display: flex;
-      align-items: center;
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 8px;
-      padding: 12px;
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
-      color: #aab4c2;
+      min-height: 58px;
+      padding: 8px 10px;
+      border-top: 1px solid rgba(0, 0, 0, 0.22);
+      color: #6b7280;
     }
-    .sidebar-footer span {
-      width: 32px;
-      height: 32px;
-      display: inline-grid;
+    .sidebar-footer .app-icon {
+      width: 23px;
+      height: 23px;
+    }
+    .connectivity-tile {
+      display: grid;
+      min-width: 0;
       place-items: center;
+      color: #8a94a5;
+    }
+    .connectivity-icon {
+      display: grid;
+      width: 46px;
+      height: 46px;
+      place-items: center;
+      border: 1px solid rgba(148, 163, 184, 0.22);
       border-radius: 8px;
-      background: rgba(255, 255, 255, 0.08);
+      background: rgba(148, 163, 184, 0.14);
+      color: #94a3b8;
+    }
+    .connectivity-tile.status-online { color: #bbf7d0; }
+    .connectivity-tile.status-online .connectivity-icon {
+      border-color: rgba(34, 197, 94, 0.55);
+      background: rgba(34, 197, 94, 0.18);
+      color: #22c55e;
+    }
+    .connectivity-tile.status-warning { color: #fde68a; }
+    .connectivity-tile.status-warning .connectivity-icon {
+      border-color: rgba(245, 158, 11, 0.55);
+      background: rgba(245, 158, 11, 0.18);
+      color: #f59e0b;
+    }
+    .connectivity-tile.status-error { color: #fecaca; }
+    .connectivity-tile.status-error .connectivity-icon {
+      border-color: rgba(239, 68, 68, 0.55);
+      background: rgba(239, 68, 68, 0.18);
+      color: #ef4444;
     }
     .workspace { min-width: 0; max-width: 100%; }
     header.topbar {
@@ -698,8 +841,8 @@ export function renderDashboardPage({ publicUrl }) {
     }
     .badge-dot {
       display: inline-grid;
-      width: 22px;
-      height: 22px;
+      width: 20px;
+      height: 20px;
       place-items: center;
       border-radius: 50%;
       color: #fff;
@@ -707,7 +850,7 @@ export function renderDashboardPage({ publicUrl }) {
       font-weight: 800;
       line-height: 1;
     }
-    .badge-dot .app-icon { width: 14px; height: 14px; stroke-width: 3; }
+    .badge-dot .app-icon { width: 11px; height: 11px; stroke-width: 2.4; }
     .badge-dot.green { background: #16a34a; }
     .badge-dot.red { background: #f04438; }
     .badge-dot.orange { background: #ff8a00; }
@@ -1283,7 +1426,7 @@ export function renderDashboardPage({ publicUrl }) {
     .tab-panel.active, .subtab-panel.active { display: block; }
     .monitor-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 14px;
     }
     .monitor-card {
@@ -1295,90 +1438,206 @@ export function renderDashboardPage({ publicUrl }) {
     }
     .monitor-head {
       display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 12px;
-      border-bottom: 1px solid var(--line);
-      background: #fbfcfd;
-    }
-    .monitor-title strong { display: block; font-size: 14px; font-weight: 800; }
-    .monitor-title span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; font-weight: 700; }
-    .monitor-body { padding: 12px; }
-    .monitor-status {
-      display: inline-flex;
       align-items: center;
-      min-height: 28px;
-      padding: 0 10px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: var(--surface-soft);
-      color: var(--muted-strong);
-      font-size: 12px;
-      font-weight: 800;
-      white-space: nowrap;
-    }
-    .monitor-meta {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-      padding: 12px;
+      gap: 12px;
+      padding: 14px;
       border-bottom: 1px solid var(--line);
-    }
-    .monitor-meta div, .monitor-key-item {
-      min-width: 0;
-      padding: 10px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
       background: #fff;
     }
-    .monitor-meta span, .monitor-key-item span {
-      display: block;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 750;
+    .monitor-status-icon {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f1f5f9;
+      color: #64748b;
     }
-    .monitor-meta strong, .monitor-key-item strong {
+    .monitor-status-icon .app-icon {
+      width: 25px;
+      height: 25px;
+      stroke-width: 2.5;
+    }
+    .monitor-status-icon.good { border-color: #16a34a; background: #16a34a; color: #fff; }
+    .monitor-status-icon.warning { border-color: #f59e0b; background: #f59e0b; color: #fff; }
+    .monitor-status-icon.bad { border-color: #dc2626; background: #dc2626; color: #fff; }
+    .monitor-status-icon.loss { border-color: #94a3b8; background: #94a3b8; color: #fff; }
+    .monitor-title {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .monitor-title strong {
       display: block;
-      margin-top: 4px;
       overflow: hidden;
-      color: var(--text);
-      font-size: 13px;
-      font-weight: 850;
+      color: #17202a;
+      font-size: 16px;
+      font-weight: 800;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    .monitor-title span {
+      display: block;
+      margin-top: 4px;
+      color: #606b75;
+      font-size: 12px;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+    .monitor-status,
+    .monitor-status-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 3px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: #606b75;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .monitor-status-chip.good { border-color: var(--ok-line); background: var(--ok-soft); color: var(--ok); }
+    .monitor-status-chip.bad { border-color: #f4b7ae; background: var(--danger-soft); color: var(--danger); }
+    .monitor-status-chip.warning { border-color: #ffd59b; background: #fff7ed; color: #946200; }
+    .monitor-status-chip.loss { border-color: #cbd5e1; background: #f8fafc; color: #64748b; }
+    .monitor-meta[hidden] { display: none !important; }
     .monitor-key-grid {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
-      padding: 12px;
+      padding: 12px 14px;
       border-bottom: 1px solid var(--line);
-      background: #fbfcfd;
+      background: #fff;
     }
-    .monitor-key-item.power strong { color: var(--accent-strong); }
-    .monitor-key-item.status strong { color: var(--ok); }
-    .monitor-table { min-width: 0; table-layout: auto; }
-    .monitor-value { font-size: 16px; font-weight: 850; }
-    .monitor-unit, .monitor-raw { color: var(--muted); font-size: 12px; font-weight: 700; }
-    .monitor-error {
-      margin: 12px;
-      padding: 10px;
-      border: 1px solid #fda29b;
+    .monitor-key-item {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+      min-height: 66px;
+      padding: 10px 12px;
+      border: 1px solid #e1e8f0;
       border-radius: 8px;
+      background: #f8fafc;
+    }
+    .monitor-key-item span {
+      display: block;
+      color: #667385;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .monitor-key-item strong {
+      display: block;
+      margin-top: 5px;
+      color: #17202a;
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+    .monitor-key-item.power strong {
+      color: var(--accent-strong);
+      font-size: 14px;
+      line-height: 1.28;
+    }
+    .monitor-key-item.status strong { color: var(--accent-strong); }
+    .monitor-detail {
+      padding: 0 14px 12px;
+      background: #fff;
+    }
+    .monitor-detail summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 44px;
+      cursor: pointer;
+      color: #344256;
+      font-size: 13px;
+      font-weight: 800;
+      list-style: none;
+    }
+    .monitor-detail summary::-webkit-details-marker { display: none; }
+    .monitor-detail summary .app-icon {
+      width: 18px;
+      height: 18px;
+      transition: transform 120ms ease;
+    }
+    .monitor-detail[open] summary .app-icon { transform: rotate(180deg); }
+    .monitor-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .monitor-detail-grid div {
+      min-width: 0;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+    .monitor-detail-grid span {
+      display: block;
+      color: #667385;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .monitor-detail-grid strong {
+      display: block;
+      overflow: hidden;
+      margin-top: 4px;
+      color: #17202a;
+      font-size: 13px;
+      font-weight: 800;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .monitor-table-wrap { margin-top: 10px; }
+    .monitor-table {
+      width: 100%;
+      min-width: 0;
+      table-layout: auto;
+    }
+    .monitor-table th,
+    .monitor-table td {
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+    .monitor-table th { background: #fff; }
+    .monitor-value {
+      color: #17202a;
+      font-size: 18px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .monitor-unit, .monitor-raw { color: #667385; font-size: 12px; font-weight: 700; }
+    .monitor-error {
+      padding: 10px 12px;
+      border-top: 1px solid #f4b7ae;
       background: var(--danger-soft);
       color: var(--danger);
       font-size: 12px;
-      font-weight: 800;
+      font-weight: 700;
+      overflow-wrap: anywhere;
     }
     .control-layout {
       display: grid;
-      grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);
-      gap: 14px;
-      align-items: end;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+    .control-target {
+      max-width: 360px;
     }
     .control-stack {
       display: grid;
-      gap: 14px;
+      gap: 12px;
     }
     .control-actions {
       display: grid;
@@ -1580,7 +1839,8 @@ export function renderDashboardPage({ publicUrl }) {
       color: #fff;
     }
     #remoteView .sidebar-footer {
-      display: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.08);
     }
     #remoteView header.topbar {
       z-index: 10;
@@ -2172,6 +2432,13 @@ export function renderDashboardPage({ publicUrl }) {
       #remoteView .topbar-actions button {
         flex: 1 1 120px;
       }
+      #remoteView .actions button.icon-only,
+      #remoteView .topbar-actions button.icon-only,
+      #remoteView .inline-actions button.icon-only,
+      #remoteView .register-actions button.icon-only,
+      #remoteView .actions-cell button.icon-only {
+        flex: 0 0 38px;
+      }
       #remoteView .topbar-system,
       #remoteView .status-chip {
         width: 100%;
@@ -2201,6 +2468,11 @@ export function renderDashboardPage({ publicUrl }) {
     <symbol id="icon-overview" viewBox="0 0 24 24"><path d="M3 13h8V3H3z"></path><path d="M13 21h8V11h-8z"></path><path d="M13 9h8V3h-8z"></path><path d="M3 21h8v-6H3z"></path></symbol>
     <symbol id="icon-server" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="6" rx="2"></rect><rect x="4" y="14" width="16" height="6" rx="2"></rect><path d="M8 7h.01M8 17h.01"></path></symbol>
     <symbol id="icon-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8M12 16v4"></path></symbol>
+    <symbol id="icon-device" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"></rect><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"></path></symbol>
+    <symbol id="icon-meter" viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 1 14 0"></path><path d="M4 12v7h16v-7"></path><path d="m12 12 4-4"></path><path d="M8 16h8"></path></symbol>
+    <symbol id="icon-inverter" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"></rect><path d="M8 7h8"></path><path d="m13 9-3 5h4l-2 5 5-7h-4l2-3Z"></path></symbol>
+    <symbol id="icon-weather" viewBox="0 0 24 24"><circle cx="7" cy="7" r="3"></circle><path d="M7 1v2M7 11v2M1 7h2M11 7h2M4.2 4.2 2.8 2.8M11.2 11.2 9.8 9.8M9.8 4.2l1.4-1.4M2.8 11.2l1.4-1.4"></path><path d="M17.5 20H11a3.5 3.5 0 1 1 .7-6.93A5 5 0 0 1 21 15.5 3.5 3.5 0 0 1 17.5 20Z"></path></symbol>
+    <symbol id="icon-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></symbol>
     <symbol id="icon-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"></path><path d="M2 14h4M10 8h4M18 16h4"></path></symbol>
     <symbol id="icon-rs485" viewBox="0 0 24 24"><path d="M6 3v18"></path><path d="M18 3v18"></path><path d="M6 7h12"></path><path d="M6 12h12"></path><path d="M6 17h12"></path><circle cx="6" cy="7" r="2"></circle><circle cx="18" cy="17" r="2"></circle></symbol>
     <symbol id="icon-activity" viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"></path></symbol>
@@ -2208,12 +2480,16 @@ export function renderDashboardPage({ publicUrl }) {
     <symbol id="icon-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></symbol>
     <symbol id="icon-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="7" ry="3"></ellipse><path d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"></path></symbol>
     <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.7-4.4L3 9"></path><path d="M3 4v5h5"></path><path d="M4 13a8 8 0 0 0 14.7 4.4L21 15"></path><path d="M21 20v-5h-5"></path></symbol>
+    <symbol id="icon-save" viewBox="0 0 24 24"><path d="M5 3h12l2 2v16H5Z"></path><path d="M8 3v6h8V3M8 21v-7h8v7"></path></symbol>
+    <symbol id="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7Z"></path></symbol>
+    <symbol id="icon-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"></rect></symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3"></path></symbol>
     <symbol id="icon-log-out" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path><path d="M21 19V5a2 2 0 0 0-2-2h-4"></path></symbol>
     <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></symbol>
     <symbol id="icon-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></symbol>
     <symbol id="icon-zap" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"></path></symbol>
     <symbol id="icon-alert" viewBox="0 0 24 24"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="m10.3 3.9-8.2 14.2A2 2 0 0 0 3.8 21h16.4a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0z"></path></symbol>
-    <symbol id="icon-check-circle" viewBox="0 0 24 24"><path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"></path><path d="m9 11 3 3L22 4"></path></symbol>
+    <symbol id="icon-check-circle" viewBox="0 0 24 24"><path d="m7.5 12.2 3.2 3.2 5.8-6.8"></path></symbol>
     <symbol id="icon-alert-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></symbol>
     <symbol id="icon-alert-triangle" viewBox="0 0 24 24"><path d="m10.3 3.9-8.2 14.2A2 2 0 0 0 3.8 21h16.4a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></symbol>
     <symbol id="icon-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M9.1 9a3 3 0 1 1 5.8 1c-.4.8-1.1 1.2-1.8 1.7-.7.5-1.1 1-1.1 2.3"></path><path d="M12 17h.01"></path></symbol>
@@ -2240,13 +2516,13 @@ export function renderDashboardPage({ publicUrl }) {
     <div class="workspace">
       <header class="topbar">
         <div class="topbar-title">
-          <strong id="homePageTitle">Site đang hoạt động</strong>
-          <span id="homePageSubtitle">Danh sách site đã kết nối server và trạng thái hoạt động hiện tại</span>
+          <strong id="homePageTitle">Active Sites</strong>
+          <span id="homePageSubtitle">Connected gateway sites and current status</span>
         </div>
         <div class="topbar-meta">
-          <span class="topbar-item">Tất cả site</span>
-          <button id="homeRefreshBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-refresh"></use></svg>Tự động: 30s</button>
-          <button id="homeLogoutBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-log-out"></use></svg>Đăng xuất</button>
+          <span class="topbar-item">All Sites</span>
+          <button id="homeRefreshBtn" class="subtle icon-only" type="button" title="Refresh sites" aria-label="Refresh sites"><svg class="app-icon"><use href="#icon-refresh"></use></svg><span class="visually-hidden">Refresh sites</span></button>
+          <button id="homeLogoutBtn" class="subtle icon-only" type="button" title="Logout" aria-label="Logout"><svg class="app-icon"><use href="#icon-log-out"></use></svg><span class="visually-hidden">Logout</span></button>
         </div>
       </header>
       <main class="content">
@@ -2255,7 +2531,7 @@ export function renderDashboardPage({ publicUrl }) {
             <div class="panel-title-row">
               <div>
                 <h2 class="panel-title">Site</h2>
-                <p>Danh sách site đã kết nối server. Bấm Remote để mở giao diện gateway từ xa.</p>
+                <p>Connected gateway sites. Use Remote to open the gateway UI.</p>
               </div>
             </div>
             <div id="gatewayHomeGrid" class="gateway-grid"></div>
@@ -2265,16 +2541,16 @@ export function renderDashboardPage({ publicUrl }) {
         <section id="manualGatewayPanel" class="home-panel hidden">
           <div class="section-header">
             <div class="section-title">
-              <h2>Thêm gateway thủ công</h2>
-              <p>Dùng khi cần tạo gateway trước khi thiết bị tự đăng ký.</p>
+              <h2>Manual Gateway</h2>
+              <p>Create a gateway record before the IPC registers itself.</p>
             </div>
           </div>
           <form class="grid" id="gatewayForm">
             <label>Gateway ID<input name="id" required></label>
-            <label>Tên<input name="name"></label>
+            <label>Name<input name="name"></label>
             <label>Site<input name="site"></label>
             <label>Token<input name="token" required></label>
-            <div class="actions"><button class="primary" type="submit">Lưu gateway</button></div>
+            <div class="actions"><button class="primary icon-only" type="submit" title="Save gateway" aria-label="Save gateway"><svg class="app-icon"><use href="#icon-save"></use></svg><span class="visually-hidden">Save gateway</span></button></div>
           </form>
         </section>
 
@@ -2288,34 +2564,40 @@ export function renderDashboardPage({ publicUrl }) {
         <span class="sidebar-logo"><img src="/logo/logo-smallsize.png" alt=""></span>
         <span>
           <strong>Electric Bird</strong>
-          <small>Cổng phần cứng</small>
+          <small>Hardware Gateway</small>
         </span>
       </div>
       <nav class="sidebar-nav">
-        <a class="nav-link active" href="#stationDeviceOverviewSubtab" data-tab-target="generalInformation"><span class="nav-icon"><svg class="app-icon"><use href="#icon-overview"></use></svg></span>Tổng quan</a>
+        <a class="nav-link active" href="#stationDeviceOverviewSubtab" data-tab-target="generalInformation"><span class="nav-icon"><svg class="app-icon"><use href="#icon-overview"></use></svg></span>Overview</a>
         <div class="nav-child active" data-child-menu="generalInformation">
-          <a class="active" href="#stationDeviceOverviewSubtab" data-parent-tab="generalInformation" data-subtab-target="stationDeviceOverviewSubtab">Thiết bị trạm</a>
+          <a class="active" href="#stationDeviceOverviewSubtab" data-parent-tab="generalInformation" data-subtab-target="stationDeviceOverviewSubtab">Station Devices</a>
         </div>
-        <a class="nav-link" href="#deviceMonitoringTab" data-tab-target="deviceMonitoringTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-monitor"></use></svg></span>Giám sát</a>
-        <a class="nav-link" href="#gatewaySubtab" data-tab-target="settingCommunication"><span class="nav-icon"><svg class="app-icon"><use href="#icon-rs485"></use></svg></span>Cấu hình</a>
+        <a class="nav-link" href="#deviceMonitoringTab" data-tab-target="deviceMonitoringTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-monitor"></use></svg></span>Monitoring</a>
+        <a class="nav-link" href="#gatewaySubtab" data-tab-target="settingCommunication"><span class="nav-icon"><svg class="app-icon"><use href="#icon-rs485"></use></svg></span>Settings</a>
         <div class="nav-child" data-child-menu="settingCommunication">
           <a class="active" href="#gatewaySubtab" data-parent-tab="settingCommunication" data-subtab-target="gatewaySubtab">Gateway</a>
           <a href="#rs485PortsSubtab" data-parent-tab="settingCommunication" data-subtab-target="rs485PortsSubtab">RS485 / COM</a>
-          <a href="#stationsSubtab" data-parent-tab="settingCommunication" data-subtab-target="stationsSubtab">Trạm</a>
-          <a href="#modbusDevicesSubtab" data-parent-tab="settingCommunication" data-subtab-target="modbusDevicesSubtab">Thiết bị</a>
-          <a href="#iec104Subtab" data-parent-tab="settingCommunication" data-subtab-target="iec104Subtab">IEC104 / EVN</a>
-          <a href="#rawYamlSubtab" data-parent-tab="settingCommunication" data-subtab-target="rawYamlSubtab">YAML thô</a>
+          <a href="#stationsSubtab" data-parent-tab="settingCommunication" data-subtab-target="stationsSubtab">Station</a>
+          <a href="#modbusDevicesSubtab" data-parent-tab="settingCommunication" data-subtab-target="modbusDevicesSubtab">Device</a>
+          <a href="#rawYamlSubtab" data-parent-tab="settingCommunication" data-subtab-target="rawYamlSubtab">Raw YAML</a>
         </div>
-        <a class="nav-link" href="#libraryTab" data-tab-target="libraryTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-database"></use></svg></span>Mẫu</a>
-        <a class="nav-link" href="#inverterControlTab" data-tab-target="inverterControlTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-maintenance"></use></svg></span>Điều khiển</a>
-        <a class="nav-link" href="#storageSyncTab" data-tab-target="storageSyncTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-server"></use></svg></span>Lưu trữ</a>
-        <a class="nav-link" href="#logsEventsTab" data-tab-target="logsEventsTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-info"></use></svg></span>Sự kiện</a>
-        <a class="nav-link" href="#systemTab" data-tab-target="systemTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-settings"></use></svg></span>Hệ thống</a>
+        <a class="nav-link" href="#iec104Subtab" data-tab-target="iec104Tab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-server"></use></svg></span>IEC104 / EVN</a>
+        <a class="nav-link" href="#libraryTab" data-tab-target="libraryTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-database"></use></svg></span>Template</a>
+        <a class="nav-link" href="#inverterControlTab" data-tab-target="inverterControlTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-maintenance"></use></svg></span>Control</a>
+        <a class="nav-link" href="#storageSyncTab" data-tab-target="storageSyncTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-server"></use></svg></span>Storage</a>
+        <a class="nav-link" href="#logsEventsTab" data-tab-target="logsEventsTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-info"></use></svg></span>Events</a>
+        <a class="nav-link" href="#systemTab" data-tab-target="systemTab"><span class="nav-icon"><svg class="app-icon"><use href="#icon-settings"></use></svg></span>System</a>
       </nav>
-      <div class="sidebar-footer" aria-hidden="true">
-        <span><svg class="app-icon"><use href="#icon-network"></use></svg></span>
-        <span><svg class="app-icon"><use href="#icon-server"></use></svg></span>
-        <span><svg class="app-icon"><use href="#icon-cloud"></use></svg></span>
+      <div class="sidebar-footer" aria-label="Connectivity status">
+        <span id="sidebarLanStatus" class="connectivity-tile status-waiting" title="LAN" aria-label="LAN">
+          <span class="connectivity-icon"><svg class="app-icon"><use href="#icon-rs485"></use></svg></span>
+        </span>
+        <span id="sidebarInternetStatus" class="connectivity-tile status-waiting" title="Internet" aria-label="Internet">
+          <span class="connectivity-icon"><svg class="app-icon"><use href="#icon-server"></use></svg></span>
+        </span>
+        <span id="sidebarCloudStatus" class="connectivity-tile status-waiting" title="Cloud MongoDB" aria-label="Cloud MongoDB">
+          <span class="connectivity-icon"><svg class="app-icon"><use href="#icon-cloud"></use></svg></span>
+        </span>
       </div>
     </aside>
 
@@ -2323,8 +2605,8 @@ export function renderDashboardPage({ publicUrl }) {
       <header class="topbar">
         <button class="menu-button" type="button" data-tab-target="generalInformation" aria-label="Menu tổng quan"><svg class="app-icon"><use href="#icon-menu"></use></svg></button>
         <div class="topbar-title">
-          <strong id="activePageTitle">Tổng quan</strong>
-          <span id="activePageSubtitle">Trạng thái gateway, telemetry và cấu hình IPC</span>
+          <strong id="activePageTitle">Overview</strong>
+          <span id="activePageSubtitle">Connection status của từng Modbus device</span>
         </div>
         <div class="topbar-meta">
           <div class="topbar-system" aria-label="Cảnh báo runtime">
@@ -2332,7 +2614,7 @@ export function renderDashboardPage({ publicUrl }) {
             <span class="topbar-item" title="Thiết bị lỗi hoặc poll thất bại"><span class="badge-dot red"><svg class="app-icon"><use href="#icon-alert-circle"></use></svg></span><span id="topErrorCount">0</span></span>
             <span class="topbar-item" title="Có kết nối nhưng chưa có dữ liệu thanh ghi"><span class="badge-dot orange"><svg class="app-icon"><use href="#icon-alert-triangle"></use></svg></span><span id="topWarningCount">0</span></span>
             <span class="topbar-item" title="Mất liên lạc hoặc chưa có telemetry"><span class="badge-dot gray"><svg class="app-icon"><use href="#icon-help"></use></svg></span><span id="topLossCount">0</span></span>
-            <span class="topbar-item"><svg class="app-icon"><use href="#icon-user"></use></svg>Quản trị</span>
+            <span class="topbar-item" title="Quản trị" aria-label="Quản trị"><svg class="app-icon"><use href="#icon-user"></use></svg></span>
           </div>
           <div class="topbar-actions">
             <label class="admin-language-select" aria-label="Ngôn ngữ">
@@ -2341,7 +2623,7 @@ export function renderDashboardPage({ publicUrl }) {
                 <option value="en">English</option>
               </select>
             </label>
-            <button id="remoteDisconnectBtn" class="subtle" type="button">Về danh sách site</button>
+            <button id="remoteDisconnectBtn" class="subtle icon-only" type="button" title="Về danh sách site" aria-label="Về danh sách site"><svg class="app-icon"><use href="#icon-arrow-left"></use></svg><span class="visually-hidden">Về danh sách site</span></button>
           </div>
           <div class="status-chip">
             <button id="status" class="status" type="button" aria-label="Trạng thái: Đang tải..." data-message="Đang tải..." title="Đang tải..."></button>
@@ -2390,15 +2672,15 @@ export function renderDashboardPage({ publicUrl }) {
               <h2 class="panel-title">Điều khiển trạm / inverter</h2>
             </div>
             <div class="control-layout">
-              <label>Đối tượng
+              <label class="control-target">Đối tượng
                 <select id="controlDeviceName"></select>
               </label>
               <div class="control-stack">
                 <div class="control-actions">
-                  <button class="primary" type="button" data-control-action="start">Khởi động</button>
-                  <button class="danger" type="button" data-control-action="stop">Dừng</button>
-                  <button class="subtle" type="button" data-control-action="reboot">Khởi động lại</button>
-                  <button class="subtle" type="button" data-control-action="clear_power_limit">Xóa giới hạn</button>
+                  <button class="primary icon-text" type="button" data-control-action="start"><svg class="app-icon"><use href="#icon-play"></use></svg>Khởi động</button>
+                  <button class="danger icon-text" type="button" data-control-action="stop"><svg class="app-icon"><use href="#icon-stop"></use></svg>Dừng</button>
+                  <button class="subtle icon-text" type="button" data-control-action="reboot"><svg class="app-icon"><use href="#icon-refresh"></use></svg>Khởi động lại</button>
+                  <button class="subtle icon-text" type="button" data-control-action="clear_power_limit"><svg class="app-icon"><use href="#icon-trash"></use></svg>Xóa giới hạn</button>
                 </div>
                 <form id="powerLimitForm" class="limit-grid">
                   <label>Kiểu giới hạn
@@ -2410,7 +2692,7 @@ export function renderDashboardPage({ publicUrl }) {
                   </label>
                   <label>Giá trị giới hạn<input id="powerLimitValue" type="number" min="0" max="100" step="0.1" value="60"></label>
                   <label class="schedule-now-field">Thời lượng phút<input id="powerLimitDurationMinutes" type="number" min="1" max="1440" step="1" value="15"></label>
-                  <button class="primary" type="submit">Áp dụng giới hạn</button>
+                  <button class="primary icon-text" type="submit"><svg class="app-icon"><use href="#icon-check-circle"></use></svg>Áp dụng giới hạn</button>
                 </form>
                 <div class="control-schedule">
                   <div class="panel-title-row">
@@ -2482,7 +2764,7 @@ export function renderDashboardPage({ publicUrl }) {
                 <p>Queue nội bộ, giới hạn lưu trữ, upload HTTP/Mongo và IEC104 runtime.</p>
               </div>
               <div class="actions">
-                <button id="refreshRuntimeBtn" class="subtle" type="button">Làm mới</button>
+                <button id="refreshRuntimeBtn" class="subtle icon-only" type="button" title="Làm mới" aria-label="Làm mới"><svg class="app-icon"><use href="#icon-refresh"></use></svg><span class="visually-hidden">Làm mới</span></button>
               </div>
             </div>
             <section class="overview config-overview" aria-label="Tổng quan đồng bộ runtime">
@@ -2525,8 +2807,8 @@ export function renderDashboardPage({ publicUrl }) {
                 <p>Thông tin IPC gateway, tài nguyên cấu hình và trạng thái service.</p>
               </div>
               <div class="actions">
-                <button class="subtle" type="button" data-restart-gateway>Khởi động lại</button>
-                <button class="primary" type="button" data-save-config>Lưu</button>
+                <button class="subtle icon-only" type="button" data-restart-gateway title="Khởi động lại" aria-label="Khởi động lại"><svg class="app-icon"><use href="#icon-refresh"></use></svg><span class="visually-hidden">Khởi động lại</span></button>
+                <button class="primary icon-only" type="button" data-save-config title="Lưu" aria-label="Lưu"><svg class="app-icon"><use href="#icon-save"></use></svg><span class="visually-hidden">Lưu</span></button>
               </div>
             </div>
             <div class="grid">
@@ -2553,9 +2835,9 @@ export function renderDashboardPage({ publicUrl }) {
                   <p>Thiết lập gửi dữ liệu thiết bị lên máy chủ và chu kỳ upload.</p>
                 </div>
                 <div class="actions">
-                  <button class="subtle" type="button" data-parent-tab="settingCommunication" data-subtab-target="rawYamlSubtab">YAML thô</button>
-                  <button class="subtle" type="button" data-restart-gateway>Khởi động lại</button>
-                  <button class="primary" type="button" data-save-config>Lưu</button>
+                  <button class="subtle icon-text" type="button" data-parent-tab="settingCommunication" data-subtab-target="rawYamlSubtab"><svg class="app-icon"><use href="#icon-list"></use></svg>Raw YAML</button>
+                  <button class="subtle icon-only" type="button" data-restart-gateway title="Khởi động lại" aria-label="Khởi động lại"><svg class="app-icon"><use href="#icon-refresh"></use></svg><span class="visually-hidden">Khởi động lại</span></button>
+                  <button class="primary icon-only" type="button" data-save-config title="Lưu" aria-label="Lưu"><svg class="app-icon"><use href="#icon-save"></use></svg><span class="visually-hidden">Lưu</span></button>
                 </div>
               </div>
               <div class="grid">
@@ -2594,9 +2876,9 @@ export function renderDashboardPage({ publicUrl }) {
                   <p>Cấu hình cổng serial cho Modbus RTU; Modbus TCP dùng host/port trong thiết bị.</p>
                 </div>
                 <div class="actions">
-                  <button id="addPortBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-plus"></use></svg>Thêm cổng</button>
-                  <button class="subtle" type="button" data-restart-gateway>Khởi động lại</button>
-                  <button class="primary" type="button" data-save-config>Lưu</button>
+                  <button id="addPortBtn" class="subtle icon-only" type="button" title="Thêm cổng" aria-label="Thêm cổng"><svg class="app-icon"><use href="#icon-plus"></use></svg><span class="visually-hidden">Thêm cổng</span></button>
+                  <button class="subtle icon-only" type="button" data-restart-gateway title="Khởi động lại" aria-label="Khởi động lại"><svg class="app-icon"><use href="#icon-refresh"></use></svg><span class="visually-hidden">Khởi động lại</span></button>
+                  <button class="primary icon-only" type="button" data-save-config title="Lưu" aria-label="Lưu"><svg class="app-icon"><use href="#icon-save"></use></svg><span class="visually-hidden">Lưu</span></button>
                 </div>
               </div>
               <div class="table-wrap">
@@ -2627,9 +2909,9 @@ export function renderDashboardPage({ publicUrl }) {
                   <p>Tạo trạm và gán inverter, công tơ, cảm biến thời tiết vào từng trạm.</p>
                 </div>
                 <div class="actions">
-                  <button id="addStationBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-plus"></use></svg>Thêm trạm</button>
-                  <button class="subtle" type="button" data-restart-gateway>Khởi động lại</button>
-                  <button class="primary" type="button" data-save-config>Lưu cấu hình</button>
+                  <button id="addStationBtn" class="subtle icon-only" type="button" title="Thêm trạm" aria-label="Thêm trạm"><svg class="app-icon"><use href="#icon-plus"></use></svg><span class="visually-hidden">Thêm trạm</span></button>
+                  <button class="subtle icon-only" type="button" data-restart-gateway title="Khởi động lại" aria-label="Khởi động lại"><svg class="app-icon"><use href="#icon-refresh"></use></svg><span class="visually-hidden">Khởi động lại</span></button>
+                  <button class="primary icon-only" type="button" data-save-config title="Lưu" aria-label="Lưu"><svg class="app-icon"><use href="#icon-save"></use></svg><span class="visually-hidden">Lưu</span></button>
                 </div>
               </div>
               <div class="table-wrap">
@@ -2659,9 +2941,9 @@ export function renderDashboardPage({ publicUrl }) {
                 </div>
                 <div class="actions template-actions">
                   <select id="newDeviceTemplate" aria-label="Mẫu thiết bị"><option value="">Thiết bị trống</option></select>
-                  <button id="addDeviceBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-plus"></use></svg>Thêm thiết bị</button>
-                  <button class="subtle" type="button" data-restart-gateway>Khởi động lại</button>
-                  <button class="primary" type="button" data-save-config>Lưu</button>
+                  <button id="addDeviceBtn" class="subtle icon-only" type="button" title="Thêm thiết bị" aria-label="Thêm thiết bị"><svg class="app-icon"><use href="#icon-plus"></use></svg><span class="visually-hidden">Thêm thiết bị</span></button>
+                  <button class="subtle icon-only" type="button" data-restart-gateway title="Khởi động lại" aria-label="Khởi động lại"><svg class="app-icon"><use href="#icon-refresh"></use></svg><span class="visually-hidden">Khởi động lại</span></button>
+                  <button class="primary icon-only" type="button" data-save-config title="Lưu" aria-label="Lưu"><svg class="app-icon"><use href="#icon-save"></use></svg><span class="visually-hidden">Lưu</span></button>
                 </div>
               </div>
               <div id="configurationTopology" class="topology-tree topology-tree-compact"></div>
@@ -2676,13 +2958,13 @@ export function renderDashboardPage({ publicUrl }) {
                   <h2>YAML thô</h2>
                   <p>Tài liệu cấu hình remote sẽ trở thành phiên bản cloud config tiếp theo.</p>
                 </div>
-                <div class="actions"><button class="primary" type="button" data-save-config>Lưu</button></div>
+                <div class="actions"><button class="primary icon-only" type="button" data-save-config title="Lưu" aria-label="Lưu"><svg class="app-icon"><use href="#icon-save"></use></svg><span class="visually-hidden">Lưu</span></button></div>
               </div>
               <textarea id="rawYaml" class="raw" readonly></textarea>
             </section>
           </div>
 
-          <div id="iec104Subtab" class="subtab-panel" data-subtab-panel="settingCommunication">
+          <div id="iec104Subtab" class="subtab-panel" data-subtab-panel="iec104Tab">
     <section class="config-section">
       <div class="section-header">
         <div class="section-title">
@@ -2690,9 +2972,9 @@ export function renderDashboardPage({ publicUrl }) {
           <p>Cấu hình kết nối IEC104 cho EVN; IOA và register mapping nằm ở phần EVN bên dưới.</p>
         </div>
         <div class="actions">
-          <button id="applyEvnIec104DefaultsBtn" class="subtle" type="button">Áp dụng mặc định EVN</button>
-          <button class="subtle" type="button" data-restart-gateway>Khởi động lại</button>
-          <button class="primary" type="button" data-save-config>Lưu</button>
+          <button id="applyEvnIec104DefaultsBtn" class="subtle icon-text" type="button"><svg class="app-icon"><use href="#icon-settings"></use></svg>EVN mặc định</button>
+          <button class="subtle icon-only" type="button" data-restart-gateway title="Khởi động lại" aria-label="Khởi động lại"><svg class="app-icon"><use href="#icon-refresh"></use></svg><span class="visually-hidden">Khởi động lại</span></button>
+          <button class="primary icon-only" type="button" data-save-config title="Lưu" aria-label="Lưu"><svg class="app-icon"><use href="#icon-save"></use></svg><span class="visually-hidden">Lưu</span></button>
         </div>
       </div>
       <div class="evn-iec104-note">
@@ -2735,8 +3017,8 @@ export function renderDashboardPage({ publicUrl }) {
         </div>
         <div class="actions">
           <select id="iec104EvnStation" aria-label="Trạm EVN"></select>
-          <button id="generateEvnIec104Btn" class="subtle" type="button">Cập nhật mapping EVN</button>
-          <button class="primary" type="button" data-save-config>Lưu</button>
+          <button id="generateEvnIec104Btn" class="subtle icon-only" type="button" title="Cập nhật mapping EVN" aria-label="Cập nhật mapping EVN"><svg class="app-icon"><use href="#icon-refresh"></use></svg><span class="visually-hidden">Cập nhật mapping EVN</span></button>
+          <button class="primary icon-only" type="button" data-save-config title="Lưu" aria-label="Lưu"><svg class="app-icon"><use href="#icon-save"></use></svg><span class="visually-hidden">Lưu</span></button>
         </div>
       </div>
       <div class="table-wrap">
@@ -2775,6 +3057,8 @@ export function renderDashboardPage({ publicUrl }) {
         </div>
         </div>
 
+        <div id="iec104Tab" class="tab-panel" data-tab-panel></div>
+
         <div id="libraryTab" class="tab-panel" data-tab-panel>
           <section class="config-section">
             <div class="section-header">
@@ -2783,9 +3067,9 @@ export function renderDashboardPage({ publicUrl }) {
                 <p>Thêm, sửa và xóa mẫu đọc Modbus dùng cho thiết bị Modbus.</p>
               </div>
               <div class="actions">
-                <button id="syncTemplatesBtn" class="subtle" type="button">Đồng bộ từ server</button>
-                <button id="addTemplateBtn" class="subtle" type="button"><svg class="app-icon"><use href="#icon-plus"></use></svg>Thêm mẫu</button>
-                <button id="saveTemplatesBtn" class="primary" type="button">Lưu thư viện</button>
+                <button id="syncTemplatesBtn" class="subtle icon-only" type="button" title="Đồng bộ từ server" aria-label="Đồng bộ từ server"><svg class="app-icon"><use href="#icon-cloud"></use></svg><span class="visually-hidden">Đồng bộ từ server</span></button>
+                <button id="addTemplateBtn" class="subtle icon-only" type="button" title="Thêm mẫu" aria-label="Thêm mẫu"><svg class="app-icon"><use href="#icon-plus"></use></svg><span class="visually-hidden">Thêm mẫu</span></button>
+                <button id="saveTemplatesBtn" class="primary icon-only" type="button" title="Lưu thư viện" aria-label="Lưu thư viện"><svg class="app-icon"><use href="#icon-save"></use></svg><span class="visually-hidden">Lưu thư viện</span></button>
               </div>
             </div>
             <div id="templateLibrary"></div>
@@ -2943,11 +3227,18 @@ export function renderDashboardPage({ publicUrl }) {
       dailyEnergy: ["daily_energy_yield_kwh", "daily_energy_kwh", "daily_ac_energy_kwh", "daily_ac_energy_wh", "daily_ac_energy_wh_64", "daily_export_energy_kwh", "today_energy_fed_to_grid_kwh"],
       reactivePower: ["reactive_power_kvar", "reactive_power_var", "reactive_power_total_var", "total_reactive_power_var", "ac_reactive_power_kvar", "meter_total_reactive_power_var"],
       deviceStatus: ["device_status", "operating_status", "inverter_current_status", "meter_status", "energy_storage_running_status", "esu1_running_status", "esu2_running_status", "work_status_1", "work_status_2", "status_message", "status_description"],
+      ambientTemperature: ["ambient_temperature_c", "ambient_temp_c", "air_temperature_c"],
+      moduleTemperature: ["module_temperature_c", "module_temp_c", "pv_module_temperature_c", "panel_temperature_c"],
+      irradiance: ["irradiance_w_m2", "irradiation_w_m2", "solar_irradiance_w_m2", "poa_irradiance_w_m2"],
+      voltage: ["voltage_v", "phase_a_voltage_v", "line_voltage_v", "meter_total_voltage_v"],
+      frequency: ["frequency_hz", "grid_frequency_hz", "freq_hz"],
+      powerFactor: ["power_factor", "pf", "total_power_factor"],
     };
-    const tabIds = ["generalInformation", "deviceMonitoringTab", "settingCommunication", "libraryTab", "inverterControlTab", "storageSyncTab", "logsEventsTab", "systemTab"];
+    const tabIds = ["generalInformation", "deviceMonitoringTab", "settingCommunication", "iec104Tab", "libraryTab", "inverterControlTab", "storageSyncTab", "logsEventsTab", "systemTab"];
     const defaultSubtabs = {
       generalInformation: "stationDeviceOverviewSubtab",
       settingCommunication: "gatewaySubtab",
+      iec104Tab: "iec104Subtab",
     };
     const subtabParents = {
       stationDeviceOverviewSubtab: "generalInformation",
@@ -2955,26 +3246,26 @@ export function renderDashboardPage({ publicUrl }) {
       rs485PortsSubtab: "settingCommunication",
       stationsSubtab: "settingCommunication",
       modbusDevicesSubtab: "settingCommunication",
-      iec104Subtab: "settingCommunication",
+      iec104Subtab: "iec104Tab",
       rawYamlSubtab: "settingCommunication",
     };
     const pageLabels = {
-      stationDeviceOverviewSubtab: ["Tổng quan", "Trạng thái kết nối của từng thiết bị Modbus"],
-      deviceMonitoringTab: ["Giám sát thiết bị", "Dữ liệu Modbus mới nhất và giá trị thanh ghi thô"],
-      inverterControlTab: ["Điều khiển trạm", "Chạy lệnh điều khiển Modbus ở cấp trạm hoặc inverter"],
-      gatewaySubtab: ["Gateway", "Upload server, queue và vòng polling"],
-      rs485PortsSubtab: ["RS485 / COM", "Thiết lập serial dùng cho thiết bị Modbus RTU"],
-      stationsSubtab: ["Trạm", "Topology trạm và nhóm điều khiển EVN"],
-      modbusDevicesSubtab: ["Thiết bị Modbus", "Định danh thiết bị, chế độ RTU/TCP và bản đồ thanh ghi"],
-      rawYamlSubtab: ["YAML thô", "Cấu hình gateway hiện đang lưu"],
-      libraryTab: ["Mẫu", "Mẫu thiết bị Modbus có thể tái sử dụng"],
-      iec104Subtab: ["IEC 60870-5-104", "Bật IEC104 và cấu hình ánh xạ điểm"],
-      storageSyncTab: ["Lưu trữ & Đồng bộ", "Queue local, upload cloud và IEC104 runtime"],
-      logsEventsTab: ["Logs / Sự kiện", "Sự kiện vận hành gần nhất trên IPC gateway"],
-      systemTab: ["Hệ thống", "Thông tin IPC gateway và trạng thái service"],
+      stationDeviceOverviewSubtab: ["Overview", "Connection status của từng Modbus device"],
+      deviceMonitoringTab: ["Device Monitoring", "Latest Modbus data và raw register"],
+      inverterControlTab: ["Station Control", "Chạy Modbus command theo station hoặc inverter"],
+      gatewaySubtab: ["Gateway", "Upload server, queue và polling cycle"],
+      rs485PortsSubtab: ["RS485 / COM", "Serial settings cho Modbus RTU device"],
+      stationsSubtab: ["Station", "Station topology và EVN control group"],
+      modbusDevicesSubtab: ["Modbus Device", "Device identity, RTU/TCP mode và register map"],
+      rawYamlSubtab: ["Raw YAML", "Cấu hình gateway hiện đang lưu"],
+      libraryTab: ["Template", "Mẫu Modbus device có thể tái sử dụng"],
+      iec104Subtab: ["IEC 60870-5-104", "Bật IEC104 và cấu hình point mapping"],
+      storageSyncTab: ["Storage & Sync", "Local queue, cloud upload và IEC104 runtime"],
+      logsEventsTab: ["Events", "Sự kiện vận hành gần nhất trên IPC gateway"],
+      systemTab: ["System", "Thông tin IPC gateway và service status"],
     };
     const homePageLabels = {
-      homeOverviewPanel: ["Site đang hoạt động", "Danh sách site đã kết nối server và trạng thái hoạt động hiện tại"],
+      homeOverviewPanel: ["Active Sites", "Connected gateway sites and current status"],
     };
 
     function translateAdminText(value) {
@@ -3200,8 +3491,8 @@ export function renderDashboardPage({ publicUrl }) {
                 <div class="gateway-stat"><span>Config</span><strong>\${escapeHtml((gateway.appliedConfigVersion || "-") + " / " + (gateway.desiredConfigVersion || gateway.latestConfigVersion || "-"))}</strong></div>
               </div>
               <div class="actions gateway-card-actions">
-                <button class="primary" type="button" data-remote-gateway="\${escapeHtml(gateway.id)}"><svg class="app-icon"><use href="#icon-monitor"></use></svg>Remote</button>
-                <button class="danger" type="button" data-delete-gateway="\${escapeHtml(gateway.id)}"><svg class="app-icon"><use href="#icon-alert-circle"></use></svg>Xóa</button>
+                <button class="primary icon-only" type="button" data-remote-gateway="\${escapeHtml(gateway.id)}" title="Remote" aria-label="Remote"><svg class="app-icon"><use href="#icon-monitor"></use></svg><span class="visually-hidden">Remote</span></button>
+                <button class="danger icon-only" type="button" data-delete-gateway="\${escapeHtml(gateway.id)}" title="Xóa" aria-label="Xóa"><svg class="app-icon"><use href="#icon-alert-circle"></use></svg><span class="visually-hidden">Xóa</span></button>
               </div>
             </article>
           \`;
@@ -3555,10 +3846,7 @@ export function renderDashboardPage({ publicUrl }) {
 
       selectedConfigVersion = configPayload.version;
       state = configPayload.config || defaultConfig(gatewayId);
-      telemetry = {
-        time: telemetryPayload.records?.[0]?.createdAt || null,
-        devices: telemetryRecordsToDevices(telemetryPayload.records || []),
-      };
+      applyRemoteTelemetry(gatewayId, telemetryPayload);
       commands = commandPayload.commands || [];
 
       setText("topGatewayId", gatewayId);
@@ -3566,6 +3854,50 @@ export function renderDashboardPage({ publicUrl }) {
       render();
       showTab("generalInformation", false, "stationDeviceOverviewSubtab");
       setStatus("Remote config loaded", "ok");
+    }
+
+    function applyRemoteTelemetry(gatewayId, payload) {
+      const records = payload.records || [];
+      homeTelemetry.set(gatewayId, records);
+      telemetry = {
+        time: records[0]?.createdAt || null,
+        devices: telemetryRecordsToDevices(records),
+      };
+    }
+
+    async function refreshRemoteTelemetry() {
+      if (!selectedId) return;
+
+      const payload = await requestJson("/api/gateways/" + encodeURIComponent(selectedId) + "/telemetry/latest");
+      applyRemoteTelemetry(selectedId, payload);
+      renderDashboard();
+      renderMonitoring();
+      renderRemoteStorage();
+      renderRemoteEvents();
+      renderConnectivityStatus();
+      applyAdminLanguage(el("remoteView"));
+      setStatus("ÄÃ£ lÃ m má»›i telemetry", "ok");
+    }
+
+    async function refreshRemoteRuntime() {
+      if (!selectedId) return;
+
+      const [telemetryPayload, commandPayload] = await Promise.all([
+        requestJson("/api/gateways/" + encodeURIComponent(selectedId) + "/telemetry/latest"),
+        requestJson("/api/gateways/" + encodeURIComponent(selectedId) + "/commands"),
+      ]);
+
+      applyRemoteTelemetry(selectedId, telemetryPayload);
+      commands = commandPayload.commands || [];
+      renderDashboard();
+      renderMonitoring();
+      renderCommandHistory();
+      renderRemoteStorage();
+      renderRemoteEvents();
+      renderRemoteSystem();
+      renderConnectivityStatus();
+      applyAdminLanguage(el("remoteView"));
+      setStatus("ÄÃ£ lÃ m má»›i runtime", "ok");
     }
 
     async function deleteGateway(gatewayId) {
@@ -3730,6 +4062,7 @@ export function renderDashboardPage({ publicUrl }) {
       renderRemoteStorage();
       renderRemoteEvents();
       renderRemoteSystem();
+      renderConnectivityStatus();
       applyAdminLanguage(el("remoteView"));
     }
 
@@ -3909,6 +4242,7 @@ export function renderDashboardPage({ publicUrl }) {
       const portStatus = statusFromChildren(statuses, portGroup.devices.length ? "loss" : "warning");
       const port = state.ports?.[portGroup.name] || {};
       const isTcp = portGroup.name === "TCP";
+      const metaFull = topologyPortMeta(portGroup.name, port) + " | " + topologyComLabel(portGroup, port) + " | " + topologyComMeta(portGroup, port);
       const deviceHtml = portGroup.devices.length
         ? portGroup.devices.map((device) => renderTopologyDevice(device, readings.get(device.name))).join("")
         : '<div class="topology-empty">Chưa có thiết bị trên RS485/COM này</div>';
@@ -3919,7 +4253,8 @@ export function renderDashboardPage({ publicUrl }) {
             icon: isTcp ? "icon-server" : "icon-network",
             type: isTcp ? "Ethernet TCP" : "RS485 / COM",
             title: isTcp ? "Modbus TCP" : portGroup.name,
-            meta: topologyPortMeta(portGroup.name, port) + " | " + topologyComLabel(portGroup, port) + " | " + topologyComMeta(portGroup, port),
+            meta: topologyPortMetaShort(portGroup, port),
+            metaFull,
             status: portStatus,
           })}
           <div class="topology-level">\${deviceHtml}</div>
@@ -3935,25 +4270,28 @@ export function renderDashboardPage({ publicUrl }) {
       const registers = (device.registers || []).length + " thanh ghi";
 
       return renderTopologyNode({
-        icon: "icon-monitor",
+        icon: monitoringDeviceIcon(device),
         type: "Thiết bị",
         title: device.name || "Thiết bị chưa đặt tên",
-        meta: deviceSubtitle(device) + " | " + slave + " | " + registers,
+        meta: topologyDeviceMetaShort(device),
+        metaFull: deviceSubtitle(device) + " | " + slave + " | " + registers,
         status,
       });
     }
 
-    function renderTopologyNode({ icon, type, title, meta, status }) {
+    function renderTopologyNode({ icon, type, title, meta, metaFull, status }) {
       const kind = status?.kind || "loss";
       const label = status?.label || statusFromKind(kind).label;
+      const detail = metaFull || meta || "-";
+      const tooltip = [title || "-", detail].filter((item) => item && item !== "-").join(" | ");
 
       return \`
-        <div class="topology-node \${escapeHtml(kind)}">
+        <div class="topology-node \${escapeHtml(kind)}" title="\${escapeHtml(tooltip)}">
           <span class="topology-icon"><svg class="app-icon"><use href="#\${escapeHtml(icon)}"></use></svg></span>
           <div class="topology-copy">
             <span class="topology-kicker">\${escapeHtml(type)}</span>
             <strong title="\${escapeHtml(title || "-")}">\${escapeHtml(title || "-")}</strong>
-            <p title="\${escapeHtml(meta || "-")}">\${escapeHtml(meta || "-")}</p>
+            <p title="\${escapeHtml(detail)}">\${escapeHtml(meta || "-")}</p>
           </div>
           <span class="topology-state \${escapeHtml(kind)}" title="\${escapeHtml(label)}"><i class="topology-dot \${escapeHtml(kind)}"></i>\${escapeHtml(label)}</span>
         </div>
@@ -3969,6 +4307,19 @@ export function renderDashboardPage({ publicUrl }) {
         port.dataBits ? port.dataBits + " data bits" : "",
         port.stopBits ? port.stopBits + " stop" : "",
       ].filter(Boolean).join(" | ") || "Chưa có thiết lập serial";
+    }
+
+    function topologyPortMetaShort(portGroup, port) {
+      const count = portGroup.devices.length;
+      const suffix = count + " device" + (count === 1 ? "" : "s");
+
+      if (portGroup.name === "TCP") {
+        const tcpPorts = [...new Set(portGroup.devices.map((device) => device.tcpPort || 502))];
+        return "TCP " + (tcpPorts.length ? tcpPorts.join(",") : "502") + " | " + suffix;
+      }
+
+      const baudRate = port.baudRate ? port.baudRate + " bps" : "Serial";
+      return baudRate + " | " + suffix;
     }
 
     function topologyComLabel(portGroup, port) {
@@ -3989,6 +4340,15 @@ export function renderDashboardPage({ publicUrl }) {
       return "Đường dẫn COM thủ công";
     }
 
+    function topologyDeviceMetaShort(device) {
+      const slave = device.protocol === "modbus-tcp"
+        ? "unit " + (device.unitId || device.slaveId || 3)
+        : "slave " + (device.slaveId || 1);
+      const count = (device.registers || []).length;
+
+      return slave + " | " + count + " reg";
+    }
+
     function statusFromChildren(statuses, emptyKind = "warning") {
       const kinds = statuses.map((status) => status.kind);
       if (!kinds.length) return statusFromKind(emptyKind);
@@ -4003,6 +4363,7 @@ export function renderDashboardPage({ publicUrl }) {
       const devices = state.devices || [];
       const readings = telemetryDeviceMap();
       const statusCounts = countRuntimeStatuses(devices, readings);
+      const openDetails = openMonitoringDetails(container);
 
       el("monitoringSummary").textContent =
         "Tốt " + statusCounts.good + ", Cảnh báo " + statusCounts.warning + ", Lỗi " + statusCounts.bad + ", Mất liên lạc " + statusCounts.loss;
@@ -4014,13 +4375,32 @@ export function renderDashboardPage({ publicUrl }) {
       }
 
       container.innerHTML = devices.map((device) => renderMonitoringDevice(device, readings.get(device.name))).join("");
+      restoreMonitoringDetails(container, openDetails);
+    }
+
+    function openMonitoringDetails(container) {
+      return new Set([...container.querySelectorAll(".monitor-detail[open][data-monitor-detail]")]
+        .map((detail) => detail.dataset.monitorDetail));
+    }
+
+    function restoreMonitoringDetails(container, openDetails) {
+      if (!openDetails.size) return;
+
+      container.querySelectorAll(".monitor-detail[data-monitor-detail]").forEach((detail) => {
+        detail.open = openDetails.has(detail.dataset.monitorDetail);
+      });
     }
 
     function renderMonitoringDevice(device, reading) {
       const status = runtimeStatus(reading, device);
-      const model = [device.manufacturer, device.model].filter(Boolean).join(" - ") || device.type || "modbus";
+      const statusClass = status.badgeClass || status.kind || "loss";
+      const statusText = monitoringStatusText(status);
+      const deviceIcon = monitoringDeviceIcon(device);
+      const modelFull = [device.manufacturer, device.model].filter(Boolean).join(" - ") || device.type || "modbus";
+      const model = conciseDeviceModel(device, modelFull);
       const registers = (device.registers || []).filter(isPollableRegister);
       const metricItems = monitoringMetricItems(device, reading, status);
+      const updatedAt = formatDateTime(reading?.collectedAt || reading?.updatedAt);
       const isTcp = (device.protocol || reading?.protocol) === "modbus-tcp";
       const endpointLabel = isTcp ? "TCP" : "Cổng";
       const endpointValue = isTcp
@@ -4033,39 +4413,64 @@ export function renderDashboardPage({ publicUrl }) {
       const rows = registers.length
         ? registers.map((register) => renderMeasurementRow(register, reading)).join("")
         : '<tr><td colspan="4">Chưa cấu hình thanh ghi</td></tr>';
+      const protocol = (device.protocol || reading?.protocol || "modbus-rtu").toUpperCase();
+      const pollMs = device.pollIntervalMs || state?.gateway?.pollIntervalMs;
+      const detailItems = [
+        { label: "Protocol", value: protocol },
+        { label: "Model", value: modelFull },
+        { label: endpointLabel, value: endpointValue },
+        { label: idLabel, value: idValue },
+        { label: "Registers", value: String(registers.length) },
+        { label: "Poll", value: pollMs ? formatMs(pollMs) : "-" },
+        { label: "Updated", value: updatedAt },
+      ];
       const error = reading?.lastError?.message
         ? \`<div class="monitor-error">\${escapeHtml(reading.lastError.message)}</div>\`
         : "";
 
       return \`
-        <article class="monitor-card">
+        <article class="monitor-card status-\${escapeHtml(statusClass)}">
           <div class="monitor-head">
+            <span class="monitor-status-icon \${escapeHtml(statusClass)}" title="\${escapeHtml(statusText)}" aria-label="\${escapeHtml(statusText)}" data-no-i18n>
+              <svg class="app-icon"><use href="#\${escapeHtml(deviceIcon)}"></use></svg>
+            </span>
             <div class="monitor-title">
-              <strong>\${escapeHtml(device.name || "-")}</strong>
-              <span>\${escapeHtml(model)}</span>
+              <strong title="\${escapeHtml(device.name || "-")}">\${escapeHtml(device.name || "-")}</strong>
+              <span title="\${escapeHtml(modelFull)}">\${escapeHtml(model)}</span>
             </div>
-            <span class="monitor-status \${escapeHtml(status.badgeClass)}">\${escapeHtml(status.label)}</span>
+            <span class="monitor-status-chip \${escapeHtml(statusClass)}" data-no-i18n>\${escapeHtml(statusText)}</span>
           </div>
-          <div class="monitor-meta">
+          <div class="monitor-meta" hidden>
             <div><span>\${escapeHtml(endpointLabel)}</span><strong>\${escapeHtml(endpointValue)}</strong></div>
             <div><span>\${escapeHtml(idLabel)}</span><strong>\${escapeHtml(idValue)}</strong></div>
-            <div><span>Cập nhật</span><strong>\${escapeHtml(formatDateTime(reading?.collectedAt || reading?.updatedAt))}</strong></div>
+            <div><span>Updated</span><strong>\${escapeHtml(formatDateTime(reading?.collectedAt || reading?.updatedAt))}</strong></div>
           </div>
           <div class="monitor-key-grid">
             \${metricItems.map(renderMonitoringMetricItem).join("")}
           </div>
+          <details class="monitor-detail" data-monitor-detail="\${escapeHtml(device.name || "-")}">
+            <summary>
+              <span>Detail</span>
+              <svg class="app-icon"><use href="#icon-chevron-down"></use></svg>
+            </summary>
+            <div class="monitor-detail-grid">
+              \${detailItems.map((item) => \`<div><span>\${escapeHtml(item.label)}</span><strong>\${escapeHtml(item.value || "-")}</strong></div>\`).join("")}
+            </div>
+            \${error}
+            <div class="table-wrap monitor-table-wrap">
           <table class="monitor-table">
             <thead>
               <tr>
-                <th>Thông số</th>
-                <th>Giá trị</th>
-                <th>Đơn vị</th>
+                <th>Register</th>
+                <th>Value</th>
+                <th>UOM</th>
                 <th>Raw</th>
               </tr>
             </thead>
             <tbody>\${rows}</tbody>
           </table>
-          \${error}
+            </div>
+          </details>
         </article>
       \`;
     }
@@ -4074,27 +4479,77 @@ export function renderDashboardPage({ publicUrl }) {
       return register?.poll !== false && register?.access !== "wo";
     }
 
+    function monitoringStatusText(status) {
+      const labels = {
+        good: "Good",
+        warning: "Warning",
+        bad: "Error",
+        loss: "Offline",
+      };
+
+      return labels[status?.kind] || status?.label || "Offline";
+    }
+
+    function monitoringDeviceIcon(device) {
+      const icons = {
+        meter: "icon-meter",
+        inverter: "icon-inverter",
+        weather: "icon-weather",
+        device: "icon-device",
+      };
+
+      return icons[monitoringDeviceCategory(device)] || "icon-device";
+    }
+
     function monitoringMetricItems(device, reading, status) {
       const activePower = findMonitoringMetricValue(device, reading, monitoringMetricNames.activePower, isActivePowerMetric);
       const ratedPower = findMonitoringMetricValue(device, reading, monitoringMetricNames.ratedPower, isRatedPowerMetric);
       const dailyEnergy = findMonitoringMetricValue(device, reading, monitoringMetricNames.dailyEnergy, isDailyEnergyMetric);
       const reactivePower = findMonitoringMetricValue(device, reading, monitoringMetricNames.reactivePower, isReactivePowerMetric);
       const deviceStatus = findMonitoringMetricValue(device, reading, monitoringMetricNames.deviceStatus, isDeviceStatusMetric);
+      const category = monitoringDeviceCategory(device);
+
+      if (category === "weather") {
+        const ambientTemperature = findMonitoringMetricValue(device, reading, monitoringMetricNames.ambientTemperature, isAmbientTemperatureMetric);
+        const moduleTemperature = findMonitoringMetricValue(device, reading, monitoringMetricNames.moduleTemperature, isModuleTemperatureMetric);
+        const irradiance = findMonitoringMetricValue(device, reading, monitoringMetricNames.irradiance, isIrradianceMetric);
+
+        return [
+          ...(ambientTemperature ? [{ label: "Ambient Temp", value: formatMonitoringMetricValue(ambientTemperature) }] : []),
+          { label: "Module Temp", value: formatMonitoringMetricValue(moduleTemperature) },
+          { label: "Irradiation", value: formatMonitoringMetricValue(irradiance) },
+          ...(deviceStatus ? [{ label: "Run State", value: formatMonitoringMetricValue(deviceStatus), className: "status" }] : []),
+        ];
+      }
+
+      if (category === "meter") {
+        const voltage = findMonitoringMetricValue(device, reading, monitoringMetricNames.voltage, isVoltageMetric);
+        const frequency = findMonitoringMetricValue(device, reading, monitoringMetricNames.frequency, isFrequencyMetric);
+        const powerFactor = findMonitoringMetricValue(device, reading, monitoringMetricNames.powerFactor, isPowerFactorMetric);
+
+        return [
+          { label: "Active Power", value: formatMonitoringMetricValue(activePower), className: "power" },
+          { label: "Voltage", value: formatMonitoringMetricValue(voltage) },
+          { label: "Frequency", value: formatMonitoringMetricValue(frequency) },
+          { label: "Power Factor", value: formatMonitoringMetricValue(powerFactor) },
+          ...(deviceStatus ? [{ label: "Run State", value: formatMonitoringMetricValue(deviceStatus), className: "status" }] : []),
+        ];
+      }
 
       return [
-        { label: "Model", value: deviceModelText(device, reading) },
-        { label: "Công suất / định mức", value: formatMonitoringMetricPair(activePower, ratedPower), className: "power" },
-        { label: "Sản lượng ngày", value: formatMonitoringMetricValue(dailyEnergy) },
-        { label: "Công suất phản kháng", value: formatMonitoringMetricValue(reactivePower) },
-        { label: "Trạng thái", value: deviceStatus ? formatMonitoringMetricValue(deviceStatus) : status.label, className: "status" },
+        { label: "Active / Rated", value: formatMonitoringMetricPair(activePower, ratedPower), className: "power" },
+        { label: "Daily Energy", value: formatMonitoringMetricValue(dailyEnergy) },
+        { label: "Reactive Power", value: formatMonitoringMetricValue(reactivePower) },
+        ...(deviceStatus ? [{ label: "Run State", value: formatMonitoringMetricValue(deviceStatus), className: "status" }] : []),
       ];
+
     }
 
     function renderMonitoringMetricItem(item) {
       const className = item.className ? " " + item.className : "";
 
       return \`
-        <div class="monitor-key-item\${escapeHtml(className)}">
+        <div class="monitor-key-item\${escapeHtml(className)}" title="\${escapeHtml(item.label + ": " + (item.value || "-"))}">
           <span>\${escapeHtml(item.label)}</span>
           <strong>\${escapeHtml(item.value || "-")}</strong>
         </div>
@@ -4126,6 +4581,21 @@ export function renderDashboardPage({ publicUrl }) {
       if (measuredModel) return formatMonitoringMetricValue(measuredModel);
 
       return device.type || "modbus";
+    }
+
+    function monitoringDeviceCategory(device) {
+      const key = [device?.category, device?.type, device?.manufacturer, device?.model, device?.name].filter(Boolean).join(" ").toLowerCase();
+
+      if (key.includes("weather") || key.includes("irradiance") || key.includes("kipp")) return "weather";
+      if (key.includes("meter") || key.includes("dtsu")) return "meter";
+      if (key.includes("inverter") || key.includes("sungrow")) return "inverter";
+      return "device";
+    }
+
+    function conciseDeviceModel(device, fallback) {
+      if (device?.model) return device.model;
+      if (device?.manufacturer) return device.manufacturer;
+      return fallback || device?.type || "modbus";
     }
 
     function findMonitoringMetricValue(device, reading, exactNames, matchesName) {
@@ -4205,6 +4675,36 @@ export function renderDashboardPage({ publicUrl }) {
       return key.includes("status") || key.includes("running");
     }
 
+    function isAmbientTemperatureMetric(name) {
+      const key = normalizedName(name);
+      return key.includes("ambienttemperature") || key.includes("ambienttemp") || key.includes("airtemperature");
+    }
+
+    function isModuleTemperatureMetric(name) {
+      const key = normalizedName(name);
+      return key.includes("moduletemperature") || key.includes("moduletemp") || key.includes("pvmoduletemperature") || key.includes("paneltemperature");
+    }
+
+    function isIrradianceMetric(name) {
+      const key = normalizedName(name);
+      return key.includes("irradiance") || key.includes("irradiation");
+    }
+
+    function isVoltageMetric(name) {
+      const key = normalizedName(name);
+      return key.includes("voltage") || key.includes("uav") || key.includes("ubv") || key.includes("ucv");
+    }
+
+    function isFrequencyMetric(name) {
+      const key = normalizedName(name);
+      return key.includes("frequency") || key.includes("freq");
+    }
+
+    function isPowerFactorMetric(name) {
+      const key = normalizedName(name);
+      return key.includes("powerfactor") || key === "pf";
+    }
+
     function renderInverterControl() {
       const deviceSelect = el("controlDeviceName");
       const devices = inverterControlDevices();
@@ -4252,6 +4752,7 @@ export function renderDashboardPage({ publicUrl }) {
       const devices = state.devices || [];
       return devices.filter((device) => {
         const text = [device.category, device.type, device.manufacturer, device.model, device.templateId].filter(Boolean).join(" ").toLowerCase();
+        const hasConfiguredControls = device.controls && typeof device.controls === "object" && Object.keys(device.controls).length > 0;
         const hasControlRegister = (device.registers || []).some((register) => {
           const name = String(register.name || "").toLowerCase();
           const access = String(register.access || "ro").toLowerCase();
@@ -4265,7 +4766,7 @@ export function renderDashboardPage({ publicUrl }) {
           ].includes(name);
         });
 
-        return text.includes("inverter") || text.includes("sun2000") || text.includes("huawei") || hasControlRegister;
+        return text.includes("inverter") || text.includes("sun2000") || text.includes("huawei") || hasConfiguredControls || hasControlRegister;
       });
     }
 
@@ -4416,6 +4917,88 @@ export function renderDashboardPage({ publicUrl }) {
       setText("systemDeviceCount", String((state.devices || []).length));
       setText("systemPortCount", String(Object.keys(state.ports || {}).length));
       setText("systemTemplateCount", String(templates.length));
+    }
+
+    function renderConnectivityStatus() {
+      updateConnectivityTile("sidebarLanStatus", lanConnectivityStatus());
+      updateConnectivityTile("sidebarInternetStatus", internetConnectivityStatus());
+      updateConnectivityTile("sidebarCloudStatus", cloudConnectivityStatus());
+    }
+
+    function updateConnectivityTile(id, status) {
+      const node = el(id);
+      if (!node) return;
+
+      node.classList.remove("status-online", "status-warning", "status-error", "status-waiting");
+      node.classList.add("status-" + (status.kind || "waiting"));
+      node.title = status.title || "";
+      node.setAttribute("aria-label", status.title || "");
+    }
+
+    function lanConnectivityStatus() {
+      const gateway = selectedGateway || {};
+      if (gateway.status === "online") {
+        return {
+          kind: "online",
+          title: "LAN connected: " + (gateway.id || selectedId || "gateway"),
+        };
+      }
+
+      if (selectedId) {
+        return {
+          kind: "warning",
+          title: "Gateway offline or no heartbeat",
+        };
+      }
+
+      return {
+        kind: "waiting",
+        title: "LAN waiting for gateway",
+      };
+    }
+
+    function internetConnectivityStatus() {
+      const serverUrl = state?.server?.url || "";
+      if (selectedGateway?.status === "online" && serverUrl) {
+        return {
+          kind: "online",
+          title: "Internet route configured: " + hostFromUrl(serverUrl),
+        };
+      }
+
+      if (serverUrl) {
+        return {
+          kind: "warning",
+          title: "Server URL configured, gateway not online",
+        };
+      }
+
+      return {
+        kind: "waiting",
+        title: "No server URL configured",
+      };
+    }
+
+    function cloudConnectivityStatus() {
+      const mongo = state?.mongo || {};
+      if (!mongo.enabled) {
+        return {
+          kind: "waiting",
+          title: "MongoDB disabled",
+        };
+      }
+
+      if (selectedGateway?.status === "online") {
+        return {
+          kind: "online",
+          title: "MongoDB enabled: " + (mongo.dbName || mongo.dbNameEnv || "database"),
+        };
+      }
+
+      return {
+        kind: "warning",
+        title: "MongoDB enabled, gateway not online",
+      };
     }
 
     async function refreshCommands() {
@@ -4733,7 +5316,7 @@ export function renderDashboardPage({ publicUrl }) {
               '<strong>' + escapeHtml(template.label || template.id || "Template " + (index + 1)) + '</strong>' +
               '<p>' + escapeHtml(template.id || "-") + ' | ' + (template.registers || []).length + ' thanh ghi</p>' +
             '</div>' +
-            '<button type="button" class="danger" data-remove-template="' + index + '">Xóa mẫu</button>' +
+            '<button type="button" class="danger icon-only" data-remove-template="' + index + '" title="Xóa mẫu" aria-label="Xóa mẫu"><svg class="app-icon"><use href="#icon-trash"></use></svg><span class="visually-hidden">Xóa mẫu</span></button>' +
           '</div>' +
           '<div class="grid">' +
             '<label>ID <input data-template="' + index + '" data-field="id" value="' + escapeHtml(template.id || "") + '" autocomplete="off"></label>' +
@@ -4749,8 +5332,8 @@ export function renderDashboardPage({ publicUrl }) {
           '<div class="registers-head">' +
             '<span class="pill">' + (template.registers || []).length + ' thanh ghi</span>' +
             '<div class="register-actions">' +
-              '<button class="subtle" type="button" data-toggle-template-registers="' + index + '">' + (registersExpanded ? "Ẩn thanh ghi" : "Sửa thanh ghi") + '</button>' +
-              (registersExpanded ? '<button class="subtle" type="button" data-add-template-register="' + index + '">Thêm thanh ghi</button>' : "") +
+              '<button class="subtle icon-only" type="button" data-toggle-template-registers="' + index + '" title="' + (registersExpanded ? "Ẩn thanh ghi" : "Sửa thanh ghi") + '" aria-label="' + (registersExpanded ? "Ẩn thanh ghi" : "Sửa thanh ghi") + '"><svg class="app-icon"><use href="#icon-settings"></use></svg><span class="visually-hidden">' + (registersExpanded ? "Ẩn thanh ghi" : "Sửa thanh ghi") + '</span></button>' +
+              (registersExpanded ? '<button class="subtle icon-only" type="button" data-add-template-register="' + index + '" title="Thêm thanh ghi" aria-label="Thêm thanh ghi"><svg class="app-icon"><use href="#icon-plus"></use></svg><span class="visually-hidden">Thêm thanh ghi</span></button>' : "") +
             '</div>' +
           '</div>' +
           (registersExpanded ? renderTemplateRegisterTable(index, template.registers || []) : renderRegisterPreview(template.registers || []));
@@ -4795,7 +5378,7 @@ export function renderDashboardPage({ publicUrl }) {
         '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="scale" type="number" step="any" value="' + (register.scale ?? 1) + '"></td>' +
         '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="offset" type="number" step="any" value="' + (register.offset ?? "") + '"></td>' +
         '<td><input data-template="' + templateIndex + '" data-template-register="' + registerIndex + '" data-field="unit" value="' + escapeHtml(register.unit || "") + '"></td>' +
-        '<td><button type="button" class="danger" data-remove-template-register="' + templateIndex + ':' + registerIndex + '">Xóa</button></td>' +
+        '<td><button type="button" class="danger icon-only" data-remove-template-register="' + templateIndex + ':' + registerIndex + '" title="Xóa" aria-label="Xóa"><svg class="app-icon"><use href="#icon-trash"></use></svg><span class="visually-hidden">Xóa</span></button></td>' +
       '</tr>';
     }
 
@@ -4859,7 +5442,7 @@ export function renderDashboardPage({ publicUrl }) {
           </select>
         </td>
         <td><input data-station="\${index}" data-field="evnEnabled" type="checkbox" \${station.evnProfile?.enabled ? "checked" : ""} title="Bật profile trạm EVN"></td>
-        <td><button type="button" data-remove-station="\${index}" class="danger">Xóa</button></td>
+        <td><button type="button" data-remove-station="\${index}" class="danger icon-only" title="Xóa" aria-label="Xóa"><svg class="app-icon"><use href="#icon-trash"></use></svg><span class="visually-hidden">Xóa</span></button></td>
       \`;
     }
 
@@ -4877,7 +5460,7 @@ export function renderDashboardPage({ publicUrl }) {
           <td><input data-port="\${escapeHtml(name)}" data-field="dataBits" type="number" min="5" max="8" step="1" value="\${port.dataBits || 8}"></td>
           <td><input data-port="\${escapeHtml(name)}" data-field="stopBits" type="number" min="1" max="2" step="1" value="\${port.stopBits || 1}"></td>
           <td><input data-port="\${escapeHtml(name)}" data-field="timeoutMs" type="number" min="100" step="100" value="\${port.timeoutMs || 1000}"></td>
-          <td><button type="button" data-remove-port="\${escapeHtml(name)}" class="danger">Xóa</button></td>
+          <td><button type="button" data-remove-port="\${escapeHtml(name)}" class="danger icon-only" title="Xóa" aria-label="Xóa"><svg class="app-icon"><use href="#icon-trash"></use></svg><span class="visually-hidden">Xóa</span></button></td>
         \`;
         body.appendChild(row);
       }
@@ -4906,7 +5489,7 @@ export function renderDashboardPage({ publicUrl }) {
               <strong>\${escapeHtml(device.name || "device_" + (index + 1))}</strong>
               <p>\${escapeHtml(deviceSubtitle(device))}</p>
             </div>
-            <button type="button" class="danger" data-remove-device="\${index}">Xóa thiết bị</button>
+            <button type="button" class="danger icon-only" data-remove-device="\${index}" title="Xóa thiết bị" aria-label="Xóa thiết bị"><svg class="app-icon"><use href="#icon-trash"></use></svg><span class="visually-hidden">Xóa thiết bị</span></button>
           </div>
           <div class="grid">
             <label class="wide">Mẫu
@@ -4915,7 +5498,7 @@ export function renderDashboardPage({ publicUrl }) {
                   <option value="">Thiết bị tùy chỉnh</option>
                   \${templates.map((template) => option(template.id, selectedTemplateId(device), template.label)).join("")}
                 </select>
-                <button class="subtle" type="button" data-apply-template="\${index}">Áp dụng</button>
+                <button class="subtle icon-only" type="button" data-apply-template="\${index}" title="Áp dụng" aria-label="Áp dụng"><svg class="app-icon"><use href="#icon-check-circle"></use></svg><span class="visually-hidden">Áp dụng</span></button>
               </div>
             </label>
             <label>Tên <input data-device="\${index}" data-field="name" value="\${escapeHtml(device.name || "")}"></label>
@@ -4941,8 +5524,8 @@ export function renderDashboardPage({ publicUrl }) {
           <div class="registers-head">
             <span class="pill">\${(device.registers || []).length} thanh ghi</span>
             <div class="register-actions">
-              <button class="subtle" type="button" data-toggle-device-registers="\${index}">\${registersExpanded ? "Ẩn thanh ghi" : "Sửa thanh ghi"}</button>
-              \${registersExpanded ? \`<button class="subtle" type="button" data-add-register="\${index}">Thêm thanh ghi</button>\` : ""}
+              <button class="subtle icon-only" type="button" data-toggle-device-registers="\${index}" title="\${registersExpanded ? "Ẩn thanh ghi" : "Sửa thanh ghi"}" aria-label="\${registersExpanded ? "Ẩn thanh ghi" : "Sửa thanh ghi"}"><svg class="app-icon"><use href="#icon-settings"></use></svg><span class="visually-hidden">\${registersExpanded ? "Ẩn thanh ghi" : "Sửa thanh ghi"}</span></button>
+              \${registersExpanded ? \`<button class="subtle icon-only" type="button" data-add-register="\${index}" title="Thêm thanh ghi" aria-label="Thêm thanh ghi"><svg class="app-icon"><use href="#icon-plus"></use></svg><span class="visually-hidden">Thêm thanh ghi</span></button>\` : ""}
             </div>
           </div>
           \${registersExpanded ? renderRegisterTable(index, device.registers || []) : renderRegisterPreview(device.registers || [])}
@@ -4987,7 +5570,7 @@ export function renderDashboardPage({ publicUrl }) {
           <td><select data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="type">\${["uint16", "int16", "uint32", "int32", "uint64", "int64", "float32", "float64", "string", "bytes", "bitfield16", "bitfield32"].map((item) => option(item, register.type || "uint16")).join("")}</select></td>
           <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="scale" type="number" step="any" value="\${register.scale ?? 1}"></td>
           <td><input data-device="\${deviceIndex}" data-register="\${registerIndex}" data-field="unit" value="\${escapeHtml(register.unit || "")}"></td>
-          <td><button type="button" class="danger" data-remove-register="\${deviceIndex}:\${registerIndex}">Xóa</button></td>
+          <td><button type="button" class="danger icon-only" data-remove-register="\${deviceIndex}:\${registerIndex}" title="Xóa" aria-label="Xóa"><svg class="app-icon"><use href="#icon-trash"></use></svg><span class="visually-hidden">Xóa</span></button></td>
         </tr>
       \`;
     }
@@ -6038,6 +6621,7 @@ export function renderDashboardPage({ publicUrl }) {
     function deviceFromTemplate(template, index, ports, existing = {}) {
       const existingRegisters = Array.isArray(existing.registers) ? existing.registers : [];
       const templateRegisters = Array.isArray(template.registers) ? template.registers : [];
+      const controls = cloneControls(template.controls ?? existing.controls);
       const protocol = template.protocol || existing.protocol || "modbus-rtu";
       const isTcp = protocol === "modbus-tcp";
 
@@ -6056,6 +6640,7 @@ export function renderDashboardPage({ publicUrl }) {
         tcpPort: isTcp ? existing.tcpPort || 502 : existing.tcpPort || 502,
         unitId: isTcp ? existing.unitId || existing.slaveId || 3 : existing.unitId || existing.slaveId || index,
         pollIntervalMs: template.pollIntervalMs || existing.pollIntervalMs || 5000,
+        ...(controls ? { controls } : {}),
         registers: cloneRegisters(templateRegisters.length ? templateRegisters : existingRegisters.length ? existingRegisters : [defaultRegister()]),
       };
     }
@@ -6075,6 +6660,11 @@ export function renderDashboardPage({ publicUrl }) {
 
     function cloneRegisters(registers) {
       return registers.map((register) => ({ ...register }));
+    }
+
+    function cloneControls(controls) {
+      if (!controls || typeof controls !== "object" || Array.isArray(controls)) return null;
+      return JSON.parse(JSON.stringify(controls));
     }
 
     function showTab(tabId, updateHash = true, subtabId = null) {
@@ -6103,6 +6693,15 @@ export function renderDashboardPage({ publicUrl }) {
 
       const nextHash = activeSubtab || activeTab;
       if (updateHash && location.hash !== "#" + nextHash) history.replaceState(null, "", "#" + nextHash);
+    }
+
+    function mountStandaloneIec104Tab() {
+      const tabPanel = el("iec104Tab");
+      const iec104Panel = el("iec104Subtab");
+
+      if (tabPanel && iec104Panel && iec104Panel.parentElement !== tabPanel) {
+        tabPanel.appendChild(iec104Panel);
+      }
     }
 
     function showHomePage(panelId) {
@@ -6508,9 +7107,9 @@ export function renderDashboardPage({ publicUrl }) {
         return;
       }
       if (target.id === "homeRefreshBtn") loadGateways().catch((error) => console.error(error));
-      if (target.id === "refreshTelemetryBtn" && selectedId) openRemote(selectedId).catch((error) => setStatus(error.message, "error"));
-      if (target.id === "refreshRuntimeBtn" && selectedId) openRemote(selectedId).catch((error) => setStatus(error.message, "error"));
-      if (target.id === "remoteRefreshBtn" && selectedId) openRemote(selectedId).catch((error) => setStatus(error.message, "error"));
+      if (target.id === "refreshTelemetryBtn" && selectedId) refreshRemoteTelemetry().catch((error) => setStatus(error.message, "error"));
+      if (target.id === "refreshRuntimeBtn" && selectedId) refreshRemoteRuntime().catch((error) => setStatus(error.message, "error"));
+      if (target.id === "remoteRefreshBtn" && selectedId) refreshRemoteRuntime().catch((error) => setStatus(error.message, "error"));
       if (target.id === "remoteDisconnectBtn") {
         backHome();
         return;
@@ -6634,6 +7233,7 @@ export function renderDashboardPage({ publicUrl }) {
       updatePowerLimitValueConstraints();
       submitPowerLimitForm();
     });
+    mountStandaloneIec104Tab();
     updatePowerLimitValueConstraints();
 
     async function logout() {
