@@ -335,6 +335,17 @@ export class HardwareStore {
     return row ? mapConfigRow(row) : null;
   }
 
+  getConfigVersion(gatewayId, version) {
+    const row = this.db.prepare(`
+      SELECT *
+      FROM config_versions
+      WHERE gateway_id = ? AND version = ?
+      LIMIT 1
+    `).get(gatewayId, version);
+
+    return row ? mapConfigRow(row) : null;
+  }
+
   addConfigVersion({ gatewayId, config, restartRequired = true, createdBy = "admin" }) {
     const latest = this.getLatestConfig(gatewayId);
     const version = (latest?.version ?? 0) + 1;
@@ -364,9 +375,37 @@ export class HardwareStore {
     return this.getLatestConfig(gatewayId);
   }
 
-  updateConfigStatus({ gatewayId, version, status, message = "", appVersion = "" }) {
+  updateConfigStatus({ gatewayId, version, configHash, status, message = "", appVersion = "" }) {
     const now = new Date().toISOString();
-    const appliedVersion = status === "applied" ? version : this.getGateway(gatewayId)?.appliedConfigVersion;
+    const configVersion = this.getConfigVersion(gatewayId, version);
+
+    if (!configVersion) {
+      throw storeHttpError(404, `Config version ${version} not found for gateway ${gatewayId}`);
+    }
+
+    if (configVersion.configHash !== configHash) {
+      throw storeHttpError(400, "config_hash does not match config_version");
+    }
+
+    const gateway = this.getGateway(gatewayId);
+    if (isStaleConfigStatus(gateway, version, status)) {
+      this.db.prepare(`
+        UPDATE gateways
+        SET app_version = COALESCE(NULLIF(?, ''), app_version),
+            last_seen_at = ?,
+            status = 'online',
+            updated_at = ?
+        WHERE id = ?
+      `).run(appVersion ?? "", now, now, gatewayId);
+
+      return {
+        ignored: true,
+        reason: "stale_config_status",
+        gateway: this.getGateway(gatewayId),
+      };
+    }
+
+    const appliedVersion = status === "applied" ? version : gateway?.appliedConfigVersion;
 
     this.db.prepare(`
       UPDATE gateways
@@ -380,7 +419,10 @@ export class HardwareStore {
       WHERE id = ?
     `).run(appliedVersion ?? null, status, message ?? "", appVersion ?? "", now, now, gatewayId);
 
-    return this.getGateway(gatewayId);
+    return {
+      ignored: false,
+      gateway: this.getGateway(gatewayId),
+    };
   }
 
   insertTelemetry(gatewayId, records) {
@@ -1155,6 +1197,21 @@ function scheduleConflictLabel(command) {
     return `${target} weekly ${Array.isArray(schedule.daysOfWeek) ? schedule.daysOfWeek.join(",") : ""} ${schedule.timeOfDay || ""}-${schedule.endTimeOfDay || ""}`;
   }
   return `${target} ${schedule.mode || "schedule"} ${schedule.timeOfDay || ""}-${schedule.endTimeOfDay || ""}`;
+}
+
+function isStaleConfigStatus(gateway, version, status) {
+  const desiredVersion = Number(gateway?.desiredConfigVersion || 0);
+  const appliedVersion = Number(gateway?.appliedConfigVersion || 0);
+
+  return version < desiredVersion
+    || version < appliedVersion
+    || (version === appliedVersion && status !== "applied");
+}
+
+function storeHttpError(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
 }
 
 function sameControlTarget(left, right) {

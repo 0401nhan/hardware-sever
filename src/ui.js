@@ -318,7 +318,7 @@ export function renderLoginPage() {
         loginButton: "Đăng nhập",
         showPassword: "Hiện mật khẩu",
         hidePassword: "Ẩn mật khẩu",
-        invalidLogin: "Tài khoản hoặc mật khẩu không đúng",
+        invalidLogin: "Sai tài khoản hoặc mật khẩu",
         loginFailed: "Đăng nhập thất bại",
       },
     };
@@ -2516,13 +2516,13 @@ export function renderDashboardPage({ publicUrl }) {
     <div class="workspace">
       <header class="topbar">
         <div class="topbar-title">
-          <strong id="homePageTitle">Active Sites</strong>
-          <span id="homePageSubtitle">Connected gateway sites and current status</span>
+          <strong id="homePageTitle">Site</strong>
+          <span id="homePageSubtitle">Trạng thái gateway, telemetry và cấu hình IPC</span>
         </div>
         <div class="topbar-meta">
-          <span class="topbar-item">All Sites</span>
-          <button id="homeRefreshBtn" class="subtle icon-only" type="button" title="Refresh sites" aria-label="Refresh sites"><svg class="app-icon"><use href="#icon-refresh"></use></svg><span class="visually-hidden">Refresh sites</span></button>
-          <button id="homeLogoutBtn" class="subtle icon-only" type="button" title="Logout" aria-label="Logout"><svg class="app-icon"><use href="#icon-log-out"></use></svg><span class="visually-hidden">Logout</span></button>
+          <span class="topbar-item">Tất cả site</span>
+          <button id="homeRefreshBtn" class="subtle icon-only" type="button" title="Làm mới site" aria-label="Làm mới site"><svg class="app-icon"><use href="#icon-refresh"></use></svg><span class="visually-hidden">Làm mới site</span></button>
+          <button id="homeLogoutBtn" class="subtle icon-only" type="button" title="Đăng xuất" aria-label="Đăng xuất"><svg class="app-icon"><use href="#icon-log-out"></use></svg><span class="visually-hidden">Đăng xuất</span></button>
         </div>
       </header>
       <main class="content">
@@ -2531,7 +2531,7 @@ export function renderDashboardPage({ publicUrl }) {
             <div class="panel-title-row">
               <div>
                 <h2 class="panel-title">Site</h2>
-                <p>Connected gateway sites. Use Remote to open the gateway UI.</p>
+                <p>Trạng thái gateway, telemetry và cấu hình IPC.</p>
               </div>
             </div>
             <div id="gatewayHomeGrid" class="gateway-grid"></div>
@@ -2605,8 +2605,8 @@ export function renderDashboardPage({ publicUrl }) {
       <header class="topbar">
         <button class="menu-button" type="button" data-tab-target="generalInformation" aria-label="Menu tổng quan"><svg class="app-icon"><use href="#icon-menu"></use></svg></button>
         <div class="topbar-title">
-          <strong id="activePageTitle">Overview</strong>
-          <span id="activePageSubtitle">Connection status của từng Modbus device</span>
+          <strong id="activePageTitle">Tổng quan</strong>
+          <span id="activePageSubtitle">Trạng thái gateway, telemetry và cấu hình IPC</span>
         </div>
         <div class="topbar-meta">
           <div class="topbar-system" aria-label="Cảnh báo runtime">
@@ -3250,7 +3250,7 @@ export function renderDashboardPage({ publicUrl }) {
       rawYamlSubtab: "settingCommunication",
     };
     const pageLabels = {
-      stationDeviceOverviewSubtab: ["Overview", "Connection status của từng Modbus device"],
+      stationDeviceOverviewSubtab: ["Tổng quan", "Trạng thái gateway, telemetry và cấu hình IPC"],
       deviceMonitoringTab: ["Device Monitoring", "Latest Modbus data và raw register"],
       inverterControlTab: ["Station Control", "Chạy Modbus command theo station hoặc inverter"],
       gatewaySubtab: ["Gateway", "Upload server, queue và polling cycle"],
@@ -3265,7 +3265,7 @@ export function renderDashboardPage({ publicUrl }) {
       systemTab: ["System", "Thông tin IPC gateway và service status"],
     };
     const homePageLabels = {
-      homeOverviewPanel: ["Active Sites", "Connected gateway sites and current status"],
+      homeOverviewPanel: ["Site", "Trạng thái gateway, telemetry và cấu hình IPC"],
     };
 
     function translateAdminText(value) {

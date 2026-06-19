@@ -4626,7 +4626,7 @@ templates:
     type: inverter
     protocol: modbus-tcp
     pollIntervalMs: 10000
-    notes: Based on SMA_Modbus-TI-en-14, SMA Modbus Interface for Sunny Boy / Sunny Tripower. SMA Speedwire uses Modbus TCP port 502 and Unit ID 3. Addresses are direct Modbus register addresses from the ADR DEC column, do not subtract 1. Includes read-only identity, status, AC/DC, energy, battery/hybrid, network, and PV energy telemetry. Grid Guard/RW control registers are intentionally not included in automatic polling.
+    notes: Based on SMA_Modbus-TI-en-14, SMA Modbus Interface for Sunny Boy / Sunny Tripower. SMA Speedwire uses Modbus TCP port 502 and Unit ID 3. Addresses are direct Modbus register addresses from the ADR DEC column, do not subtract 1. Includes read-only identity, status, AC/DC, energy, battery/hybrid, network, PV energy telemetry, and Grid Management Services control registers. Control registers are marked access rw/wo and poll false so they are available for explicit writes but are not read during automatic polling.
     registers:
       - name: modbus_profile_version
         function: holding
@@ -5720,6 +5720,222 @@ templates:
         type: uint32
         scale: 1
         unit: Wh
+      - name: sma_reactive_power_setpoint_percent_coarse
+        function: holding
+        access: wo
+        poll: false
+        address: 40015
+        length: 1
+        type: int16
+        scale: 1
+        unit: "%"
+      - name: sma_active_power_setpoint_percent_coarse
+        function: holding
+        access: wo
+        poll: false
+        address: 40016
+        length: 1
+        type: int16
+        scale: 1
+        unit: "%"
+      - name: sma_quick_shutdown_command
+        function: holding
+        access: wo
+        poll: false
+        address: 40018
+        length: 2
+        type: uint32
+        scale: 1
+        unit: ""
+      - name: sma_reactive_power_setpoint_percent
+        function: holding
+        access: wo
+        poll: false
+        address: 40022
+        length: 1
+        type: int16
+        scale: 0.01
+        unit: "%"
+      - name: active_power_percentage_derating_percent
+        function: holding
+        access: wo
+        poll: false
+        address: 40023
+        length: 1
+        type: int16
+        scale: 0.01
+        unit: "%"
+      - name: sma_displacement_power_factor
+        function: holding
+        access: wo
+        poll: false
+        address: 40024
+        length: 1
+        type: uint16
+        scale: 0.0001
+        unit: ""
+      - name: sma_cos_phi_excitation_type
+        function: holding
+        access: wo
+        poll: false
+        address: 40025
+        length: 2
+        type: uint32
+        scale: 1
+        unit: ""
+      - name: sma_active_power_setpoint_a
+        function: holding
+        access: wo
+        poll: false
+        address: 40143
+        length: 2
+        type: int32
+        scale: 0.01
+        unit: A
+      - name: sma_reactive_current_setpoint_a
+        function: holding
+        access: wo
+        poll: false
+        address: 40145
+        length: 2
+        type: int32
+        scale: 0.01
+        unit: A
+      - name: sma_generator_active_power_limitation_percent
+        function: holding
+        access: wo
+        poll: false
+        address: 40147
+        length: 2
+        type: uint32
+        scale: 0.01
+        unit: "%"
+      - name: sma_active_power_setpoint_w
+        function: holding
+        access: wo
+        poll: false
+        address: 40149
+        length: 2
+        type: int32
+        scale: 1
+        unit: W
+      - name: sma_system_control
+        function: holding
+        access: wo
+        poll: false
+        address: 40151
+        length: 2
+        type: uint32
+        scale: 1
+        unit: ""
+      - name: sma_reactive_power_setpoint_var
+        function: holding
+        access: wo
+        poll: false
+        address: 40153
+        length: 2
+        type: int32
+        scale: 1
+        unit: VAr
+      - name: sma_reactive_power_gradient
+        function: holding
+        access: rw
+        poll: false
+        address: 40482
+        length: 2
+        type: uint32
+        scale: 1
+        unit: ""
+      - name: sma_active_power_gradient_activation
+        function: holding
+        access: rw
+        poll: false
+        address: 40484
+        length: 2
+        type: uint32
+        scale: 1
+        unit: ""
+      - name: sma_reactive_power_qv_gradient_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 40490
+        length: 2
+        type: uint32
+        scale: 0.1
+        unit: "%"
+      - name: sma_direct_marketer_reactive_power_percent
+        function: holding
+        access: wo
+        poll: false
+        address: 40492
+        length: 1
+        type: int16
+        scale: 0.01
+        unit: "%"
+      - name: sma_direct_marketer_active_power_percent
+        function: holding
+        access: wo
+        poll: false
+        address: 40493
+        length: 1
+        type: int16
+        scale: 0.01
+        unit: "%"
+      - name: sma_direct_marketer_displacement_power_factor
+        function: holding
+        access: wo
+        poll: false
+        address: 40494
+        length: 1
+        type: uint16
+        scale: 0.0001
+        unit: ""
+      - name: sma_direct_marketer_excitation_type
+        function: holding
+        access: wo
+        poll: false
+        address: 40495
+        length: 2
+        type: uint32
+        scale: 1
+        unit: ""
+      - name: sma_cos_phi_setpoint
+        function: holding
+        access: wo
+        poll: false
+        address: 40999
+        length: 2
+        type: int32
+        scale: 0.0001
+        unit: ""
+      - name: sma_absent_active_power_limitation_mode
+        function: holding
+        access: rw
+        poll: false
+        address: 41193
+        length: 2
+        type: uint32
+        scale: 1
+        unit: ""
+      - name: sma_absent_active_power_limitation_timeout_s
+        function: holding
+        access: rw
+        poll: false
+        address: 41195
+        length: 2
+        type: uint32
+        scale: 1
+        unit: s
+      - name: sma_absent_active_power_fallback_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 41197
+        length: 2
+        type: uint32
+        scale: 0.01
+        unit: "%"
   - id: sungrow_string_inverter
     label: Sungrow - String Inverter
     manufacturer: Sungrow
@@ -5728,7 +5944,7 @@ templates:
     type: inverter
     protocol: modbus-rtu
     pollIntervalMs: 5000
-    notes: Based on Sungrow Communication Protocol of PV Grid-Connected String Inverters V1.1.53, cross-checked with V1.1.2. Sungrow document addresses must be accessed as protocol address minus 1; this template already stores the adjusted Modbus PDU address. Read-only running data uses 3x/input registers and function code 0x04. U32/S32 values use low-high word order. Includes core telemetry, MPPT1-MPPT16, meter energy, PID status, and string current 1-32. RW/setting registers are intentionally not included in automatic polling.
+    notes: Based on Sungrow Communication Protocol of PV Grid-Connected String Inverters V1.1.53, cross-checked with V1.1.2. Sungrow document addresses must be accessed as protocol address minus 1; this template already stores the adjusted Modbus PDU address. Read-only running data uses 3x/input registers and function code 0x04. U32/S32 values use low-high word order. Includes core telemetry, MPPT1-MPPT16, meter energy, PID status, string current 1-32, and parameter setting/control registers. Control registers are marked access rw/wo and poll false so they are available for explicit writes but are not read during automatic polling.
     registers:
       - name: protocol_number
         function: input
@@ -6599,6 +6815,303 @@ templates:
         type: uint16
         scale: 0.01
         unit: A
+      - name: sungrow_system_clock_year
+        function: holding
+        access: rw
+        poll: false
+        address: 4999
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: sungrow_system_clock_month
+        function: holding
+        access: rw
+        poll: false
+        address: 5000
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: sungrow_system_clock_day
+        function: holding
+        access: rw
+        poll: false
+        address: 5001
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: sungrow_system_clock_hour
+        function: holding
+        access: rw
+        poll: false
+        address: 5002
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: sungrow_system_clock_minute
+        function: holding
+        access: rw
+        poll: false
+        address: 5003
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: sungrow_system_clock_second
+        function: holding
+        access: rw
+        poll: false
+        address: 5004
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: sungrow_start_stop_command
+        function: holding
+        access: wo
+        poll: false
+        address: 5005
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: sungrow_power_limitation_switch
+        function: holding
+        access: rw
+        poll: false
+        address: 5006
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: active_power_percentage_derating_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 5007
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: "%"
+      - name: sungrow_export_power_limitation_switch
+        function: holding
+        access: rw
+        poll: false
+        address: 5009
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: sungrow_export_power_limitation_value_raw
+        function: holding
+        access: rw
+        poll: false
+        address: 5010
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: sungrow_current_transformer_output_current_a
+        function: holding
+        access: rw
+        poll: false
+        address: 5011
+        length: 1
+        type: uint16
+        scale: 1
+        unit: A
+      - name: sungrow_current_transformer_range_a
+        function: holding
+        access: rw
+        poll: false
+        address: 5012
+        length: 1
+        type: uint16
+        scale: 1
+        unit: A
+      - name: sungrow_current_transformer_source
+        function: holding
+        access: rw
+        poll: false
+        address: 5013
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: sungrow_export_power_limitation_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 5014
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: "%"
+      - name: sungrow_installed_pv_power_kw
+        function: holding
+        access: rw
+        poll: false
+        address: 5015
+        length: 1
+        type: uint16
+        scale: 0.01
+        unit: kW
+      - name: sungrow_power_factor_setting
+        function: holding
+        access: rw
+        poll: false
+        address: 5018
+        length: 1
+        type: int16
+        scale: 0.001
+        unit: ""
+      - name: sungrow_active_power_overload_switch
+        function: holding
+        access: rw
+        poll: false
+        address: 5019
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: sungrow_local_remote_control_raw
+        function: holding
+        access: rw
+        poll: false
+        address: 5020
+        length: 13
+        type: bytes
+        scale: 1
+        unit: ""
+      - name: sungrow_night_svg_switch
+        function: holding
+        access: rw
+        poll: false
+        address: 5034
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: sungrow_reactive_power_adjustment_mode
+        function: holding
+        access: rw
+        poll: false
+        address: 5035
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: sungrow_reactive_power_percentage_setting
+        function: holding
+        access: rw
+        poll: false
+        address: 5036
+        length: 1
+        type: int16
+        scale: 0.1
+        unit: "%"
+      - name: fixed_active_power_derating_kw
+        function: holding
+        access: rw
+        poll: false
+        address: 5038
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: kW
+      - name: sungrow_reactive_power_adjustment_kvar
+        function: holding
+        access: rw
+        poll: false
+        address: 5039
+        length: 1
+        type: int16
+        scale: 0.1
+        unit: kVar
+      - name: sungrow_pid_recovery_switch
+        function: holding
+        access: rw
+        poll: false
+        address: 5040
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: sungrow_anti_pid_switch
+        function: holding
+        access: rw
+        poll: false
+        address: 5041
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: sungrow_full_day_pid_suppression_switch
+        function: holding
+        access: rw
+        poll: false
+        address: 5042
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: sungrow_qp_curve_1_raw
+        function: holding
+        access: rw
+        poll: false
+        address: 5047
+        length: 30
+        type: bytes
+        scale: 1
+        unit: ""
+      - name: sungrow_qu_curve_1_raw
+        function: holding
+        access: rw
+        poll: false
+        address: 5077
+        length: 38
+        type: bytes
+        scale: 1
+        unit: ""
+      - name: sungrow_qp_curve_2_raw
+        function: holding
+        access: rw
+        poll: false
+        address: 5115
+        length: 19
+        type: bytes
+        scale: 1
+        unit: ""
+      - name: sungrow_qu_curve_2_raw
+        function: holding
+        access: rw
+        poll: false
+        address: 5134
+        length: 20
+        type: bytes
+        scale: 1
+        unit: ""
+      - name: sungrow_quick_grid_dispatch_mode
+        function: holding
+        access: rw
+        poll: false
+        address: 32568
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: sungrow_swift_grid_dispatch_mode
+        function: holding
+        access: rw
+        poll: false
+        address: 32569
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
   - id: goodwe_non_mt_grid_tied
     label: GoodWe - Non-MT Grid-tied
     manufacturer: GoodWe
@@ -6607,8 +7120,322 @@ templates:
     type: inverter
     protocol: modbus-rtu
     pollIntervalMs: 5000
-    notes: Based on GoodWe Modbus Protocol of Inverter Grid-tied MTG2/SMT/SDTG2/MS/DNS/XS series customer version. GoodWe uses Modbus RTU function 03H for reads and the table addresses are direct register addresses. This template covers the non-MT read-only telemetry range 544-566 plus identity registers. RW/WO control registers are intentionally not included in automatic polling.
+    notes: Based on GoodWe Modbus Protocol of Inverter Grid-tied MTG2/SMT/SDTG2/MS/DNS/XS series customer version. GoodWe uses Modbus RTU function 03H for reads and the table addresses are direct register addresses. This template covers the non-MT telemetry range 544-566, identity registers, and RW/WO control registers from the common device table plus PF/work-mode controls. Control registers are marked access rw/wo and poll false so they are available for explicit writes but are not read during automatic polling.
     registers:
+      - name: goodwe_power_on_voltage_v
+        function: holding
+        access: rw
+        poll: false
+        address: 0
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: V
+      - name: goodwe_reconnect_time_s
+        function: holding
+        access: rw
+        poll: false
+        address: 1
+        length: 1
+        type: uint16
+        scale: 1
+        unit: s
+      - name: goodwe_grid_voltage_lower_limit_v
+        function: holding
+        access: rw
+        poll: false
+        address: 2
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: V
+      - name: goodwe_grid_voltage_upper_limit_v
+        function: holding
+        access: rw
+        poll: false
+        address: 3
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: V
+      - name: goodwe_grid_frequency_lower_limit_hz
+        function: holding
+        access: rw
+        poll: false
+        address: 4
+        length: 1
+        type: uint16
+        scale: 0.01
+        unit: Hz
+      - name: goodwe_grid_frequency_upper_limit_hz
+        function: holding
+        access: rw
+        poll: false
+        address: 5
+        length: 1
+        type: uint16
+        scale: 0.01
+        unit: Hz
+      - name: goodwe_rtc_year_month
+        function: holding
+        access: rw
+        poll: false
+        address: 16
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: goodwe_rtc_day_hour
+        function: holding
+        access: rw
+        poll: false
+        address: 17
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: goodwe_rtc_minute_second
+        function: holding
+        access: rw
+        poll: false
+        address: 18
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: active_power_percentage_derating_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 256
+        length: 1
+        type: uint16
+        scale: 1
+        unit: "%"
+      - name: goodwe_pf_reactive_power_adjust_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 257
+        length: 1
+        type: uint16
+        scale: 1
+        unit: "%"
+      - name: goodwe_reactive_power_adjust_var
+        function: holding
+        access: rw
+        poll: false
+        address: 258
+        length: 2
+        type: int32
+        scale: 1
+        unit: Var
+      - name: goodwe_max_reactive_power_var
+        function: holding
+        poll: false
+        address: 260
+        length: 2
+        type: uint32
+        scale: 1
+        unit: Var
+      - name: goodwe_export_power_limit_adjust_range_percent
+        function: holding
+        access: wo
+        poll: false
+        address: 262
+        length: 1
+        type: int16
+        scale: 1
+        unit: "%"
+      - name: goodwe_taiwan_safety_vpset_v
+        function: holding
+        access: rw
+        poll: false
+        address: 263
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: V
+      - name: goodwe_taiwan_safety_pf_adjust
+        function: holding
+        access: rw
+        poll: false
+        address: 264
+        length: 1
+        type: uint16
+        scale: 0.01
+        unit: ""
+      - name: goodwe_taiwan_safety_reactive_power_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 265
+        length: 1
+        type: int16
+        scale: 1
+        unit: "%"
+      - name: goodwe_taiwan_safety_active_power_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 266
+        length: 1
+        type: uint16
+        scale: 1
+        unit: "%"
+      - name: goodwe_export_power_limit_communication_timeout_s
+        function: holding
+        access: rw
+        poll: false
+        address: 267
+        length: 1
+        type: uint16
+        scale: 1
+        unit: s
+      - name: goodwe_taiwan_vpc_curve_switch
+        function: holding
+        access: rw
+        poll: false
+        address: 268
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: startup_command
+        function: holding
+        access: wo
+        poll: false
+        address: 288
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: shutdown_command
+        function: holding
+        access: wo
+        poll: false
+        address: 289
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: goodwe_restart_command
+        function: holding
+        access: wo
+        poll: false
+        address: 290
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: goodwe_export_power_limit_switch
+        function: holding
+        access: rw
+        poll: false
+        address: 291
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: goodwe_export_power_limit_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 292
+        length: 1
+        type: uint16
+        scale: 1
+        unit: "%"
+      - name: goodwe_export_power_limit_percent_direct
+        function: holding
+        access: rw
+        poll: false
+        address: 293
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: "%"
+      - name: goodwe_automatic_reactive_power_adjust
+        function: holding
+        access: wo
+        poll: false
+        address: 304
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: goodwe_automatic_reactive_power_adjust_id
+        function: holding
+        access: wo
+        poll: false
+        address: 305
+        length: 2
+        type: uint32
+        scale: 1
+        unit: ""
+      - name: goodwe_battery_mode_switch_brazil
+        function: holding
+        access: wo
+        poll: false
+        address: 307
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: goodwe_battery_voltage_set_brazil_v
+        function: holding
+        access: wo
+        poll: false
+        address: 308
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: V
+      - name: goodwe_shadow_mode_switch
+        function: holding
+        access: rw
+        poll: false
+        address: 312
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: goodwe_power_factor_setpoint
+        function: holding
+        access: rw
+        poll: false
+        address: 2000
+        length: 1
+        type: int16
+        scale: 0.001
+        unit: ""
+      - name: goodwe_work_mode_control
+        function: holding
+        access: rw
+        poll: false
+        address: 2001
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: goodwe_constant_reactive_power_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 2002
+        length: 1
+        type: int16
+        scale: 0.1
+        unit: "%"
+      - name: goodwe_constant_active_power_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 2003
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: "%"
       - name: device_serial_number
         function: holding
         address: 512
@@ -6771,8 +7598,322 @@ templates:
     type: inverter
     protocol: modbus-rtu
     pollIntervalMs: 5000
-    notes: Based on GoodWe Modbus Protocol of Inverter Grid-tied MTG2/SMT/SDTG2/MS/DNS/XS series customer version. GoodWe uses Modbus RTU function 03H for reads and the table addresses are direct register addresses. This template covers the MT/SMT read-only telemetry range 768-896 plus identity registers. RW/WO control registers are intentionally not included in automatic polling.
+    notes: Based on GoodWe Modbus Protocol of Inverter Grid-tied MTG2/SMT/SDTG2/MS/DNS/XS series customer version. GoodWe uses Modbus RTU function 03H for reads and the table addresses are direct register addresses. This template covers the MT/SMT telemetry range 768-896, identity registers, and RW/WO control registers from the common device table plus PF/work-mode controls. Control registers are marked access rw/wo and poll false so they are available for explicit writes but are not read during automatic polling.
     registers:
+      - name: goodwe_power_on_voltage_v
+        function: holding
+        access: rw
+        poll: false
+        address: 0
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: V
+      - name: goodwe_reconnect_time_s
+        function: holding
+        access: rw
+        poll: false
+        address: 1
+        length: 1
+        type: uint16
+        scale: 1
+        unit: s
+      - name: goodwe_grid_voltage_lower_limit_v
+        function: holding
+        access: rw
+        poll: false
+        address: 2
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: V
+      - name: goodwe_grid_voltage_upper_limit_v
+        function: holding
+        access: rw
+        poll: false
+        address: 3
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: V
+      - name: goodwe_grid_frequency_lower_limit_hz
+        function: holding
+        access: rw
+        poll: false
+        address: 4
+        length: 1
+        type: uint16
+        scale: 0.01
+        unit: Hz
+      - name: goodwe_grid_frequency_upper_limit_hz
+        function: holding
+        access: rw
+        poll: false
+        address: 5
+        length: 1
+        type: uint16
+        scale: 0.01
+        unit: Hz
+      - name: goodwe_rtc_year_month
+        function: holding
+        access: rw
+        poll: false
+        address: 16
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: goodwe_rtc_day_hour
+        function: holding
+        access: rw
+        poll: false
+        address: 17
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: goodwe_rtc_minute_second
+        function: holding
+        access: rw
+        poll: false
+        address: 18
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: active_power_percentage_derating_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 256
+        length: 1
+        type: uint16
+        scale: 1
+        unit: "%"
+      - name: goodwe_pf_reactive_power_adjust_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 257
+        length: 1
+        type: uint16
+        scale: 1
+        unit: "%"
+      - name: goodwe_reactive_power_adjust_var
+        function: holding
+        access: rw
+        poll: false
+        address: 258
+        length: 2
+        type: int32
+        scale: 1
+        unit: Var
+      - name: goodwe_max_reactive_power_var
+        function: holding
+        poll: false
+        address: 260
+        length: 2
+        type: uint32
+        scale: 1
+        unit: Var
+      - name: goodwe_export_power_limit_adjust_range_percent
+        function: holding
+        access: wo
+        poll: false
+        address: 262
+        length: 1
+        type: int16
+        scale: 1
+        unit: "%"
+      - name: goodwe_taiwan_safety_vpset_v
+        function: holding
+        access: rw
+        poll: false
+        address: 263
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: V
+      - name: goodwe_taiwan_safety_pf_adjust
+        function: holding
+        access: rw
+        poll: false
+        address: 264
+        length: 1
+        type: uint16
+        scale: 0.01
+        unit: ""
+      - name: goodwe_taiwan_safety_reactive_power_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 265
+        length: 1
+        type: int16
+        scale: 1
+        unit: "%"
+      - name: goodwe_taiwan_safety_active_power_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 266
+        length: 1
+        type: uint16
+        scale: 1
+        unit: "%"
+      - name: goodwe_export_power_limit_communication_timeout_s
+        function: holding
+        access: rw
+        poll: false
+        address: 267
+        length: 1
+        type: uint16
+        scale: 1
+        unit: s
+      - name: goodwe_taiwan_vpc_curve_switch
+        function: holding
+        access: rw
+        poll: false
+        address: 268
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: startup_command
+        function: holding
+        access: wo
+        poll: false
+        address: 288
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: shutdown_command
+        function: holding
+        access: wo
+        poll: false
+        address: 289
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: goodwe_restart_command
+        function: holding
+        access: wo
+        poll: false
+        address: 290
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: goodwe_export_power_limit_switch
+        function: holding
+        access: rw
+        poll: false
+        address: 291
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: goodwe_export_power_limit_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 292
+        length: 1
+        type: uint16
+        scale: 1
+        unit: "%"
+      - name: goodwe_export_power_limit_percent_direct
+        function: holding
+        access: rw
+        poll: false
+        address: 293
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: "%"
+      - name: goodwe_automatic_reactive_power_adjust
+        function: holding
+        access: wo
+        poll: false
+        address: 304
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: goodwe_automatic_reactive_power_adjust_id
+        function: holding
+        access: wo
+        poll: false
+        address: 305
+        length: 2
+        type: uint32
+        scale: 1
+        unit: ""
+      - name: goodwe_battery_mode_switch_brazil
+        function: holding
+        access: wo
+        poll: false
+        address: 307
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: goodwe_battery_voltage_set_brazil_v
+        function: holding
+        access: wo
+        poll: false
+        address: 308
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: V
+      - name: goodwe_shadow_mode_switch
+        function: holding
+        access: rw
+        poll: false
+        address: 312
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: goodwe_power_factor_setpoint
+        function: holding
+        access: rw
+        poll: false
+        address: 2000
+        length: 1
+        type: int16
+        scale: 0.001
+        unit: ""
+      - name: goodwe_work_mode_control
+        function: holding
+        access: rw
+        poll: false
+        address: 2001
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: goodwe_constant_reactive_power_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 2002
+        length: 1
+        type: int16
+        scale: 0.1
+        unit: "%"
+      - name: goodwe_constant_active_power_percent
+        function: holding
+        access: rw
+        poll: false
+        address: 2003
+        length: 1
+        type: uint16
+        scale: 0.1
+        unit: "%"
       - name: device_serial_number
         function: holding
         address: 512
@@ -7299,7 +8440,7 @@ templates:
     type: inverter
     protocol: modbus-rtu
     pollIntervalMs: 5000
-    notes: Based on RS485_MODBUS RTU Hybrid Inverter Protocol translated 2020-09-15. Solis 3x operating registers use Modbus function 0x04/input and the document addresses are direct message-frame addresses, so no offset is applied. Includes model, identity, generation, PV, AC, battery, backup, EPM, meter1, and meter2 read-only telemetry. Write/control registers are intentionally not included in automatic polling.
+    notes: Based on RS485_MODBUS RTU Hybrid Inverter Protocol translated 2020-09-15. Solis 3x operating registers use Modbus function 0x04/input and the document addresses are direct message-frame addresses, so no offset is applied. Includes model, identity, generation, PV, AC, battery, backup, EPM, meter1, and meter2 read-only telemetry. The bundled public Solis document is marked without the full control table; 4x/coil write controls are not added until an authoritative read-write map is available.
     registers:
       - name: solis_model_definition
         function: input

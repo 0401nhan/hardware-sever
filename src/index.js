@@ -149,17 +149,36 @@ server = http.createServer(async (req, res) => {
     if (req.method === "POST" && pathname === "/api/gateway/config/status") {
       const body = await readJsonBody(req);
       await authenticateGateway(req, body.gateway_id);
-      const gateway = await store.updateConfigStatus({
+      const status = String(body.status || "").trim();
+      const version = Number.parseInt(body.config_version || "0", 10);
+      const configHash = String(body.config_hash ?? body.configHash ?? "").trim();
+
+      if (!["pending", "applied", "failed"].includes(status)) {
+        throw httpError(400, "status must be pending, applied, or failed");
+      }
+
+      if (!Number.isInteger(version) || version < 1) {
+        throw httpError(400, "config_version must be a positive integer");
+      }
+
+      if (!configHash) {
+        throw httpError(400, "config_hash is required");
+      }
+
+      const result = await store.updateConfigStatus({
         gatewayId: body.gateway_id,
-        version: Number.parseInt(body.config_version || "0", 10),
-        status: String(body.status || ""),
+        version,
+        configHash,
+        status,
         message: body.message || "",
         appVersion: body.app_version || "",
       });
 
       return sendJson(res, 200, {
         ok: true,
-        gateway,
+        ignored: Boolean(result.ignored),
+        ...(result.reason ? { reason: result.reason } : {}),
+        gateway: result.gateway,
       });
     }
 
@@ -387,7 +406,8 @@ server = http.createServer(async (req, res) => {
       const latest = await store.addConfigVersion({
         gatewayId,
         config: body.config,
-        restartRequired: body.restart_required !== false,
+        // Gateway runtime components are initialized from config at startup; remote config is not hot-reloadable.
+        restartRequired: true,
         createdBy: config.adminUsername,
       });
 

@@ -168,6 +168,11 @@ export class MongoHardwareStore {
     return row ? mapConfigDoc(row) : null;
   }
 
+  async getConfigVersion(gatewayId, version) {
+    const row = await this.configVersions.findOne({ gatewayId, version });
+    return row ? mapConfigDoc(row) : null;
+  }
+
   async addConfigVersion({ gatewayId, config, restartRequired = true, createdBy = "admin" }) {
     const configJson = stableJson(config);
     const configHash = sha256(configJson);
@@ -202,9 +207,36 @@ export class MongoHardwareStore {
     throw new Error("Failed to create MongoDB config version");
   }
 
-  async updateConfigStatus({ gatewayId, version, status, message = "", appVersion = "" }) {
+  async updateConfigStatus({ gatewayId, version, configHash, status, message = "", appVersion = "" }) {
     const now = new Date().toISOString();
+    const configVersion = await this.getConfigVersion(gatewayId, version);
+
+    if (!configVersion) {
+      throw storeHttpError(404, `Config version ${version} not found for gateway ${gatewayId}`);
+    }
+
+    if (configVersion.configHash !== configHash) {
+      throw storeHttpError(400, "config_hash does not match config_version");
+    }
+
     const gateway = await this.getGateway(gatewayId);
+    if (isStaleConfigStatus(gateway, version, status)) {
+      const set = {
+        lastSeenAt: now,
+        status: "online",
+        updatedAt: now,
+      };
+
+      if (appVersion) set.appVersion = appVersion;
+      await this.gateways.updateOne({ _id: gatewayId }, { $set: set });
+
+      return {
+        ignored: true,
+        reason: "stale_config_status",
+        gateway: await this.getGateway(gatewayId),
+      };
+    }
+
     const appliedVersion = status === "applied" ? version : gateway?.appliedConfigVersion;
     const set = {
       appliedConfigVersion: appliedVersion ?? null,
@@ -217,7 +249,10 @@ export class MongoHardwareStore {
 
     if (appVersion) set.appVersion = appVersion;
     await this.gateways.updateOne({ _id: gatewayId }, { $set: set });
-    return this.getGateway(gatewayId);
+    return {
+      ignored: false,
+      gateway: await this.getGateway(gatewayId),
+    };
   }
 
   async insertTelemetry(gatewayId, records) {
@@ -772,6 +807,21 @@ function mapGatewayDoc(row, offlineAfterMs, now) {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+function isStaleConfigStatus(gateway, version, status) {
+  const desiredVersion = Number(gateway?.desiredConfigVersion || 0);
+  const appliedVersion = Number(gateway?.appliedConfigVersion || 0);
+
+  return version < desiredVersion
+    || version < appliedVersion
+    || (version === appliedVersion && status !== "applied");
+}
+
+function storeHttpError(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
 }
 
 async function dropMongoIndexIfExists(collection, indexName) {

@@ -177,7 +177,7 @@ test("gateway config check and status report use the latest admin config", async
   });
   assert.equal(update.status, 200);
   assert.equal(update.body.version, 2);
-  assert.equal(update.body.restartRequired, false);
+  assert.equal(update.body.restartRequired, true);
 
   const unchanged = await requestJson(app.baseUrl, "/api/gateway/config/check", {
     method: "POST",
@@ -203,6 +203,7 @@ test("gateway config check and status report use the latest admin config", async
   assert.equal(changed.status, 200);
   assert.equal(changed.body.changed, true);
   assert.equal(changed.body.version, 2);
+  assert.equal(changed.body.restart_required, true);
   assert.equal(changed.body.config.gateway.pollLoopDelayMs, 300);
 
   const status = await requestJson(app.baseUrl, "/api/gateway/config/status", {
@@ -211,16 +212,88 @@ test("gateway config check and status report use the latest admin config", async
     body: {
       gateway_id: "GW-CONFIG-001",
       config_version: 2,
+      config_hash: update.body.configHash,
       status: "applied",
       message: "ok",
       app_version: "0.3.0",
     },
   });
   assert.equal(status.status, 200);
+  assert.equal(status.body.ignored, false);
   assert.equal(status.body.gateway.appliedConfigVersion, 2);
   assert.equal(status.body.gateway.lastConfigStatus, "applied");
   assert.equal(status.body.gateway.lastConfigMessage, "ok");
   assert.equal(status.body.gateway.appVersion, "0.3.0");
+
+  const badStatus = await requestJson(app.baseUrl, "/api/gateway/config/status", {
+    method: "POST",
+    token: "gateway-secret",
+    body: {
+      gateway_id: "GW-CONFIG-001",
+      config_version: 2,
+      config_hash: update.body.configHash,
+      status: "running",
+    },
+  });
+  assert.equal(badStatus.status, 400);
+  assert.match(badStatus.body.error, /status must be pending, applied, or failed/);
+
+  const badHash = await requestJson(app.baseUrl, "/api/gateway/config/status", {
+    method: "POST",
+    token: "gateway-secret",
+    body: {
+      gateway_id: "GW-CONFIG-001",
+      config_version: 2,
+      config_hash: "wrong-hash",
+      status: "applied",
+    },
+  });
+  assert.equal(badHash.status, 400);
+  assert.match(badHash.body.error, /config_hash does not match/);
+
+  const missingVersion = await requestJson(app.baseUrl, "/api/gateway/config/status", {
+    method: "POST",
+    token: "gateway-secret",
+    body: {
+      gateway_id: "GW-CONFIG-001",
+      config_version: 999,
+      config_hash: update.body.configHash,
+      status: "applied",
+    },
+  });
+  assert.equal(missingVersion.status, 404);
+
+  const newerConfig = structuredClone(nextConfig);
+  newerConfig.gateway.pollLoopDelayMs = 450;
+  const updateNewer = await requestJson(app.baseUrl, "/api/gateways/GW-CONFIG-001/config", {
+    method: "PUT",
+    cookie: sessionCookie,
+    body: {
+      config: newerConfig,
+    },
+  });
+  assert.equal(updateNewer.status, 200);
+  assert.equal(updateNewer.body.version, 3);
+
+  const staleStatus = await requestJson(app.baseUrl, "/api/gateway/config/status", {
+    method: "POST",
+    token: "gateway-secret",
+    body: {
+      gateway_id: "GW-CONFIG-001",
+      config_version: 2,
+      config_hash: update.body.configHash,
+      status: "failed",
+      message: "late failure",
+      app_version: "0.4.0",
+    },
+  });
+  assert.equal(staleStatus.status, 200);
+  assert.equal(staleStatus.body.ignored, true);
+  assert.equal(staleStatus.body.reason, "stale_config_status");
+  assert.equal(staleStatus.body.gateway.desiredConfigVersion, 3);
+  assert.equal(staleStatus.body.gateway.appliedConfigVersion, 2);
+  assert.equal(staleStatus.body.gateway.lastConfigStatus, "applied");
+  assert.equal(staleStatus.body.gateway.lastConfigMessage, "ok");
 });
 
 test("admin can queue inverter control commands for gateway execution", async (t) => {

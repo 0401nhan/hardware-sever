@@ -14,7 +14,9 @@ test("login page uses Vietnamese copy and no fake support links", () => {
   assert.match(html, />\s*Mật khẩu\s*</);
   assert.match(html, />Đăng nhập<\/button>/);
   assert.match(html, /Sai tài khoản hoặc mật khẩu/);
-  assert.doesNotMatch(html, /Username|Password|Forgot password\?|Request access|Sign in|Login failed/);
+  assert.match(html, /id="languageSelect"/);
+  assert.match(html, /value="en">English/);
+  assert.doesNotMatch(html, /Forgot password\?|Request access|Sign in/);
   assert.doesNotMatch(html, /class="form-links"/);
 });
 
@@ -156,7 +158,7 @@ test("dashboard starts at site list and remote disconnect returns home", () => {
   assert.match(html, /id="topWarningCount"/);
   assert.match(html, /id="topLossCount"/);
   assert.match(html, /data-subtab-target="stationsSubtab"/);
-  assert.match(html, /data-subtab-target="iec104Subtab"/);
+  assert.match(html, /href="#iec104Subtab" data-tab-target="iec104Tab"/);
   assert.match(html, /id="iec104Subtab"/);
   assert.match(html, /id="applyEvnIec104DefaultsBtn"/);
   assert.doesNotMatch(html, /id="evnRequiredRegistersBody"/);
@@ -180,7 +182,8 @@ test("dashboard starts at site list and remote disconnect returns home", () => {
   assert.match(html, /target\.id === "generateEvnIec104Btn"/);
   assert.match(html, /function collectStations\(\)/);
   assert.match(html, /function syncStationDeviceMembership\(\)/);
-  assert.doesNotMatch(html, /data-tab-target="iec104Tab"/);
+  assert.match(html, /function mountStandaloneIec104Tab\(\)/);
+  assert.match(html, /data-tab-target="iec104Tab"/);
   assert.match(html, /data-tab-target="storageSyncTab"/);
   assert.match(html, /data-tab-target="logsEventsTab"/);
   assert.match(html, /data-tab-target="systemTab"/);

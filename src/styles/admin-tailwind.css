@@ -387,6 +387,12 @@
   @apply inline-grid h-5 w-5 place-items-center rounded-full text-white;
 }
 
+.tailwind-ui .badge-dot .app-icon {
+  width: 0.6875rem;
+  height: 0.6875rem;
+  stroke-width: 2.4;
+}
+
 .tailwind-ui .badge-dot.green {
   @apply bg-green-600;
 }
