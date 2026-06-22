@@ -55,6 +55,9 @@ test("dashboard renders inverter control actions", () => {
   assert.match(html, /function collectPowerLimitTiming\(/);
   assert.match(html, /function updatePowerLimitValueConstraints\(/);
   assert.match(html, /function collectControlSchedule\(/);
+  assert.match(html, /function isControlCapableDevice\(/);
+  assert.match(html, /function hasBuiltInControlProfile\(/);
+  assert.match(html, /function deviceIdentityText\(/);
   assert.match(html, /data-field="baudRate" type="number" min="1" step="1"/);
   assert.match(html, /data-field="dataBits" type="number" min="5" max="8" step="1"/);
   assert.match(html, /data-field="address" type="number" min="0" max="65535"/);
@@ -107,6 +110,7 @@ test("dashboard starts at site list and remote disconnect returns home", () => {
   assert.match(html, /class="sidebar-logo"/);
   assert.match(html, /\.sidebar-logo,\s*\.brand-mark \{/);
   assert.match(html, /\.sidebar-logo img,\s*\.brand-mark img \{/);
+  assert.match(html, /id="sidebarLanStatus"[\s\S]*?<use href="#icon-network"><\/use>/);
   assert.doesNotMatch(html, /<span class="brand-mark"><img src="\/logo\/logo-smallsize\.png"/);
   assert.match(html, /id="adminLanguageSelect"/);
   assert.doesNotMatch(html, /id="remoteLanguageSelect"/);

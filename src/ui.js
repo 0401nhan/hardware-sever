@@ -2590,7 +2590,7 @@ export function renderDashboardPage({ publicUrl }) {
       </nav>
       <div class="sidebar-footer" aria-label="Connectivity status">
         <span id="sidebarLanStatus" class="connectivity-tile status-waiting" title="LAN" aria-label="LAN">
-          <span class="connectivity-icon"><svg class="app-icon"><use href="#icon-rs485"></use></svg></span>
+          <span class="connectivity-icon"><svg class="app-icon"><use href="#icon-network"></use></svg></span>
         </span>
         <span id="sidebarInternetStatus" class="connectivity-tile status-waiting" title="Internet" aria-label="Internet">
           <span class="connectivity-icon"><svg class="app-icon"><use href="#icon-server"></use></svg></span>
@@ -4750,24 +4750,53 @@ export function renderDashboardPage({ publicUrl }) {
 
     function inverterControlDevices() {
       const devices = state.devices || [];
-      return devices.filter((device) => {
-        const text = [device.category, device.type, device.manufacturer, device.model, device.templateId].filter(Boolean).join(" ").toLowerCase();
-        const hasConfiguredControls = device.controls && typeof device.controls === "object" && Object.keys(device.controls).length > 0;
-        const hasControlRegister = (device.registers || []).some((register) => {
-          const name = String(register.name || "").toLowerCase();
-          const access = String(register.access || "ro").toLowerCase();
-          return access !== "ro" && [
-            "startup_command",
-            "shutdown_command",
-            "active_power_percentage_derating_percent",
-            "active_power_limit_kw",
-            "active_power_limit_w",
-            "schedule_instruction_valid_duration_s",
-          ].includes(name);
-        });
+      return devices.filter((device) => isControlCapableDevice(device));
+    }
 
-        return text.includes("inverter") || text.includes("sun2000") || text.includes("huawei") || hasConfiguredControls || hasControlRegister;
+    function isControlCapableDevice(device) {
+      return hasConfiguredControls(device) || hasControlRegister(device) || hasBuiltInControlProfile(device);
+    }
+
+    function hasConfiguredControls(device) {
+      return device?.controls && typeof device.controls === "object" && Object.keys(device.controls).length > 0;
+    }
+
+    function hasControlRegister(device) {
+      return (device?.registers || []).some((register) => {
+        const name = String(register.name || "").toLowerCase();
+        const access = String(register.access || "ro").toLowerCase();
+        return access !== "ro" && [
+          "startup_command",
+          "shutdown_command",
+          "active_power_percentage_derating_percent",
+          "active_power_limit_kw",
+          "active_power_limit_w",
+          "schedule_instruction_valid_duration_s",
+        ].includes(name);
       });
+    }
+
+    function hasBuiltInControlProfile(device) {
+      const identity = deviceIdentityText(device);
+      return identity.includes("huawei")
+        || identity.includes("sun2000")
+        || identity.includes("luna2000")
+        || identity.includes("sma")
+        || identity.includes("sunny boy")
+        || identity.includes("sunny tripower")
+        || identity.includes("sungrow")
+        || identity.includes("goodwe");
+    }
+
+    function deviceIdentityText(device) {
+      return [
+        device?.name,
+        device?.type,
+        device?.category,
+        device?.manufacturer,
+        device?.model,
+        device?.templateId,
+      ].filter(Boolean).join(" ").toLowerCase();
     }
 
     function renderCommandHistory() {

@@ -4503,6 +4503,296 @@ templates:
         type: float32
         scale: 1
         unit: ""
+  - id: elster_a1700_powercom
+    label: Elster - A1700 PowerCom
+    manufacturer: Elster
+    model: A1700 with PowerCom Modbus Converter
+    category: meter
+    type: meter
+    protocol: modbus-rtu
+    pollIntervalMs: 5000
+    notes: Elster A1700 via PowerCom/undercover Modbus converter. Register map uses Modbus input registers; converter Modbus address is configured separately on the converter. Verify baud rate, parity, slave id, and installed converter mode before production polling.
+    registers:
+      - name: active_power_w
+        function: input
+        address: 100
+        length: 2
+        type: float32
+        scale: 1
+        unit: W
+      - name: phase_a_active_power_w
+        function: input
+        address: 102
+        length: 2
+        type: float32
+        scale: 1
+        unit: W
+      - name: phase_b_active_power_w
+        function: input
+        address: 104
+        length: 2
+        type: float32
+        scale: 1
+        unit: W
+      - name: phase_c_active_power_w
+        function: input
+        address: 106
+        length: 2
+        type: float32
+        scale: 1
+        unit: W
+      - name: reactive_power_var
+        function: input
+        address: 108
+        length: 2
+        type: float32
+        scale: 1
+        unit: var
+      - name: phase_a_reactive_power_var
+        function: input
+        address: 110
+        length: 2
+        type: float32
+        scale: 1
+        unit: var
+      - name: phase_b_reactive_power_var
+        function: input
+        address: 112
+        length: 2
+        type: float32
+        scale: 1
+        unit: var
+      - name: phase_c_reactive_power_var
+        function: input
+        address: 114
+        length: 2
+        type: float32
+        scale: 1
+        unit: var
+      - name: apparent_power_va
+        function: input
+        address: 116
+        length: 2
+        type: float32
+        scale: 1
+        unit: VA
+      - name: phase_a_apparent_power_va
+        function: input
+        address: 118
+        length: 2
+        type: float32
+        scale: 1
+        unit: VA
+      - name: phase_b_apparent_power_va
+        function: input
+        address: 120
+        length: 2
+        type: float32
+        scale: 1
+        unit: VA
+      - name: phase_c_apparent_power_va
+        function: input
+        address: 122
+        length: 2
+        type: float32
+        scale: 1
+        unit: VA
+      - name: phase_a_current_a
+        function: input
+        address: 124
+        length: 2
+        type: float32
+        scale: 1
+        unit: A
+      - name: phase_b_current_a
+        function: input
+        address: 126
+        length: 2
+        type: float32
+        scale: 1
+        unit: A
+      - name: phase_c_current_a
+        function: input
+        address: 128
+        length: 2
+        type: float32
+        scale: 1
+        unit: A
+      - name: grid_frequency_hz
+        function: input
+        address: 130
+        length: 2
+        type: float32
+        scale: 1
+        unit: Hz
+      - name: phase_a_voltage_v
+        function: input
+        address: 132
+        length: 2
+        type: float32
+        scale: 1
+        unit: V
+      - name: phase_b_voltage_v
+        function: input
+        address: 134
+        length: 2
+        type: float32
+        scale: 1
+        unit: V
+      - name: phase_c_voltage_v
+        function: input
+        address: 136
+        length: 2
+        type: float32
+        scale: 1
+        unit: V
+      - name: power_factor
+        function: input
+        address: 138
+        length: 2
+        type: float32
+        scale: 1
+        unit: ""
+      - name: phase_a_power_factor
+        function: input
+        address: 140
+        length: 2
+        type: float32
+        scale: 1
+        unit: ""
+      - name: phase_b_power_factor
+        function: input
+        address: 142
+        length: 2
+        type: float32
+        scale: 1
+        unit: ""
+      - name: phase_c_power_factor
+        function: input
+        address: 144
+        length: 2
+        type: float32
+        scale: 1
+        unit: ""
+      - name: phase_a_current_angle_deg
+        function: input
+        address: 146
+        length: 2
+        type: float32
+        scale: 1
+        unit: deg
+      - name: phase_b_current_angle_deg
+        function: input
+        address: 148
+        length: 2
+        type: float32
+        scale: 1
+        unit: deg
+      - name: phase_c_current_angle_deg
+        function: input
+        address: 150
+        length: 2
+        type: float32
+        scale: 1
+        unit: deg
+      - name: phase_a_voltage_angle_deg
+        function: input
+        address: 152
+        length: 2
+        type: float32
+        scale: 1
+        unit: deg
+      - name: phase_b_voltage_angle_deg
+        function: input
+        address: 154
+        length: 2
+        type: float32
+        scale: 1
+        unit: deg
+      - name: phase_c_voltage_angle_deg
+        function: input
+        address: 156
+        length: 2
+        type: float32
+        scale: 1
+        unit: deg
+      - name: import_active_energy_wh
+        function: input
+        address: 200
+        length: 4
+        type: float64
+        scale: 1
+        unit: Wh
+      - name: export_active_energy_wh
+        function: input
+        address: 204
+        length: 4
+        type: float64
+        scale: 1
+        unit: Wh
+      - name: import_active_energy_wh_32
+        function: input
+        address: 1200
+        length: 2
+        type: float32
+        scale: 1
+        unit: Wh
+      - name: export_active_energy_wh_32
+        function: input
+        address: 1202
+        length: 2
+        type: float32
+        scale: 1
+        unit: Wh
+      - name: meter_date_epoch_s
+        function: input
+        address: 400
+        length: 2
+        type: uint32
+        scale: 1
+        unit: s
+      - name: uptime_s
+        function: input
+        address: 402
+        length: 2
+        type: uint32
+        scale: 1
+        unit: s
+      - name: converter_version
+        function: input
+        address: 404
+        length: 2
+        type: uint32
+        scale: 1
+        unit: ""
+      - name: serial_number_digits_1_2
+        function: input
+        address: 420
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: serial_number_digits_3_4
+        function: input
+        address: 422
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: serial_number_digits_5_6
+        function: input
+        address: 424
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
+      - name: serial_number_digits_7_8
+        function: input
+        address: 426
+        length: 1
+        type: uint16
+        scale: 1
+        unit: ""
   - id: kipp_zonen_rt1
     label: Kipp & Zonen - RT1 Rooftop PV Monitoring Sensor
     manufacturer: Kipp & Zonen

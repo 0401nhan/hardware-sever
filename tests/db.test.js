@@ -77,6 +77,7 @@ test("bundled server seed includes shared meter and weatherstation templates", (
     "genus_samarth_panel_meter",
     "edmi_genius_mk6_mk6e",
     "edmi_atlas_mk10",
+    "elster_a1700_powercom",
   ];
 
   for (const id of expectedMeterIds) {
@@ -109,6 +110,15 @@ test("bundled server seed includes shared meter and weatherstation templates", (
     type: "int16",
     scale: 0.1,
     unit: "W/m2",
+  });
+  assert.deepEqual(register("elster_a1700_powercom", "active_power_w"), {
+    name: "active_power_w",
+    function: "input",
+    address: 100,
+    length: 2,
+    type: "float32",
+    scale: 1,
+    unit: "W",
   });
 });
 
