@@ -2,6 +2,23 @@ const SUPPORTED_PROTOCOLS = new Set(["modbus-rtu", "modbus-tcp"]);
 const SUPPORTED_LOGGER_PROTOCOLS = new Set(["modbus-tcp"]);
 const SUPPORTED_PARITIES = new Set(["none", "even", "odd", "mark", "space"]);
 const SUPPORTED_REGISTER_FUNCTIONS = new Set(["holding", "input"]);
+const SUPPORTED_REGISTER_WRITE_FUNCTIONS = new Set([
+  "single",
+  "single_register",
+  "write_single_register",
+  "fc6",
+  "fc06",
+  "function_6",
+  "function_06",
+  "6",
+  "06",
+  "multiple",
+  "multiple_registers",
+  "write_multiple_registers",
+  "fc16",
+  "function_16",
+  "16",
+]);
 const SUPPORTED_REGISTER_ACCESS = new Set(["ro", "rw", "wo"]);
 const SUPPORTED_ROUTE_TYPES = new Set(["unit_id", "forwarding_address", "system_map"]);
 const SUPPORTED_STATION_CONTROL_MODES = new Set(["fanout", "child_device", "logger_plant"]);
@@ -655,6 +672,7 @@ function validateRegister(register, registerPath) {
   }
 
   validateEnum(register.function, `${registerPath}.function`, SUPPORTED_REGISTER_FUNCTIONS, { optional: true });
+  validateRegisterWriteFunction(register.writeFunction, `${registerPath}.writeFunction`);
   validateEnum(register.access, `${registerPath}.access`, SUPPORTED_REGISTER_ACCESS, { optional: true });
   validateBoolean(register.poll, `${registerPath}.poll`, { optional: true });
   validateInteger(register.address, `${registerPath}.address`, { min: 0, max: 65535 });
@@ -664,6 +682,15 @@ function validateRegister(register, registerPath) {
   validateNumber(register.offset, `${registerPath}.offset`, { optional: true });
   validateEnum(register.wordOrder, `${registerPath}.wordOrder`, SUPPORTED_WORD_ORDERS, { optional: true });
   validateRegisterLengthForType(register, registerPath);
+}
+
+function validateRegisterWriteFunction(value, field) {
+  if (value === undefined || value === null || value === "") return;
+
+  const normalized = String(value).trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (!SUPPORTED_REGISTER_WRITE_FUNCTIONS.has(normalized)) {
+    throw new Error(`Invalid gateway config. ${field} is unsupported`);
+  }
 }
 
 function validateRegisterLengthForType(register, registerPath) {

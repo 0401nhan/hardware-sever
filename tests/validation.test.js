@@ -141,6 +141,7 @@ test("accepts logger topology and station logger control mode", () => {
           address: 47000,
           access: "rw",
           poll: false,
+          writeFunction: "multiple",
         },
       ],
       controls: {
