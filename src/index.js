@@ -730,15 +730,17 @@ function gatewayCommandPayload(command) {
 
 function normalizeInverterControlPayload(body) {
   const deviceName = stringField(body.deviceName ?? body.device);
+  const stationId = stringField(body.stationId ?? body.station);
   const action = normalizeControlAction(body.action);
 
-  if (!deviceName) throw httpError(400, "deviceName is required");
+  if (!deviceName && !stationId) throw httpError(400, "deviceName or stationId is required");
   if (!action) throw httpError(400, "action is required");
 
   const payload = {
-    deviceName,
     action,
   };
+  if (stationId) payload.stationId = stationId;
+  else payload.deviceName = deviceName;
 
   for (const field of ["value", "percent", "kw", "watts", "durationSeconds", "durationMinutes", "durationHours", "delayMs", "rebootDelayMs"]) {
     if (body[field] !== undefined) {

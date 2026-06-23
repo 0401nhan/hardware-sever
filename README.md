@@ -106,6 +106,7 @@ GATEWAY_TOKEN=<gateway-token>
 3. Open the dashboard and select the new gateway.
 4. Edit `Setting Communication`.
 5. Add Modbus RTU devices with an RS485/COM port, or Modbus TCP devices with `host`, `tcpPort`, and `unitId`.
+   For logger sites, config versions may also include `loggers[]`, child devices with `parentLogger` plus `route`, and station `control.mode` such as `logger_plant` or `fanout`.
 6. Save a new config version.
 7. Gateway polls `/api/gateway/config/check`.
 8. Gateway validates, saves to local SQLite, restarts, and reports status.
@@ -120,6 +121,8 @@ curl -X POST https://server.electricbird.vn/api/gateways/GATEWAY_ID/control \
   -b "hardware_server_session=<session-cookie>" \
   -d '{"deviceName":"Huawei","action":"limit_power","percent":60,"durationMinutes":30}'
 ```
+
+Station-level commands are also supported by using `stationId` instead of `deviceName`; the gateway decides whether to use logger plant control or inverter fanout from its local config.
 
 Supported actions are `on`/`start`/`boot`, `off`/`stop`/`shutdown`, `reboot`/`restart`, `limit_power`, and `clear_power_limit`. The gateway polls `/api/gateway/commands/check`, executes the command locally through Modbus, then reports `/api/gateway/commands/status`.
 

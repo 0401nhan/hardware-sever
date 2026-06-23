@@ -1,7 +1,10 @@
 const SUPPORTED_PROTOCOLS = new Set(["modbus-rtu", "modbus-tcp"]);
+const SUPPORTED_LOGGER_PROTOCOLS = new Set(["modbus-tcp"]);
 const SUPPORTED_PARITIES = new Set(["none", "even", "odd", "mark", "space"]);
 const SUPPORTED_REGISTER_FUNCTIONS = new Set(["holding", "input"]);
 const SUPPORTED_REGISTER_ACCESS = new Set(["ro", "rw", "wo"]);
+const SUPPORTED_ROUTE_TYPES = new Set(["unit_id", "forwarding_address", "system_map"]);
+const SUPPORTED_STATION_CONTROL_MODES = new Set(["fanout", "child_device", "logger_plant"]);
 const SUPPORTED_IEC104_MODES = new Set(["client", "server"]);
 const SUPPORTED_IEC104_POINT_SOURCES = new Set(["device", "station"]);
 const SUPPORTED_IEC104_POINT_TYPES = new Set(["float", "single"]);
@@ -50,13 +53,15 @@ export function validateGatewayConfig(config, expectedGatewayId) {
   }
   validateStorage(config.storage);
   validateInteger(config.gateway.pollLoopDelayMs, "gateway.pollLoopDelayMs", { min: 50, optional: true });
+  validateInteger(config.gateway.maxConcurrentPollGroups, "gateway.maxConcurrentPollGroups", { min: 1, max: 64, optional: true });
   validateInteger(config.server.timeoutMs, "server.timeoutMs", { min: 100, optional: true });
   validateInteger(config.server.batchSize, "server.batchSize", { min: 1, optional: true });
   validateInteger(config.server.uploadIntervalMs, "server.uploadIntervalMs", { min: 500, optional: true });
   validateRemoteConfig(config.remoteConfig);
   validateMongo(config.mongo);
   validateIec104(config.iec104);
-  validateStations(config.stations, config.devices);
+  const loggerIds = validateLoggers(config.loggers);
+  validateStations(config.stations, config.devices, loggerIds);
 
   for (const [name, port] of Object.entries(config.ports || {})) {
     if (!port.path) throw new Error(`Invalid gateway config. ports.${name}.path is required`);
@@ -76,6 +81,7 @@ export function validateGatewayConfig(config, expectedGatewayId) {
     if (!SUPPORTED_PROTOCOLS.has(protocol)) {
       throw new Error(`Invalid gateway config. ${device.name}.protocol is unsupported`);
     }
+    validateString(device.parentLogger, `${device.name}.parentLogger`, { optional: true });
     validateInteger(device.pollIntervalMs, `${device.name}.pollIntervalMs`, { min: 500, optional: true });
     validateString(device.stationId, `${device.name}.stationId`, { optional: true });
     validateNumber(device.capacityKw, `${device.name}.capacityKw`, { optional: true });
@@ -83,10 +89,19 @@ export function validateGatewayConfig(config, expectedGatewayId) {
       throw new Error(`Invalid gateway config. ${device.name}.capacityKw must be greater than or equal to 0`);
     }
 
-    if (protocol === "modbus-tcp") {
+    if (device.parentLogger) {
+      if (!loggerIds.has(device.parentLogger)) {
+        throw new Error(`Invalid gateway config. ${device.name}.parentLogger references unknown logger ${device.parentLogger}`);
+      }
+      if (device.protocol && protocol !== "modbus-tcp") {
+        throw new Error(`Invalid gateway config. ${device.name}.protocol must be modbus-tcp when parentLogger is set`);
+      }
+      validateDeviceRoute(device.route, device, `${device.name}.route`);
+      validateInteger(device.tcpPort, `${device.name}.tcpPort`, { min: 1, max: 65535, optional: true });
+    } else if (protocol === "modbus-tcp") {
       if (!device.host) throw new Error(`Invalid gateway config. ${device.name}.host is required`);
       validateInteger(device.tcpPort, `${device.name}.tcpPort`, { min: 1, max: 65535, optional: true });
-      validateInteger(device.unitId ?? device.slaveId, `${device.name}.unitId`, { min: 1, max: 247 });
+      validateInteger(device.unitId ?? device.slaveId, `${device.name}.unitId`, { min: 0, max: 255 });
     } else {
       if (!config?.ports || Object.keys(config.ports).length === 0) {
         throw new Error("Invalid gateway config. ports is required for Modbus RTU devices");
@@ -120,6 +135,71 @@ function validateDeviceControls(controls, controlsPath) {
     validateEnum(action, `${controlsPath}.${action}`, SUPPORTED_INVERTER_CONTROL_ACTIONS);
     validateDeviceControl(control, `${controlsPath}.${action}`);
   }
+}
+
+function validateLoggers(loggers = []) {
+  if (loggers === undefined || loggers === null) return new Set();
+  if (!Array.isArray(loggers)) {
+    throw new Error("Invalid gateway config. loggers must be an array");
+  }
+
+  const ids = new Set();
+
+  loggers.forEach((logger, index) => {
+    const loggerPath = `loggers[${index}]`;
+
+    if (!logger || typeof logger !== "object" || Array.isArray(logger)) {
+      throw new Error(`Invalid gateway config. ${loggerPath} must be an object`);
+    }
+
+    validateString(logger.id, `${loggerPath}.id`);
+    if (ids.has(logger.id)) {
+      throw new Error(`Invalid gateway config. ${loggerPath}.id must be unique`);
+    }
+    ids.add(logger.id);
+
+    validateEnum(logger.protocol ?? "modbus-tcp", `${loggerPath}.protocol`, SUPPORTED_LOGGER_PROTOCOLS, { optional: true });
+    validateString(logger.host, `${loggerPath}.host`);
+    validateInteger(logger.tcpPort, `${loggerPath}.tcpPort`, { min: 1, max: 65535, optional: true });
+    validateInteger(logger.unitId ?? logger.slaveId ?? logger.address, `${loggerPath}.unitId`, { min: 0, max: 255, optional: true });
+    validateInteger(logger.timeoutMs, `${loggerPath}.timeoutMs`, { min: 100, optional: true });
+    validateString(logger.name, `${loggerPath}.name`, { optional: true });
+    validateString(logger.vendor, `${loggerPath}.vendor`, { optional: true });
+    validateString(logger.manufacturer, `${loggerPath}.manufacturer`, { optional: true });
+    validateString(logger.model, `${loggerPath}.model`, { optional: true });
+
+    if (logger.registers !== undefined) {
+      if (!Array.isArray(logger.registers)) {
+        throw new Error(`Invalid gateway config. ${loggerPath}.registers must be an array`);
+      }
+      logger.registers.forEach((register, registerIndex) => {
+        validateRegister(register, `${loggerPath}.registers[${registerIndex}]`);
+      });
+    }
+
+    validateDeviceControls(logger.controls, `${loggerPath}.controls`);
+  });
+
+  return ids;
+}
+
+function validateDeviceRoute(route, device, routePath) {
+  const hasLegacyAddress = device.unitId !== undefined || device.slaveId !== undefined;
+
+  if (route === undefined || route === null) {
+    if (hasLegacyAddress) return;
+    throw new Error(`Invalid gateway config. ${routePath}.address is required when parentLogger is set`);
+  }
+
+  if (typeof route !== "object" || Array.isArray(route)) {
+    throw new Error(`Invalid gateway config. ${routePath} must be an object`);
+  }
+
+  const routeType = normalizeRouteType(route.type ?? route.addressType ?? "unit_id");
+  validateEnum(routeType, `${routePath}.type`, SUPPORTED_ROUTE_TYPES);
+
+  const address = route.address ?? route.unitId ?? route.forwardingAddress ?? route.logicalAddress ?? device.unitId ?? device.slaveId;
+  validateInteger(address, `${routePath}.address`, { min: 0, max: 255 });
 }
 
 function validateDeviceControl(control, controlPath) {
@@ -314,7 +394,7 @@ function validateIec104Simulator(simulator) {
   validateInteger(simulator.intervalMs, "iec104.simulator.intervalMs", { min: 100, optional: true });
 }
 
-function validateStations(stations = [], devices = []) {
+function validateStations(stations = [], devices = [], loggerIds = new Set()) {
   if (stations !== undefined && !Array.isArray(stations)) {
     throw new Error("Invalid gateway config. stations must be an array");
   }
@@ -348,12 +428,38 @@ function validateStations(stations = [], devices = []) {
       }
     }
 
+    validateStationControl(station.control, `${stationPath}.control`, loggerIds);
     validateStationEvnProfile(station.evnProfile, `${stationPath}.evnProfile`);
   });
 
   for (const device of devices || []) {
     if (device.stationId && stationIds.size > 0 && !stationIds.has(device.stationId)) {
       throw new Error(`Invalid gateway config. ${device.name}.stationId references unknown station ${device.stationId}`);
+    }
+  }
+}
+
+function validateStationControl(control, controlPath, loggerIds) {
+  if (control === undefined || control === null) return;
+
+  if (typeof control !== "object" || Array.isArray(control)) {
+    throw new Error(`Invalid gateway config. ${controlPath} must be an object`);
+  }
+
+  const mode = normalizeStationControlMode(control.mode ?? "fanout");
+  validateEnum(mode, `${controlPath}.mode`, SUPPORTED_STATION_CONTROL_MODES);
+  validateBoolean(control.fallback, `${controlPath}.fallback`, { optional: true });
+  validateString(control.logger, `${controlPath}.logger`, { optional: true });
+  validateString(control.loggerId, `${controlPath}.loggerId`, { optional: true });
+  validateStringArray(control.loggers, `${controlPath}.loggers`, { optional: true });
+
+  for (const loggerId of [
+    control.logger,
+    control.loggerId,
+    ...(Array.isArray(control.loggers) ? control.loggers : []),
+  ].filter(Boolean)) {
+    if (!loggerIds.has(loggerId)) {
+      throw new Error(`Invalid gateway config. ${controlPath} references unknown logger ${loggerId}`);
     }
   }
 }
@@ -588,6 +694,37 @@ function validateEnum(value, field, allowed, { optional = false } = {}) {
   if (!allowed.has(value)) {
     throw new Error(`Invalid gateway config. ${field} is unsupported`);
   }
+}
+
+function normalizeRouteType(value) {
+  const normalized = String(value || "unit_id").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const aliases = {
+    unitid: "unit_id",
+    unit_id: "unit_id",
+    slave_id: "unit_id",
+    forwardingaddress: "forwarding_address",
+    forwarding_address: "forwarding_address",
+    logical_address: "unit_id",
+    comm_address: "unit_id",
+    systemmap: "system_map",
+    system_map: "system_map",
+  };
+
+  return aliases[normalized] || normalized;
+}
+
+function normalizeStationControlMode(value) {
+  const normalized = String(value || "fanout").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const aliases = {
+    logger: "logger_plant",
+    logger_control: "logger_plant",
+    plant: "logger_plant",
+    plant_control: "logger_plant",
+    child: "child_device",
+    child_devices: "child_device",
+  };
+
+  return aliases[normalized] || normalized;
 }
 
 function validateInteger(value, field, { min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER, optional = false } = {}) {

@@ -5273,7 +5273,7 @@ export function renderDashboardPage({ publicUrl }) {
 
     function commandDetail(command) {
       const payload = command.payload || {};
-      const parts = [payload.deviceName || payload.device].filter(Boolean);
+      const parts = [payload.stationId || payload.station || payload.deviceName || payload.device].filter(Boolean);
       if (payload.percent !== undefined) parts.push(payload.percent + "%");
       if (payload.kw !== undefined) parts.push(payload.kw + " kW");
       if (payload.watts !== undefined) parts.push(payload.watts + " W");

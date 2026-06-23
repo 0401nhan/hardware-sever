@@ -391,6 +391,44 @@ test("admin can queue inverter control commands for gateway execution", async (t
   assert.ok(clearRunAt <= afterApplied + 15 * 60 * 1000 + 1000);
 });
 
+test("admin can queue station control commands for gateway execution", async (t) => {
+  const app = await startTestServer(t);
+  const sessionCookie = await login(app);
+
+  await createGateway(app, sessionCookie, {
+    id: "GW-STATION-CMD-001",
+    token: "gateway-secret",
+  });
+
+  const queued = await requestJson(app.baseUrl, "/api/gateways/GW-STATION-CMD-001/control", {
+    method: "POST",
+    cookie: sessionCookie,
+    body: {
+      stationId: "station_1",
+      action: "limit_power",
+      percent: 60,
+    },
+  });
+  assert.equal(queued.status, 200);
+  assert.deepEqual(queued.body.command.payload, {
+    stationId: "station_1",
+    action: "limit_power",
+    percent: 60,
+  });
+
+  const check = await requestJson(app.baseUrl, "/api/gateway/commands/check", {
+    method: "POST",
+    token: "gateway-secret",
+    body: {
+      gateway_id: "GW-STATION-CMD-001",
+      app_version: "0.1.12",
+    },
+  });
+  assert.equal(check.status, 200);
+  assert.equal(check.body.command.id, queued.body.command.id);
+  assert.deepEqual(check.body.command.payload, queued.body.command.payload);
+});
+
 test("admin can schedule inverter control commands", async (t) => {
   const app = await startTestServer(t);
   const sessionCookie = await login(app);

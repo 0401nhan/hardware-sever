@@ -124,6 +124,72 @@ test("accepts Modbus TCP devices without RS485 ports", () => {
   assert.doesNotThrow(() => validateGatewayConfig(config, "EB-ANHUNG-001"));
 });
 
+test("accepts logger topology and station logger control mode", () => {
+  const config = validRtuConfig();
+  config.ports = {};
+  config.gateway.maxConcurrentPollGroups = 8;
+  config.loggers = [
+    {
+      id: "logger_01",
+      vendor: "Huawei",
+      model: "SmartLogger3000",
+      host: "192.168.1.10",
+      unitId: 0,
+      registers: [
+        {
+          name: "plant_limit_percent",
+          address: 47000,
+          access: "rw",
+          poll: false,
+        },
+      ],
+      controls: {
+        limit_power: {
+          writes: [
+            {
+              register: "plant_limit_percent",
+              valueFrom: "percent",
+            },
+          ],
+        },
+      },
+    },
+  ];
+  config.stations = [
+    {
+      id: "station_1",
+      devices: ["inv_01"],
+      control: {
+        mode: "logger_plant",
+        loggers: ["logger_01"],
+      },
+    },
+  ];
+  config.devices = [
+    {
+      name: "inv_01",
+      type: "inverter",
+      parentLogger: "logger_01",
+      route: {
+        type: "forwardingAddress",
+        address: 5,
+      },
+      stationId: "station_1",
+      pollIntervalMs: 5000,
+      registers: [
+        {
+          name: "active_power_kw",
+          address: 32080,
+          length: 2,
+          type: "int32",
+        },
+      ],
+    },
+  ];
+
+  assert.doesNotThrow(() => validateGatewayConfig(config, "EB-ANHUNG-001"));
+});
+
 test("accepts IEC 60870-5-104 remote config mappings", () => {
   const config = validRtuConfig();
   config.iec104 = {
