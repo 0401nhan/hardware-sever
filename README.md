@@ -115,7 +115,7 @@ GATEWAY_TOKEN=<gateway-token>
 
 Hardware-Server stores private Tailscale access metadata for each IPC/Moxa gateway. The server
 dashboard is intentionally only a logged-in gateway directory: click `Remote` on the home page and
-Hardware-Server redirects to the real Gateway UI running on the IPC.
+Hardware-Server proxies the real Gateway UI running on the IPC.
 
 Recommended layout:
 
@@ -137,7 +137,7 @@ creating a manual gateway. A token is not required for this directory-only mode:
     "method": "tailscale",
     "host": "tram-a-gw-01",
     "ip": "100.64.10.20",
-    "uiPort": 3000,
+    "uiPort": 80,
     "sshPort": 22,
     "tag": "tag:gateway"
   }
@@ -161,6 +161,22 @@ remote config, or cloud command queue workflow.
 TAILSCALE_GATEWAY_ADMIN_USERNAME=admin
 TAILSCALE_GATEWAY_ADMIN_PASSWORD=admin
 TAILSCALE_GATEWAY_TIMEOUT_MS=10000
+```
+
+Hardware-Server can also auto-provision this directory from the local Tailscale client. On startup,
+on every `/api/gateways` refresh, and then every `TAILSCALE_SYNC_INTERVAL_MS`, it runs
+`tailscale status --json`, imports online Linux peers into SQLite, and stores their `100.x.x.x`
+address as the gateway remote target. Windows peers are ignored by default so the server and support
+laptops do not appear as gateways.
+
+```bash
+TAILSCALE_SYNC_ENABLED=true
+TAILSCALE_CLI_PATH="C:\Program Files\Tailscale\tailscale.exe"
+TAILSCALE_SYNC_INTERVAL_MS=30000
+TAILSCALE_SYNC_OS=linux
+TAILSCALE_SYNC_UI_PORT=80
+TAILSCALE_SYNC_SSH_PORT=22
+TAILSCALE_SYNC_TAG=tag:gateway
 ```
 
 ## Remote Inverter Control

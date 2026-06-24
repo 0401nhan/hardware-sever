@@ -9,6 +9,7 @@ import { readDeviceTemplateSeed } from "./deviceTemplates.js";
 import { gatewayRemoteAccessFromBody, normalizeRemoteAccess } from "./remoteAccess.js";
 import { normalizeCommandSchedule } from "./schedule.js";
 import { gatewayTailscaleBaseUrl, getGatewayPublicJson, postGatewayAdminJson } from "./tailscaleGatewayClient.js";
+import { readTailscaleStatusJson, syncTailscaleGateways } from "./tailscaleDiscovery.js";
 import { createDefaultGatewayConfig, validateGatewayConfig } from "./validation.js";
 import { renderDashboardPage, renderLoginPage } from "./ui.js";
 
@@ -44,11 +45,23 @@ const config = {
   tailscaleGatewayAdminUsername: process.env.TAILSCALE_GATEWAY_ADMIN_USERNAME || process.env.GATEWAY_ADMIN_USERNAME || "admin",
   tailscaleGatewayAdminPassword: process.env.TAILSCALE_GATEWAY_ADMIN_PASSWORD || process.env.GATEWAY_ADMIN_PASSWORD || "admin",
   tailscaleGatewayTimeoutMs: positiveIntegerEnv("TAILSCALE_GATEWAY_TIMEOUT_MS", 10000),
+  tailscaleSyncEnabled: booleanEnv("TAILSCALE_SYNC_ENABLED", true),
+  tailscaleSyncIntervalMs: positiveIntegerEnv("TAILSCALE_SYNC_INTERVAL_MS", 30000),
+  tailscaleSyncTimeoutMs: positiveIntegerEnv("TAILSCALE_SYNC_TIMEOUT_MS", 5000),
+  tailscaleSyncCliPath: process.env.TAILSCALE_CLI_PATH || "",
+  tailscaleSyncStatusJson: process.env.TAILSCALE_STATUS_JSON || "",
+  tailscaleSyncIncludeOffline: booleanEnv("TAILSCALE_SYNC_INCLUDE_OFFLINE", false),
+  tailscaleSyncAllowedOs: stringListEnv("TAILSCALE_SYNC_OS", ["linux"]),
+  tailscaleSyncUiPort: positiveIntegerEnv("TAILSCALE_SYNC_UI_PORT", 80),
+  tailscaleSyncSshPort: positiveIntegerEnv("TAILSCALE_SYNC_SSH_PORT", 22),
+  tailscaleSyncTag: process.env.TAILSCALE_SYNC_TAG || "tag:gateway",
 };
 
 let store;
 let templateSeed;
 let server;
+let tailscaleSyncTimer;
+let tailscaleSyncPromise;
 
 main().catch((error) => {
   console.error(error);
@@ -63,6 +76,7 @@ store = await openDatabase(config.dbPath, config.tokenHashSecret, {
 });
 templateSeed = readDeviceTemplateSeed(config.deviceTemplatesPath);
 await store.seedDeviceTemplates(templateSeed.templates);
+startTailscaleSyncLoop();
 
 server = http.createServer(async (req, res) => {
   try {
@@ -356,9 +370,19 @@ server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && pathname === "/api/gateways") {
+      await syncTailscaleGatewaysIfEnabled("list");
       return sendJson(res, 200, {
         ok: true,
         gateways: redactGatewaySecrets(await store.listGateways()),
+      });
+    }
+
+    if (req.method === "POST" && pathname === "/api/tailscale/sync") {
+      const result = await syncTailscaleGatewaysIfEnabled("manual", { force: true });
+      return sendJson(res, 200, {
+        ok: true,
+        ...(result || { skipped: true }),
+        gateways: redactGatewaySecrets(result?.gateways || []),
       });
     }
 
@@ -988,6 +1012,56 @@ async function drainRequestBody(req) {
   }
 }
 
+function startTailscaleSyncLoop() {
+  if (!config.tailscaleSyncEnabled) return;
+
+  syncTailscaleGatewaysIfEnabled("startup").catch((error) => {
+    console.warn("Tailscale gateway sync failed:", error.message);
+  });
+
+  tailscaleSyncTimer = setInterval(() => {
+    syncTailscaleGatewaysIfEnabled("interval").catch((error) => {
+      console.warn("Tailscale gateway sync failed:", error.message);
+    });
+  }, config.tailscaleSyncIntervalMs);
+  tailscaleSyncTimer.unref?.();
+}
+
+async function syncTailscaleGatewaysIfEnabled(reason, { force = false } = {}) {
+  if (!config.tailscaleSyncEnabled) return null;
+  if (tailscaleSyncPromise && !force) return tailscaleSyncPromise;
+
+  tailscaleSyncPromise = syncTailscaleGateways({
+    store,
+    includeOffline: config.tailscaleSyncIncludeOffline,
+    allowedOs: config.tailscaleSyncAllowedOs,
+    uiPort: config.tailscaleSyncUiPort,
+    sshPort: config.tailscaleSyncSshPort,
+    tag: config.tailscaleSyncTag,
+    publicUrl: config.publicUrl,
+    createdBy: `tailscale-sync:${reason}`,
+    createDefaultConfig: createDefaultGatewayConfig,
+    readStatus: () => readTailscaleStatusJson({
+      cliPath: config.tailscaleSyncCliPath,
+      statusJson: config.tailscaleSyncStatusJson,
+      timeoutMs: config.tailscaleSyncTimeoutMs,
+    }),
+  }).catch((error) => ({
+    ok: false,
+    synced: 0,
+    gateways: [],
+    error: error.message,
+  })).finally(() => {
+    tailscaleSyncPromise = null;
+  });
+
+  const result = await tailscaleSyncPromise;
+  if (result?.ok === false) {
+    console.warn("Tailscale gateway sync failed:", result.error);
+  }
+  return result;
+}
+
 function sendJson(res, statusCode, payload, headers = {}) {
   send(res, statusCode, JSON.stringify(payload), {
     "Content-Type": "application/json; charset=utf-8",
@@ -1141,4 +1215,18 @@ function positiveIntegerEnv(name, fallback) {
 function nonNegativeIntegerEnv(name, fallback) {
   const value = Number.parseInt(process.env[name] || "", 10);
   return Number.isInteger(value) && value >= 0 ? value : fallback;
+}
+
+function booleanEnv(name, fallback) {
+  const value = String(process.env[name] || "").trim().toLowerCase();
+  if (!value) return fallback;
+  if (["1", "true", "yes", "on"].includes(value)) return true;
+  if (["0", "false", "no", "off"].includes(value)) return false;
+  return fallback;
+}
+
+function stringListEnv(name, fallback = []) {
+  const value = String(process.env[name] || "").trim();
+  if (!value) return fallback;
+  return value.split(",").map((item) => item.trim()).filter(Boolean);
 }

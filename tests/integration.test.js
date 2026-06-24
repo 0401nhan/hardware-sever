@@ -251,6 +251,57 @@ test("admin can store Tailscale remote access metadata for a gateway", async (t)
   assert.equal(authenticatedRemote.headers.get("location"), "/gateways/GW-TS-001/remote/");
 });
 
+test("server auto-syncs Linux Tailscale peers into sqlite gateways", async (t) => {
+  const app = await startTestServer(t, {
+    TAILSCALE_SYNC_ENABLED: "true",
+    TAILSCALE_STATUS_JSON: JSON.stringify({
+      Peer: {
+        "nodekey:moxa": {
+          ID: "n1",
+          HostName: "moxa",
+          DNSName: "moxa.tailnet.test.",
+          OS: "linux",
+          Online: true,
+          TailscaleIPs: ["100.77.152.66", "fd7a:115c:a1e0::1"],
+        },
+        "nodekey:laptop": {
+          ID: "n2",
+          HostName: "nhan-laptop",
+          DNSName: "nhan-laptop.tailnet.test.",
+          OS: "windows",
+          Online: true,
+          TailscaleIPs: ["100.111.86.116"],
+        },
+        "nodekey:offline": {
+          ID: "n3",
+          HostName: "offline-ipc",
+          DNSName: "offline-ipc.tailnet.test.",
+          OS: "linux",
+          Online: false,
+          TailscaleIPs: ["100.100.100.100"],
+        },
+      },
+    }),
+  });
+  const sessionCookie = await login(app);
+
+  const listed = await requestJson(app.baseUrl, "/api/gateways", {
+    cookie: sessionCookie,
+  });
+
+  assert.equal(listed.status, 200);
+  assert.deepEqual(listed.body.gateways.map((gateway) => gateway.id), ["moxa"]);
+  assert.equal(listed.body.gateways[0].remoteAccess.ip, "100.77.152.66");
+  assert.equal(listed.body.gateways[0].remoteAccess.host, "moxa.tailnet.test");
+  assert.equal(listed.body.gateways[0].remoteAccess.uiPort, 80);
+
+  const latestConfig = await requestJson(app.baseUrl, "/api/gateways/moxa/config", {
+    cookie: sessionCookie,
+  });
+  assert.equal(latestConfig.status, 200);
+  assert.equal(latestConfig.body.config.gateway.id, "moxa");
+});
+
 test("gateway config check and status report use the latest admin config", async (t) => {
   const app = await startTestServer(t);
   const sessionCookie = await login(app);
@@ -1043,6 +1094,7 @@ async function startTestServer(t, envOverrides = {}) {
     GATEWAY_PUSH_API_ENABLED: "true",
     PROVISIONING_TOKEN: "provisioning-token",
     AUTO_REGISTER_GATEWAYS: "true",
+    TAILSCALE_SYNC_ENABLED: "false",
     ...envOverrides,
   };
 

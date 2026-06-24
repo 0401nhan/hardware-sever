@@ -2568,7 +2568,7 @@ export function renderDashboardPage({ publicUrl }) {
             <label>Tailscale <select name="remoteAccessEnabled"><option value="false">Off</option><option value="true">On</option></select></label>
             <label>Tailscale host<input name="tailscaleHost" placeholder="tram-a-gw-01"></label>
             <label>Tailscale IP<input name="tailscaleIp" placeholder="100.x.x.x"></label>
-            <label>Gateway UI port<input name="tailscaleUiPort" type="number" min="1" max="65535" value="3000"></label>
+            <label>Gateway UI port<input name="tailscaleUiPort" type="number" min="1" max="65535" value="80"></label>
             <label>SSH port<input name="tailscaleSshPort" type="number" min="1" max="65535" value="22"></label>
             <label>Tailscale tag<input name="tailscaleTag" value="tag:gateway"></label>
             <div class="actions"><button class="primary icon-only" type="submit" title="Save gateway" aria-label="Save gateway"><svg class="app-icon"><use href="#icon-save"></use></svg><span class="visually-hidden">Save gateway</span></button></div>
@@ -3534,7 +3534,7 @@ export function renderDashboardPage({ publicUrl }) {
       setText("homeCloudState", online ? "Đồng bộ" : "-");
 
       if (!gateways.length) {
-        if (grid) grid.innerHTML = '<div class="empty-state"><strong>Chưa có site.</strong><span>Tạo gateway thủ công và nhập Tailscale IP/host của IPC. Server chỉ dùng danh bạ này để mở Remote qua Tailscale.</span></div>';
+        if (grid) grid.innerHTML = '<div class="empty-state"><strong>Chưa có site.</strong><span>Bấm làm mới để đồng bộ Tailscale hoặc tạo gateway thủ công và nhập Tailscale IP/host của IPC.</span></div>';
         if (el("homeFocusGatewayName")) renderHomeFocus(null);
         renderHomeModules();
         applyAdminLanguage(el("homeView"));
@@ -5135,7 +5135,7 @@ export function renderDashboardPage({ publicUrl }) {
       if (el("remoteAccessEnabled")) el("remoteAccessEnabled").value = String(Boolean(remote.enabled));
       if (el("remoteAccessHost")) el("remoteAccessHost").value = remote.host || "";
       if (el("remoteAccessIp")) el("remoteAccessIp").value = remote.ip || "";
-      if (el("remoteAccessUiPort")) el("remoteAccessUiPort").value = remote.uiPort || 3000;
+      if (el("remoteAccessUiPort")) el("remoteAccessUiPort").value = remote.uiPort || 80;
       if (el("remoteAccessSshPort")) el("remoteAccessSshPort").value = remote.sshPort || 22;
       if (el("remoteAccessTag")) el("remoteAccessTag").value = remote.tag || "tag:gateway";
       updateTailscaleUiButtons();
@@ -5149,7 +5149,7 @@ export function renderDashboardPage({ publicUrl }) {
         method: "tailscale",
         host,
         ip,
-        uiPort: Number(el("remoteAccessUiPort")?.value || 3000),
+        uiPort: Number(el("remoteAccessUiPort")?.value || 80),
         sshPort: Number(el("remoteAccessSshPort")?.value || 22),
         tag: el("remoteAccessTag")?.value.trim() || "tag:gateway",
       };
@@ -7508,7 +7508,7 @@ export function renderDashboardPage({ publicUrl }) {
             method: "tailscale",
             host: String(form.get("tailscaleHost") || "").trim(),
             ip: String(form.get("tailscaleIp") || "").trim(),
-            uiPort: Number(form.get("tailscaleUiPort") || 3000),
+            uiPort: Number(form.get("tailscaleUiPort") || 80),
             sshPort: Number(form.get("tailscaleSshPort") || 22),
             tag: String(form.get("tailscaleTag") || "tag:gateway").trim(),
           },
