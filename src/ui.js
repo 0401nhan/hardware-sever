@@ -1274,6 +1274,7 @@ export function renderDashboardPage({ publicUrl }) {
     }
     .gateway-card.is-online::before { background: var(--ok); }
     .gateway-card.is-offline::before { background: #94a3b8; }
+    .gateway-card.is-waiting::before { background: var(--warning); }
     .gateway-card.is-error::before { background: var(--danger); }
     .gateway-card-head {
       display: flex;
@@ -3137,8 +3138,10 @@ export function renderDashboardPage({ publicUrl }) {
     let homeTelemetry = new Map();
     let homeConfigs = new Map();
     let homeCommands = new Map();
+    let homeRemoteHealth = new Map();
     let homeTelemetryRequestId = 0;
     let homeDetailsRequestId = 0;
+    let homeRemoteHealthRequestId = 0;
     const expandedDeviceRegisters = new Set();
     const expandedTemplateRegisters = new Set();
     let currentLanguage = localStorage.getItem("adminLanguage") || localStorage.getItem("loginLanguage") || "vi";
@@ -3442,8 +3445,35 @@ export function renderDashboardPage({ publicUrl }) {
       gateways = gatewayPayload.gateways || [];
       templates = templatePayload.templates || [];
       renderHome();
+      loadHomeRemoteHealth().catch((error) => console.error(error));
       loadHomeTelemetry().catch((error) => console.error(error));
       loadHomeDetails().catch((error) => console.error(error));
+    }
+
+    async function loadHomeRemoteHealth() {
+      const requestId = ++homeRemoteHealthRequestId;
+      const remoteGateways = gateways.filter((gateway) => remoteAccessUiUrl(gateway));
+      const entries = await Promise.allSettled(remoteGateways.map(async (gateway) => {
+        const payload = await requestJson("/api/gateways/" + encodeURIComponent(gateway.id) + "/tailscale/health");
+        return [gateway.id, { ok: true, payload }];
+      }));
+
+      if (requestId !== homeRemoteHealthRequestId) return;
+
+      homeRemoteHealth = new Map();
+      entries.forEach((entry, index) => {
+        const gateway = remoteGateways[index];
+        if (!gateway) return;
+        if (entry.status === "fulfilled") {
+          homeRemoteHealth.set(gateway.id, entry.value[1]);
+        } else {
+          homeRemoteHealth.set(gateway.id, {
+            ok: false,
+            error: entry.reason?.message || "Cannot reach gateway over Tailscale",
+          });
+        }
+      });
+      renderHome();
     }
 
     async function loadHomeTelemetry() {
@@ -3489,8 +3519,9 @@ export function renderDashboardPage({ publicUrl }) {
     function renderHome() {
       const grid = el("gatewayHomeGrid");
       const total = gateways.length;
-      const online = gateways.filter((gateway) => gateway.status === "online").length;
-      const offline = total - online;
+      const displayStatuses = gateways.map(gatewayDisplayStatus);
+      const online = displayStatuses.filter((status) => status.kind === "online").length;
+      const offline = displayStatuses.filter((status) => status.kind === "offline").length;
       const onlineRatio = total ? Math.round((online / total) * 1000) / 10 : 0;
       const offlineRatio = total ? Math.round((offline / total) * 1000) / 10 : 0;
       const metrics = homeFleetMetrics();
@@ -3520,21 +3551,21 @@ export function renderDashboardPage({ publicUrl }) {
 
       if (grid) {
         grid.innerHTML = gateways.map((gateway) => {
-          const status = gateway.status || "offline";
+          const status = gatewayDisplayStatus(gateway);
           const tailscaleUrl = remoteAccessUiUrl(gateway);
           const remoteDisabled = tailscaleUrl ? "" : " disabled";
           const remoteTitle = tailscaleUrl ? "Remote IPC qua Tailscale" : "Chua co Tailscale host/IP";
           return \`
-            <article class="gateway-card is-\${escapeHtml(status)}">
+            <article class="gateway-card is-\${escapeHtml(status.kind)}">
               <div class="gateway-card-head">
                 <div>
                   <strong>\${escapeHtml(gateway.site || gateway.name || gateway.id)}</strong>
                   <p>\${escapeHtml(gateway.name || gateway.id)} | \${escapeHtml(gateway.id)}</p>
                 </div>
-                <span class="badge \${escapeHtml(status)}">\${escapeHtml(statusLabel(status))}</span>
+                <span class="badge \${escapeHtml(status.kind)}" title="\${escapeHtml(status.title)}">\${escapeHtml(status.label)}</span>
               </div>
               <div class="gateway-stats">
-                <div class="gateway-stat"><span>Last seen</span><strong>\${escapeHtml(formatDateTime(gateway.lastSeenAt))}</strong></div>
+                <div class="gateway-stat"><span>Tailscale</span><strong>\${escapeHtml(status.detail)}</strong></div>
                 <div class="gateway-stat"><span>Config</span><strong>\${escapeHtml((gateway.appliedConfigVersion || "-") + " / " + (gateway.desiredConfigVersion || gateway.latestConfigVersion || "-"))}</strong></div>
               </div>
               <div class="gateway-remote">Tailscale: \${escapeHtml(remoteAccessLabel(gateway))}</div>
@@ -3553,10 +3584,10 @@ export function renderDashboardPage({ publicUrl }) {
     }
 
     function renderHomeFocus(gateway) {
-      const status = gateway?.status || "offline";
+      const status = gatewayDisplayStatus(gateway);
       el("homeFocusGatewayName").textContent = gateway ? (gateway.name || gateway.id) : "Chưa chọn gateway";
-      el("homeFocusStatus").className = "badge " + status;
-      el("homeFocusStatus").textContent = statusLabel(status);
+      el("homeFocusStatus").className = "badge " + status.kind;
+      el("homeFocusStatus").textContent = status.label;
       el("homeFocusHeartbeat").textContent = formatDateTime(gateway?.lastSeenAt);
       el("homeFocusConfig").textContent = gateway ? String(gateway.appliedConfigVersion || "-") : "-";
       el("homeFocusId").textContent = gateway?.id || "-";
@@ -3564,6 +3595,63 @@ export function renderDashboardPage({ publicUrl }) {
       el("homeFocusApp").textContent = gateway?.appVersion || "-";
       el("homeFocusConfigStatus").textContent = gateway?.lastConfigStatus || "-";
       el("homeFocusCreated").textContent = formatDateTime(gateway?.createdAt);
+    }
+
+    function gatewayDisplayStatus(gateway) {
+      if (!gateway) {
+        return {
+          kind: "offline",
+          label: "Offline",
+          detail: "-",
+          title: "No gateway selected",
+        };
+      }
+
+      if (gateway.status === "online") {
+        return {
+          kind: "online",
+          label: "Online",
+          detail: "heartbeat",
+          title: "Gateway heartbeat is online",
+        };
+      }
+
+      if (remoteAccessUiUrl(gateway)) {
+        if (homeRemoteHealth.has(gateway.id)) {
+          const health = homeRemoteHealth.get(gateway.id);
+          if (health?.ok) {
+            const gatewayTime = health.payload?.gateway?.time || health.payload?.time;
+            return {
+              kind: "online",
+              label: "Online",
+              detail: gatewayTime ? formatDateTime(gatewayTime) : "Tailscale OK",
+              title: "Reachable through Tailscale",
+            };
+          }
+
+          return {
+            kind: "error",
+            label: "Warning",
+            detail: health?.error || "Tailscale error",
+            title: health?.error || "Cannot reach gateway through Tailscale",
+          };
+        }
+
+        return {
+          kind: "waiting",
+          label: "Remote ready",
+          detail: remoteAccessLabel(gateway),
+          title: "Tailscale remote access is configured",
+        };
+      }
+
+      const rawStatus = gateway.status || "offline";
+      return {
+        kind: rawStatus,
+        label: statusLabel(rawStatus),
+        detail: formatDateTime(gateway.lastSeenAt),
+        title: "Legacy heartbeat status",
+      };
     }
 
     function statusLabel(status) {
@@ -3720,13 +3808,13 @@ export function renderDashboardPage({ publicUrl }) {
         return;
       }
       body.innerHTML = gateways.map((gateway) => {
-        const status = gateway.status || "offline";
+        const status = gatewayDisplayStatus(gateway);
         const configText = (gateway.appliedConfigVersion || "-") + " / " + (gateway.desiredConfigVersion || gateway.latestConfigVersion || "-");
-        const cloudStatus = gateway.lastConfigStatus === "failed" ? "failed" : status === "online" ? "applied" : "offline";
+        const cloudStatus = gateway.lastConfigStatus === "failed" ? "failed" : status.kind === "online" ? "applied" : "offline";
         return '<tr>' +
           '<td><a href="#" class="id-link" data-remote-gateway="' + escapeHtml(gateway.id) + '">' + escapeHtml(gateway.id) + '</a></td>' +
           '<td>' + escapeHtml([gateway.site, gateway.name].filter(Boolean).join(" / ") || "-") + '</td>' +
-          '<td><span class="badge ' + escapeHtml(status) + '">' + escapeHtml(statusLabel(status)) + '</span></td>' +
+          '<td><span class="badge ' + escapeHtml(status.kind) + '">' + escapeHtml(status.label) + '</span></td>' +
           '<td>' + escapeHtml(formatDateTime(gateway.lastSeenAt)) + '</td>' +
           '<td>' + escapeHtml(gateway.appVersion || "-") + '</td>' +
           '<td>' + escapeHtml(configText) + '</td>' +
@@ -3881,7 +3969,8 @@ export function renderDashboardPage({ publicUrl }) {
       if (!body) return;
       const rows = [];
       for (const gateway of gateways) {
-        rows.push({ time: gateway.lastSeenAt, gateway: gateway.id, type: "Heartbeat", text: statusLabel(gateway.status || "offline"), status: gateway.status || "offline" });
+        const displayStatus = gatewayDisplayStatus(gateway);
+        rows.push({ time: gateway.lastSeenAt || gateway.updatedAt || gateway.createdAt, gateway: gateway.id, type: "Remote", text: displayStatus.label, status: displayStatus.kind });
         if (gateway.lastConfigStatus) rows.push({ time: gateway.updatedAt, gateway: gateway.id, type: "Config", text: gateway.lastConfigMessage || ("Config " + gateway.lastConfigStatus), status: gateway.lastConfigStatus });
         for (const command of (homeCommands.get(gateway.id) || []).slice(0, 3)) {
           rows.push({ time: command.createdAt, gateway: gateway.id, type: "Command", text: actionLabel(command.action) + " " + commandDetail(command), status: command.status || "queued" });
@@ -5022,12 +5111,13 @@ export function renderDashboardPage({ publicUrl }) {
       if (!body) return;
 
       const gateway = selectedGateway || {};
+      const displayStatus = gatewayDisplayStatus(gateway);
       const rows = [
         {
-          time: gateway.lastSeenAt,
-          type: "Heartbeat",
-          text: statusLabel(gateway.status || "offline"),
-          status: gateway.status || "offline",
+          time: gateway.lastSeenAt || gateway.updatedAt || gateway.createdAt,
+          type: "Remote",
+          text: displayStatus.label,
+          status: displayStatus.kind,
         },
       ];
 
@@ -5128,7 +5218,8 @@ export function renderDashboardPage({ publicUrl }) {
 
     function lanConnectivityStatus() {
       const gateway = selectedGateway || {};
-      if (gateway.status === "online") {
+      const status = gatewayDisplayStatus(gateway);
+      if (status.kind === "online") {
         return {
           kind: "online",
           title: "LAN connected: " + (gateway.id || selectedId || "gateway"),
@@ -5137,8 +5228,8 @@ export function renderDashboardPage({ publicUrl }) {
 
       if (selectedId) {
         return {
-          kind: "warning",
-          title: "Gateway offline or no heartbeat",
+          kind: status.kind === "offline" ? "warning" : status.kind,
+          title: status.title || "Gateway remote state is pending",
         };
       }
 
@@ -5150,7 +5241,8 @@ export function renderDashboardPage({ publicUrl }) {
 
     function internetConnectivityStatus() {
       const serverUrl = state?.server?.url || "";
-      if (selectedGateway?.status === "online" && serverUrl) {
+      const status = gatewayDisplayStatus(selectedGateway);
+      if (status.kind === "online" && serverUrl) {
         return {
           kind: "online",
           title: "Internet route configured: " + hostFromUrl(serverUrl),
@@ -5159,7 +5251,7 @@ export function renderDashboardPage({ publicUrl }) {
 
       if (serverUrl) {
         return {
-          kind: "warning",
+          kind: status.kind === "offline" ? "warning" : status.kind,
           title: "Server URL configured, gateway not online",
         };
       }
@@ -5179,7 +5271,8 @@ export function renderDashboardPage({ publicUrl }) {
         };
       }
 
-      if (selectedGateway?.status === "online") {
+      const status = gatewayDisplayStatus(selectedGateway);
+      if (status.kind === "online") {
         return {
           kind: "online",
           title: "MongoDB enabled: " + (mongo.dbName || mongo.dbNameEnv || "database"),
@@ -5187,7 +5280,7 @@ export function renderDashboardPage({ publicUrl }) {
       }
 
       return {
-        kind: "warning",
+        kind: status.kind === "offline" ? "warning" : status.kind,
         title: "MongoDB enabled, gateway not online",
       };
     }
