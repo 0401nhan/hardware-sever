@@ -3698,8 +3698,7 @@ export function renderDashboardPage({ publicUrl }) {
         setStatus("Chua co Tailscale host/IP cho gateway", "error");
         return;
       }
-      window.open("/gateways/" + encodeURIComponent(gatewayId) + "/remote", "_blank", "noopener");
-      setStatus("Da mo Remote IPC qua Tailscale", "ok");
+      window.location.assign("/gateways/" + encodeURIComponent(gatewayId) + "/remote");
     }
 
     function openTailscaleGateway(gatewayId = selectedId) {
