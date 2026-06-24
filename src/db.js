@@ -9,11 +9,7 @@ import { defaultRemoteAccess, normalizeRemoteAccess } from "./remoteAccess.js";
 const require = createRequire(import.meta.url);
 const DEFAULT_GATEWAY_OFFLINE_AFTER_MS = 90_000;
 
-export async function openDatabase(dbPath, legacyTokenSecretOrOptions = {}, maybeOptions = {}) {
-  const options = typeof legacyTokenSecretOrOptions === "object" && legacyTokenSecretOrOptions !== null
-    ? legacyTokenSecretOrOptions
-    : maybeOptions;
-
+export async function openDatabase(dbPath, options = {}) {
   fs.mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true });
   const db = await openSqliteDatabase(dbPath);
 

@@ -12,10 +12,7 @@ import { renderDashboardPage, renderLoginPage } from "./ui.js";
 
 const PUBLIC_DIR = new URL("../public/", import.meta.url);
 const PUBLIC_ASSETS = new Map([
-  ["/logo/logo-bigsize.png", "logo/logo-bigsize.png"],
-  ["/logo/logo-login-full.png", "logo/logo-login-full.png"],
   ["/logo/logo-login-mark.png", "logo/logo-login-mark.png"],
-  ["/logo/logo-mediumsize.png", "logo/logo-mediumsize.png"],
   ["/logo/logo-smallsize.png", "logo/logo-smallsize.png"],
 ]);
 const config = {
