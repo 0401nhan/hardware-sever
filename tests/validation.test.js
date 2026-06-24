@@ -3,12 +3,16 @@ import assert from "node:assert/strict";
 
 import { createDefaultGatewayConfig, validateGatewayConfig } from "../src/validation.js";
 
-test("creates a valid default remote config for a gateway", () => {
+test("creates a valid default Tailscale-local config for a gateway", () => {
   const config = createDefaultGatewayConfig("EB-ANHUNG-001", "https://server.electricbird.vn");
 
   assert.doesNotThrow(() => validateGatewayConfig(config, "EB-ANHUNG-001"));
-  assert.equal(config.server.url, "https://server.electricbird.vn/api/telemetry");
-  assert.equal(config.remoteConfig.url, "https://server.electricbird.vn/api/gateway");
+  assert.equal(config.gateway.id, "EB-ANHUNG-001");
+  assert.equal(config.storage.stationEnergyPath, "/data/station-energy.json");
+  assert.equal(config.server, undefined);
+  assert.equal(config.remoteConfig, undefined);
+  assert.equal(config.storage.queuePath, undefined);
+  assert.equal(config.storage.queue, undefined);
 });
 
 test("rejects config for the wrong gateway id", () => {
@@ -20,14 +24,15 @@ test("rejects config for the wrong gateway id", () => {
   );
 });
 
-test("rejects invalid remote gateway queue limits", () => {
+test("ignores legacy remote gateway queue settings", () => {
   const config = validRtuConfig();
-  config.storage.queue.maxBytes = 1;
+  config.storage.queuePath = "/data/queue.jsonl";
+  config.storage.queue = {
+    maxRecords: 1,
+    maxBytes: 1,
+  };
 
-  assert.throws(
-    () => validateGatewayConfig(config, "EB-ANHUNG-001"),
-    /storage\.queue\.maxBytes must be between 1024/,
-  );
+  assert.doesNotThrow(() => validateGatewayConfig(config, "EB-ANHUNG-001"));
 });
 
 test("rejects invalid remote gateway port settings", () => {
@@ -417,28 +422,8 @@ function validRtuConfig() {
       id: "EB-ANHUNG-001",
       pollLoopDelayMs: 250,
     },
-    server: {
-      url: "https://server.electricbird.vn/api/telemetry",
-      timeoutMs: 10000,
-      batchSize: 100,
-      uploadIntervalMs: 5000,
-    },
-    remoteConfig: {
-      enabled: true,
-      url: "https://server.electricbird.vn/api/gateway",
-      checkIntervalMs: 30000,
-      timeoutMs: 10000,
-      statePath: "/data/remote-config-state.json",
-    },
     storage: {
-      queuePath: "/data/queue.jsonl",
-      queue: {
-        maxRecords: 100000,
-        maxBytes: 52428800,
-        retentionMs: 604800000,
-        compactIntervalMs: 60000,
-        corruptPath: "/data/queue.jsonl.corrupt",
-      },
+      stationEnergyPath: "/data/station-energy.json",
     },
     ports: {
       rs485_1: {

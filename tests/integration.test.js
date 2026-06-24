@@ -145,7 +145,10 @@ test("auto provisioning creates the gateway and default config", async (t) => {
   assert.equal(latestConfig.status, 200);
   assert.equal(latestConfig.body.version, 1);
   assert.equal(latestConfig.body.config.gateway.id, "GW-AUTO-001");
-  assert.equal(latestConfig.body.config.server.url, `${app.baseUrl}/api/telemetry`);
+  assert.equal(latestConfig.body.config.storage.stationEnergyPath, "/data/station-energy.json");
+  assert.equal(latestConfig.body.config.server, undefined);
+  assert.equal(latestConfig.body.config.remoteConfig, undefined);
+  assert.equal(latestConfig.body.config.storage.queuePath, undefined);
 });
 
 test("admin can delete a gateway and its site from the server list", async (t) => {

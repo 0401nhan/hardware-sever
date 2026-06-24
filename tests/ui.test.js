@@ -51,7 +51,7 @@ test("dashboard renders inverter control actions", () => {
   assert.match(html, /id="controlScheduleSummary"/);
   assert.match(html, /id="controlTransport"/);
   assert.match(html, />Tailscale direct<\/option>/);
-  assert.match(html, />Cloud queue<\/option>/);
+  assert.doesNotMatch(html, />Cloud queue<\/option>/);
   assert.match(html, /value="daily"/);
   assert.match(html, /value="weekly"/);
   assert.match(html, /data-schedule-weekday="1"/);
@@ -69,7 +69,6 @@ test("dashboard renders inverter control actions", () => {
   assert.match(html, /data-field="length" type="number" min="1" max="125"/);
   assert.match(html, /data-template="' \+ index \+ '" data-field="protocol"/);
   assert.match(html, /commandScheduleLabel\(command\)/);
-  assert.match(html, /\/api\/gateways\/" \+ encodeURIComponent\(selectedId\) \+ "\/control/);
   assert.match(html, /\/api\/gateways\/" \+ encodeURIComponent\(selectedId\) \+ "\/commands/);
 });
 

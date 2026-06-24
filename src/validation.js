@@ -53,8 +53,6 @@ export function validateGatewayConfig(config, expectedGatewayId) {
   const missing = [];
 
   if (!config?.gateway?.id) missing.push("gateway.id");
-  if (!config?.server?.url) missing.push("server.url");
-  if (!config?.storage?.queuePath) missing.push("storage.queuePath");
   if (!Array.isArray(config?.devices)) missing.push("devices");
 
   if (missing.length > 0) {
@@ -65,17 +63,10 @@ export function validateGatewayConfig(config, expectedGatewayId) {
     throw new Error(`Invalid gateway config. gateway.id must be ${expectedGatewayId}`);
   }
 
-  if (config.remoteConfig?.enabled && !config.remoteConfig.url) {
-    throw new Error("Invalid gateway config. remoteConfig.url is required when remoteConfig.enabled is true");
-  }
   validateStorage(config.storage);
   validateInteger(config.gateway.pollLoopDelayMs, "gateway.pollLoopDelayMs", { min: 50, optional: true });
   validateInteger(config.gateway.maxConcurrentPollGroups, "gateway.maxConcurrentPollGroups", { min: 1, max: 64, optional: true });
-  validateBoolean(config.server.enabled, "server.enabled", { optional: true });
-  validateInteger(config.server.timeoutMs, "server.timeoutMs", { min: 100, optional: true });
-  validateInteger(config.server.batchSize, "server.batchSize", { min: 1, optional: true });
-  validateInteger(config.server.uploadIntervalMs, "server.uploadIntervalMs", { min: 500, optional: true });
-  validateRemoteConfig(config.remoteConfig);
+  validateInteger(config.gateway.statusHoldMs, "gateway.statusHoldMs", { min: 0, optional: true });
   validateIec104(config.iec104);
   const loggerIds = validateLoggers(config.loggers);
   validateStations(config.stations, config.devices, loggerIds);
@@ -277,22 +268,6 @@ export function createDefaultGatewayConfig(gatewayId, publicUrl) {
       id: gatewayId,
       pollLoopDelayMs: 250,
     },
-    server: {
-      enabled: false,
-      url: `${publicUrl.replace(/\/+$/, "")}/api/telemetry`,
-      tokenEnv: "SERVER_TOKEN",
-      timeoutMs: 10000,
-      batchSize: 100,
-      uploadIntervalMs: 5000,
-    },
-    remoteConfig: {
-      enabled: false,
-      url: `${publicUrl.replace(/\/+$/, "")}/api/gateway`,
-      tokenEnv: "GATEWAY_TOKEN",
-      checkIntervalMs: 30000,
-      timeoutMs: 10000,
-      statePath: "/data/remote-config-state.json",
-    },
     iec104: {
       enabled: false,
       mode: "client",
@@ -320,20 +295,13 @@ export function createDefaultGatewayConfig(gatewayId, publicUrl) {
       controls: [],
     },
     storage: {
-      queuePath: "/data/queue.jsonl",
+      stationEnergyPath: "/data/station-energy.json",
       archive: {
         enabled: true,
         path: "/data/telemetry-5m.sqlite",
         intervalMs: 300000,
         retentionMs: 604800000,
         compactIntervalMs: 60000,
-      },
-      queue: {
-        maxRecords: 100000,
-        maxBytes: 52428800,
-        retentionMs: 604800000,
-        compactIntervalMs: 60000,
-        corruptPath: "/data/queue.jsonl.corrupt",
       },
     },
     stations: [],
@@ -603,36 +571,16 @@ function validateIec104Control(control, controlPath) {
   }
 }
 
-function validateStorage(storage) {
-  const queue = storage.queue || {};
+function validateStorage(storage = {}) {
   const archive = storage.archive || {};
 
-  validateInteger(queue.maxRecords ?? storage.queueMaxRecords, "storage.queue.maxRecords", { min: 1, optional: true });
-  validateInteger(queue.maxBytes ?? storage.queueMaxBytes, "storage.queue.maxBytes", { min: 1024, optional: true });
-  validateInteger(queue.retentionMs ?? storage.queueRetentionMs, "storage.queue.retentionMs", { min: 0, optional: true });
-  validateInteger(queue.compactIntervalMs ?? storage.queueCompactIntervalMs, "storage.queue.compactIntervalMs", { min: 0, optional: true });
   validateBoolean(archive.enabled, "storage.archive.enabled", { optional: true });
   validateInteger(archive.intervalMs, "storage.archive.intervalMs", { min: 60000, optional: true });
   validateInteger(archive.retentionMs, "storage.archive.retentionMs", { min: 0, optional: true });
   validateInteger(archive.compactIntervalMs, "storage.archive.compactIntervalMs", { min: 0, optional: true });
 
-  const corruptPath = queue.corruptPath ?? storage.queueCorruptPath;
-  if (corruptPath !== undefined && !corruptPath) {
-    throw new Error("Invalid gateway config. storage.queue.corruptPath must not be empty");
-  }
   if (archive.path !== undefined && !archive.path) {
     throw new Error("Invalid gateway config. storage.archive.path must not be empty");
-  }
-}
-
-function validateRemoteConfig(remoteConfig = {}) {
-  if (!remoteConfig.enabled) return;
-
-  validateInteger(remoteConfig.checkIntervalMs, "remoteConfig.checkIntervalMs", { min: 5000, optional: true });
-  validateInteger(remoteConfig.timeoutMs, "remoteConfig.timeoutMs", { min: 1000, optional: true });
-
-  if (remoteConfig.statePath !== undefined && !remoteConfig.statePath) {
-    throw new Error("Invalid gateway config. remoteConfig.statePath must not be empty");
   }
 }
 

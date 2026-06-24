@@ -2786,16 +2786,16 @@ export function renderDashboardPage({ publicUrl }) {
             <div class="panel-title-row">
               <div>
                 <h2 class="panel-title">Lưu trữ & Đồng bộ</h2>
-                <p>Queue nội bộ, giới hạn lưu trữ, upload HTTP và IEC104 runtime.</p>
+                <p>Local telemetry archive, Tailscale remote and IEC104 runtime.</p>
               </div>
               <div class="actions">
                 <button id="refreshRuntimeBtn" class="subtle icon-only" type="button" title="Làm mới" aria-label="Làm mới"><svg class="app-icon"><use href="#icon-refresh"></use></svg><span class="visually-hidden">Làm mới</span></button>
               </div>
             </div>
             <section class="overview config-overview" aria-label="Tổng quan đồng bộ runtime">
-              <div class="metric"><span>Record trong queue</span><strong id="queueRecords">-</strong></div>
-              <div class="metric"><span>Dung lượng queue</span><strong id="queueBytes">-</strong></div>
-              <div class="metric"><span>Đồng bộ cloud</span><strong id="runtimeCloudMode">-</strong></div>
+              <div class="metric"><span>Remote</span><strong id="queueRecords">Tailscale</strong></div>
+              <div class="metric"><span>Archive</span><strong id="queueBytes">Local</strong></div>
+              <div class="metric"><span>Mode</span><strong id="runtimeCloudMode">Tailscale</strong></div>
               <div class="metric"><span>IEC104</span><strong id="runtimeIec104">-</strong></div>
             </section>
             <div class="table-wrap">
@@ -2812,7 +2812,7 @@ export function renderDashboardPage({ publicUrl }) {
             <div class="panel-title-row">
               <div>
                 <h2 class="panel-title">Sự kiện</h2>
-                <p>Sự kiện vận hành suy ra từ telemetry, queue, IEC104 và điều khiển gần nhất.</p>
+                <p>Events from remote status, telemetry, IEC104 and recent control actions.</p>
               </div>
             </div>
             <div class="table-wrap">
@@ -2867,7 +2867,7 @@ export function renderDashboardPage({ publicUrl }) {
           <div id="gatewaySubtab" class="subtab-panel active" data-subtab-panel="settingCommunication">
             <section class="overview">
               <div class="metric"><span>Gateway</span><strong id="summaryGateway">-</strong></div>
-              <div class="metric"><span>Máy chủ</span><strong id="summaryServer">-</strong></div>
+              <div class="metric"><span>Remote</span><strong id="summaryServer">Tailscale</strong></div>
               <div class="metric"><span>Cổng</span><strong id="summaryPorts">0</strong></div>
               <div class="metric"><span>Thiết bị</span><strong id="summaryDevices">0</strong></div>
             </section>
@@ -2875,7 +2875,7 @@ export function renderDashboardPage({ publicUrl }) {
               <div class="section-header">
                 <div class="section-title">
                   <h2>Gateway</h2>
-                  <p>Thiết lập gửi dữ liệu thiết bị lên máy chủ và chu kỳ upload.</p>
+                  <p>IPC runtime identity and local polling.</p>
                 </div>
                 <div class="actions">
                   <button class="subtle icon-text" type="button" data-parent-tab="settingCommunication" data-subtab-target="rawYamlSubtab"><svg class="app-icon"><use href="#icon-list"></use></svg>Raw YAML</button>
@@ -2887,19 +2887,8 @@ export function renderDashboardPage({ publicUrl }) {
                 <label>Gateway ID <input id="gatewayId" autocomplete="off"></label>
                 <label>Đường dẫn Gateway ID <input id="gatewayIdPath" autocomplete="off"></label>
                 <label>Độ trễ vòng poll ms <input id="pollLoopDelayMs" type="number" min="50" step="50"></label>
-                <label class="wide">URL máy chủ <input id="serverUrl" autocomplete="url"></label>
-                <label>Bật upload server <select id="serverEnabled"><option value="false">Tắt</option><option value="true">Bật</option></select></label>
-                <label>Token env <input id="tokenEnv" autocomplete="off"></label>
-                <label>Timeout ms <input id="timeoutMs" type="number" min="100"></label>
-                <label>Cỡ lô upload <input id="batchSize" type="number" min="1"></label>
-                <label>Chu kỳ upload ms <input id="uploadIntervalMs" type="number" min="500"></label>
-                <label class="wide">URL cấu hình từ xa <input id="remoteConfigUrl" autocomplete="url"></label>
-                <label>Bật cấu hình từ xa <select id="remoteConfigEnabled"><option value="false">Tắt</option><option value="true">Bật</option></select></label>
-                <label>Remote token env <input id="remoteConfigTokenEnv" autocomplete="off"></label>
-                <label>Chu kỳ kiểm tra remote ms <input id="remoteConfigCheckIntervalMs" type="number" min="5000" step="1000"></label>
-                <label>Remote timeout ms <input id="remoteConfigTimeoutMs" type="number" min="1000" step="1000"></label>
-                <label class="wide">Đường dẫn trạng thái remote <input id="remoteConfigStatePath" autocomplete="off"></label>
-                <label class="wide">Đường dẫn queue <input id="queuePath" autocomplete="off"></label>
+                <label>Poll groups <input id="maxConcurrentPollGroups" type="number" min="1" max="64" step="1"></label>
+                <label>Online hold ms <input id="statusHoldMs" type="number" min="0" step="1000"></label>
               </div>
             </section>
           </div>
@@ -3292,14 +3281,14 @@ export function renderDashboardPage({ publicUrl }) {
       stationDeviceOverviewSubtab: ["Tổng quan", "Trạng thái gateway, telemetry và cấu hình IPC"],
       deviceMonitoringTab: ["Device Monitoring", "Latest Modbus data và raw register"],
       inverterControlTab: ["Station Control", "Chạy Modbus command theo station hoặc inverter"],
-      gatewaySubtab: ["Gateway", "Upload server, queue và polling cycle"],
+      gatewaySubtab: ["Gateway", "IPC identity and local polling"],
       rs485PortsSubtab: ["RS485 / COM", "Serial settings cho Modbus RTU device"],
       stationsSubtab: ["Station", "Station topology và EVN control group"],
       modbusDevicesSubtab: ["Modbus Device", "Device identity, RTU/TCP mode và register map"],
       rawYamlSubtab: ["Raw YAML", "Cấu hình gateway hiện đang lưu"],
       libraryTab: ["Template", "Mẫu Modbus device có thể tái sử dụng"],
       iec104Subtab: ["IEC 60870-5-104", "Bật IEC104 và cấu hình point mapping"],
-      storageSyncTab: ["Storage & Sync", "Local queue, cloud upload và IEC104 runtime"],
+      storageSyncTab: ["Storage", "Local archive, Tailscale remote and IEC104 runtime"],
       logsEventsTab: ["Events", "Sự kiện vận hành gần nhất trên IPC gateway"],
       systemTab: ["System", "Thông tin IPC gateway và service status"],
     };
@@ -3846,10 +3835,11 @@ export function renderDashboardPage({ publicUrl }) {
       body.innerHTML = gateways.map((gateway) => {
         const payload = homeConfigs.get(gateway.id);
         const config = payload?.config || {};
+        const remote = gateway.remoteAccess || {};
         return '<tr>' +
           '<td>' + escapeHtml(gateway.id) + '</td>' +
-          '<td>' + escapeHtml(hostFromUrl(config.server?.url || "")) + '</td>' +
-          '<td>' + escapeHtml(hostFromUrl(config.remoteConfig?.url || "")) + '</td>' +
+          '<td>' + escapeHtml(remote.method || "tailscale") + '</td>' +
+          '<td>' + escapeHtml(remoteAccessLabel(gateway)) + '</td>' +
           '<td>' + escapeHtml(String(Object.keys(config.ports || {}).length)) + '</td>' +
           '<td>' + escapeHtml(String((config.devices || []).length)) + '</td>' +
           '<td>' + escapeHtml((gateway.appliedConfigVersion || "-") + " / " + (gateway.desiredConfigVersion || payload?.version || gateway.latestConfigVersion || "-")) + '</td>' +
@@ -3941,18 +3931,16 @@ export function renderDashboardPage({ publicUrl }) {
       if (!body) return;
       body.innerHTML = gateways.map((gateway) => {
         const config = homeConfigs.get(gateway.id)?.config || {};
-        const queue = config.storage?.queue || {};
-        const pending = homeGatewayMetrics(homeTelemetry.get(gateway.id) || []).queueRecords;
+        const archive = config.storage?.archive || {};
         return '<tr>' +
           '<td>' + escapeHtml(gateway.id) + '</td>' +
-          '<td>' + escapeHtml(config.storage?.queuePath || "-") + '</td>' +
-          '<td>' + escapeHtml(String(queue.maxRecords || "-")) + '</td>' +
-          '<td>' + escapeHtml(queue.maxBytes ? formatBytes(queue.maxBytes) : "-") + '</td>' +
-          '<td>' + escapeHtml(queue.retentionMs ? formatMs(queue.retentionMs) : "-") + '</td>' +
-          '<td>' + escapeHtml(pending === null ? "-" : formatCompactNumber(pending)) + '</td>' +
-          '<td>' + escapeHtml(config.server?.enabled ? "HTTP" : "Local") + '</td>' +
+          '<td>' + escapeHtml(archive.path || "-") + '</td>' +
+          '<td>' + escapeHtml(formatMs(archive.intervalMs || 300000)) + '</td>' +
+          '<td>' + escapeHtml(formatMs(archive.retentionMs || 604800000)) + '</td>' +
+          '<td>' + escapeHtml(config.storage?.stationEnergyPath || "-") + '</td>' +
+          '<td>Tailscale</td>' +
         '</tr>';
-      }).join("") || '<tr><td colspan="7" class="empty-state">Chưa có dữ liệu lưu trữ.</td></tr>';
+      }).join("") || '<tr><td colspan="6" class="empty-state">No storage data.</td></tr>';
     }
 
     function renderHomeLogsModule() {
@@ -4005,7 +3993,7 @@ export function renderDashboardPage({ publicUrl }) {
     async function openRemote(gatewayId) {
       selectedId = gatewayId;
       selectedGateway = gateways.find((gateway) => gateway.id === gatewayId) || { id: gatewayId };
-      selectedControlTransport = remoteAccessUiUrl(selectedGateway) ? "tailscale" : "cloud";
+      selectedControlTransport = "tailscale";
       el("homeView").classList.add("hidden");
       el("remoteView").classList.remove("hidden");
       setStatus("Loading...");
@@ -4101,23 +4089,7 @@ export function renderDashboardPage({ publicUrl }) {
 
     function defaultConfig(gatewayId) {
       return {
-        gateway: { id: gatewayId, idPath: "/data/gateway-id", pollLoopDelayMs: 250 },
-        server: {
-          enabled: false,
-          url: publicUrl.replace(/\\/+$/, "") + "/api/telemetry",
-          tokenEnv: "SERVER_TOKEN",
-          timeoutMs: 10000,
-          batchSize: 100,
-          uploadIntervalMs: 5000,
-        },
-        remoteConfig: {
-          enabled: false,
-          url: publicUrl.replace(/\\/+$/, "") + "/api/gateway",
-          tokenEnv: "GATEWAY_TOKEN",
-          checkIntervalMs: 30000,
-          timeoutMs: 10000,
-          statePath: "/data/remote-config-state.json",
-        },
+        gateway: { id: gatewayId, idPath: "/data/gateway-id", pollLoopDelayMs: 250, maxConcurrentPollGroups: 6, statusHoldMs: 0 },
         iec104: {
           enabled: true,
           mode: "server",
@@ -4139,20 +4111,13 @@ export function renderDashboardPage({ publicUrl }) {
           controls: [],
         },
         storage: {
-          queuePath: "/data/queue.jsonl",
+          stationEnergyPath: "/data/station-energy.json",
           archive: {
             enabled: true,
             path: "/data/telemetry-5m.sqlite",
             intervalMs: 300000,
             retentionMs: 604800000,
             compactIntervalMs: 60000,
-          },
-          queue: {
-            maxRecords: 100000,
-            maxBytes: 52428800,
-            retentionMs: 604800000,
-            compactIntervalMs: 60000,
-            corruptPath: "/data/queue.jsonl.corrupt",
           },
         },
         stations: [],
@@ -4174,18 +4139,8 @@ export function renderDashboardPage({ publicUrl }) {
       el("gatewayId").value = state.gateway?.id || selectedId;
       el("gatewayIdPath").value = state.gateway?.idPath || "/data/gateway-id";
       el("pollLoopDelayMs").value = state.gateway?.pollLoopDelayMs ?? 250;
-      el("serverUrl").value = state.server?.url || "";
-      el("serverEnabled").value = String(state.server?.enabled ?? false);
-      el("tokenEnv").value = state.server?.tokenEnv || "SERVER_TOKEN";
-      el("timeoutMs").value = state.server?.timeoutMs ?? 10000;
-      el("batchSize").value = state.server?.batchSize ?? 100;
-      el("uploadIntervalMs").value = state.server?.uploadIntervalMs ?? 5000;
-      el("remoteConfigEnabled").value = String(state.remoteConfig?.enabled ?? false);
-      el("remoteConfigUrl").value = state.remoteConfig?.url || "";
-      el("remoteConfigTokenEnv").value = state.remoteConfig?.tokenEnv || "GATEWAY_TOKEN";
-      el("remoteConfigCheckIntervalMs").value = state.remoteConfig?.checkIntervalMs ?? 30000;
-      el("remoteConfigTimeoutMs").value = state.remoteConfig?.timeoutMs ?? 10000;
-      el("remoteConfigStatePath").value = state.remoteConfig?.statePath || "/data/remote-config-state.json";
+      el("maxConcurrentPollGroups").value = state.gateway?.maxConcurrentPollGroups ?? 6;
+      el("statusHoldMs").value = state.gateway?.statusHoldMs ?? 0;
       el("iec104Enabled").checked = state.iec104?.enabled ?? true;
       el("iec104Mode").value = "server";
       el("iec104Host").value = state.iec104?.host || "0.0.0.0";
@@ -4202,7 +4157,6 @@ export function renderDashboardPage({ publicUrl }) {
       el("iec104PeriodicMs").value = state.iec104?.periodicMs ?? 300000;
       el("iec104Spontaneous").value = "true";
       el("iec104MaxClientConnections").value = state.iec104?.maxClientConnections ?? 4;
-      el("queuePath").value = state.storage?.queuePath || "/data/queue.jsonl";
       el("rawYaml").value = stringifyConfig(state);
 
       renderSummary();
@@ -4225,10 +4179,9 @@ export function renderDashboardPage({ publicUrl }) {
     function renderSummary() {
       const portCount = Object.keys(state.ports || {}).length;
       const deviceCount = (state.devices || []).length;
-      const serverUrl = state.server?.url || "";
 
       el("summaryGateway").textContent = state.gateway?.id || "-";
-      el("summaryServer").textContent = hostFromUrl(serverUrl);
+      el("summaryServer").textContent = "Tailscale";
       el("summaryPorts").textContent = String(portCount);
       el("summaryDevices").textContent = String(deviceCount);
     }
@@ -4363,7 +4316,7 @@ export function renderDashboardPage({ publicUrl }) {
               icon: "icon-server",
               type: "IPC",
               title: state.gateway?.id || selectedId || "IPC Gateway",
-              meta: hostFromUrl(state.server?.url || "") || "-",
+              meta: "Tailscale",
               status: ipcStatus,
             })}
             <div class="topology-level">\${portHtml}</div>
@@ -4894,16 +4847,10 @@ export function renderDashboardPage({ publicUrl }) {
       if (!transport) return;
 
       const tailscaleReady = Boolean(remoteAccessUiUrl(selectedGateway));
-      if (selectedControlTransport !== "cloud" && selectedControlTransport !== "tailscale") {
-        selectedControlTransport = tailscaleReady ? "tailscale" : "cloud";
-      }
-      if (selectedControlTransport === "tailscale" && !tailscaleReady) {
-        selectedControlTransport = "cloud";
-      }
+      selectedControlTransport = "tailscale";
 
       transport.innerHTML = [
         '<option value="tailscale"' + (tailscaleReady ? "" : " disabled") + '>Tailscale direct</option>',
-        '<option value="cloud">Cloud queue</option>',
       ].join("");
       transport.value = selectedControlTransport;
       transport.title = tailscaleReady
@@ -4912,8 +4859,7 @@ export function renderDashboardPage({ publicUrl }) {
     }
 
     function activeControlTransport() {
-      const value = el("controlTransport")?.value || selectedControlTransport || "cloud";
-      return value === "tailscale" && remoteAccessUiUrl(selectedGateway) ? "tailscale" : "cloud";
+      return "tailscale";
     }
 
     function updateControlScheduleFields() {
@@ -5047,27 +4993,18 @@ export function renderDashboardPage({ publicUrl }) {
       const body = el("storageSyncBody");
       if (!body || !state) return;
 
-      const queue = state.storage?.queue || {};
       const archive = state.storage?.archive || {};
-      const remoteConfig = state.remoteConfig || {};
-      const records = homeTelemetry.get(selectedId) || [];
-      const pending = homeGatewayMetrics(records).queueRecords;
-      setText("queueRecords", pending === null ? "-" : formatCompactNumber(pending));
-      setText("queueBytes", queue.maxBytes ? formatBytes(queue.maxBytes) : "-");
-      setText("runtimeCloudMode", state.server?.enabled ? "HTTP" : "Local");
-      setText("runtimeIec104", state.iec104?.enabled ? ((state.iec104.mode || "server") + " / enabled") : "Tắt");
+      setText("queueRecords", "-");
+      setText("queueBytes", "-");
+      setText("runtimeCloudMode", "Tailscale");
+      setText("runtimeIec104", state.iec104?.enabled ? ((state.iec104.mode || "server") + " / enabled") : "Tat");
       const rows = [
-        ["Đường dẫn queue", state.storage?.queuePath || "-", "File queue local trên IPC"],
-        ["Đường dẫn archive 5 phút", archive.path || "-", "SQLite local lưu snapshot 5 phút để xuất CSV trên gateway"],
-        ["Chu kỳ archive", formatMs(archive.intervalMs || 300000), "Chu kỳ lấy mẫu CSV"],
-        ["Thời gian giữ archive", formatMs(archive.retentionMs || 604800000), "Tự xóa dữ liệu archive quá thời gian này"],
-        ["Đường dẫn điện năng D-1", state.storage?.stationEnergyPath || "-", "File chốt điện năng hôm qua cho IEC104 EVN"],
-        ["Max records", queue.maxRecords || "-", "Giới hạn số bản ghi queue"],
-        ["Max bytes", queue.maxBytes ? formatBytes(queue.maxBytes) : "-", "Giới hạn dung lượng queue"],
-        ["Retention", queue.retentionMs ? formatMs(queue.retentionMs) : "-", "Thời gian giữ dữ liệu local"],
-        ["Pending records", pending === null ? "-" : formatCompactNumber(pending), "Metric do gateway gửi lên nếu có"],
-        ["Remote config", remoteConfig.enabled ? "Enable" : "Disable", hostFromUrl(remoteConfig.url || "") || "-"],
-        ["Runtime IEC104", state.iec104?.enabled ? ((state.iec104.mode || "server") + " / enabled") : "Tắt", "Trạng thái endpoint IEC104"],
+        ["Archive path", archive.path || "-", "Local 5-minute SQLite snapshots on IPC"],
+        ["Archive interval", formatMs(archive.intervalMs || 300000), "CSV/export sample interval"],
+        ["Archive retention", formatMs(archive.retentionMs || 604800000), "Local archive retention"],
+        ["D-1 energy path", state.storage?.stationEnergyPath || "-", "Yesterday energy file for IEC104 EVN"],
+        ["Remote mode", "Tailscale", "Hardware-Server opens/proxies the IPC UI over Tailscale"],
+        ["Runtime IEC104", state.iec104?.enabled ? ((state.iec104.mode || "server") + " / enabled") : "Tat", "IEC104 endpoint status"],
       ];
 
       body.innerHTML = rows.map((row) => '<tr>' +
@@ -5211,25 +5148,17 @@ export function renderDashboardPage({ publicUrl }) {
     }
 
     function internetConnectivityStatus() {
-      const serverUrl = state?.server?.url || "";
       const status = gatewayDisplayStatus(selectedGateway);
-      if (status.kind === "online" && serverUrl) {
+      if (status.kind === "online") {
         return {
           kind: "online",
-          title: "Internet route configured: " + hostFromUrl(serverUrl),
-        };
-      }
-
-      if (serverUrl) {
-        return {
-          kind: status.kind === "offline" ? "warning" : status.kind,
-          title: "Server URL configured, gateway not online",
+          title: "Tailscale remote gateway is online",
         };
       }
 
       return {
-        kind: "waiting",
-        title: "No server URL configured",
+        kind: status.kind === "offline" ? "warning" : status.kind,
+        title: status.title || "Tailscale remote state is pending",
       };
     }
 
@@ -5279,32 +5208,18 @@ export function renderDashboardPage({ publicUrl }) {
         ...extra,
         ...(schedule ? { schedule } : {}),
       };
-      const transport = activeControlTransport();
-
-      if (transport === "tailscale") {
-        setStatus((schedule ? "Đang gửi lịch qua Tailscale " : "Đang gửi Tailscale ") + actionLabel(action) + "...");
-        const payload = await requestJson("/api/gateways/" + encodeURIComponent(selectedId) + "/tailscale/control", {
-          method: "POST",
-          body: JSON.stringify(body),
-        });
-        const result = payload.result || {};
-        if (result.command) {
-          setStatus("Đã gửi lịch qua Tailscale: " + actionLabel(result.command.action || action), "ok");
-        } else {
-          setStatus("Đã chạy qua Tailscale: " + actionLabel(result.action || action), "ok");
-        }
-        return;
-      }
-
-      setStatus((schedule ? "Đang hẹn " : "Đang queue ") + actionLabel(action) + "...");
-      const payload = await requestJson("/api/gateways/" + encodeURIComponent(selectedId) + "/control", {
+      setStatus((schedule ? "Sending Tailscale schedule " : "Sending Tailscale ") + actionLabel(action) + "...");
+      const payload = await requestJson("/api/gateways/" + encodeURIComponent(selectedId) + "/tailscale/control", {
         method: "POST",
         body: JSON.stringify(body),
       });
 
-      commands = [payload.command, ...commands.filter((command) => command.id !== payload.command.id)].slice(0, 100);
-      renderCommandHistory();
-      setStatus((payload.command.status === "scheduled" ? "Đã hẹn " : "Đã queue ") + actionLabel(payload.command.action), "ok");
+      const result = payload.result || {};
+      if (result.command) {
+        setStatus("Sent Tailscale schedule: " + actionLabel(result.command.action || action), "ok");
+      } else {
+        setStatus("Ran through Tailscale: " + actionLabel(result.action || action), "ok");
+      }
     }
 
     function collectControlSchedule() {
@@ -6551,23 +6466,11 @@ export function renderDashboardPage({ publicUrl }) {
         id: el("gatewayId").value.trim(),
         idPath: el("gatewayIdPath").value.trim(),
         pollLoopDelayMs: numberValue("pollLoopDelayMs"),
+        maxConcurrentPollGroups: numberValue("maxConcurrentPollGroups"),
+        statusHoldMs: numberValue("statusHoldMs"),
       };
-      state.server = {
-        enabled: el("serverEnabled").value === "true",
-        url: el("serverUrl").value.trim(),
-        tokenEnv: el("tokenEnv").value.trim(),
-        timeoutMs: numberValue("timeoutMs"),
-        batchSize: numberValue("batchSize"),
-        uploadIntervalMs: numberValue("uploadIntervalMs"),
-      };
-      state.remoteConfig = {
-        enabled: el("remoteConfigEnabled").value === "true",
-        url: el("remoteConfigUrl").value.trim(),
-        tokenEnv: el("remoteConfigTokenEnv").value.trim(),
-        checkIntervalMs: numberValue("remoteConfigCheckIntervalMs"),
-        timeoutMs: numberValue("remoteConfigTimeoutMs"),
-        statePath: el("remoteConfigStatePath").value.trim(),
-      };
+      delete state.server;
+      delete state.remoteConfig;
       delete state.mongo;
       state.iec104 = {
         ...(state.iec104 || {}),
@@ -6592,8 +6495,14 @@ export function renderDashboardPage({ publicUrl }) {
       };
       state.storage = {
         ...(state.storage || {}),
-        queuePath: el("queuePath").value.trim(),
       };
+      delete state.storage.queuePath;
+      delete state.storage.queue;
+      delete state.storage.queueMaxRecords;
+      delete state.storage.queueMaxBytes;
+      delete state.storage.queueRetentionMs;
+      delete state.storage.queueCompactIntervalMs;
+      delete state.storage.queueCorruptPath;
       state.ports = state.ports || {};
       state.devices = state.devices || [];
 
@@ -7399,7 +7308,7 @@ export function renderDashboardPage({ publicUrl }) {
       if (target.dataset.restartGateway !== undefined) restartGateway().catch((error) => setStatus(error.message, "error"));
       if (target.dataset.controlAction) {
         const action = target.dataset.controlAction;
-        const verb = activeControlTransport() === "tailscale" ? "Gửi Tailscale" : "Queue";
+        const verb = "Tailscale";
         if (["stop", "reboot"].includes(action) && !confirm(verb + " " + actionLabel(action) + " for " + (el("controlDeviceName").value || "selected inverter") + "?")) return;
         queueInverterControl(action).catch((error) => setStatus(error.message, "error"));
       }
@@ -7441,7 +7350,7 @@ export function renderDashboardPage({ publicUrl }) {
         return;
       }
       if (target?.id === "controlTransport") {
-        selectedControlTransport = target.value === "tailscale" ? "tailscale" : "cloud";
+        selectedControlTransport = "tailscale";
         renderControlTransport();
         return;
       }
