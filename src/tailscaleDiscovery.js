@@ -65,13 +65,17 @@ export async function syncTailscaleGateways({
       tag,
     };
 
-    const gateway = await store.upsertGateway({
+    let gateway = await store.upsertGateway({
       id,
       name: existing?.name || peer.name || id,
       site: existing?.site || peer.site || "Tailscale",
       token: "",
       remoteAccess,
     });
+
+    if (peer.online && typeof store.markHeartbeat === "function") {
+      gateway = await store.markHeartbeat(id, "tailscale") || gateway;
+    }
 
     if (createDefaultConfig && !(await store.getLatestConfig(id))) {
       await store.addConfigVersion({

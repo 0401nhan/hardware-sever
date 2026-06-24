@@ -294,6 +294,8 @@ test("server auto-syncs Linux Tailscale peers into sqlite gateways", async (t) =
   assert.equal(listed.body.gateways[0].remoteAccess.ip, "100.77.152.66");
   assert.equal(listed.body.gateways[0].remoteAccess.host, "moxa.tailnet.test");
   assert.equal(listed.body.gateways[0].remoteAccess.uiPort, 80);
+  assert.equal(listed.body.gateways[0].status, "online");
+  assert.ok(listed.body.gateways[0].lastSeenAt);
 
   const latestConfig = await requestJson(app.baseUrl, "/api/gateways/moxa/config", {
     cookie: sessionCookie,
