@@ -106,12 +106,8 @@ export class MongoHardwareStore {
   async upsertGateway({ id, name = "", site = "", token = "", remoteAccess }) {
     const now = new Date().toISOString();
     const existing = await this.getGateway(id);
-    const tokenHash = token ? this.hashToken(token) : existing?.tokenHash;
+    const tokenHash = token ? this.hashToken(token) : existing?.tokenHash || "";
     const remote = normalizeRemoteAccess(remoteAccess ?? existing?.remoteAccess ?? defaultRemoteAccess());
-
-    if (!tokenHash) {
-      throw new Error("Gateway token is required");
-    }
 
     await this.gateways.updateOne(
       { _id: id },
@@ -162,7 +158,7 @@ export class MongoHardwareStore {
 
   async verifyGatewayToken(gatewayId, token) {
     const gateway = await this.getGateway(gatewayId);
-    if (!gateway || !token) return false;
+    if (!gateway || !gateway.tokenHash || !token) return false;
     return safeEqual(gateway.tokenHash, this.hashToken(token));
   }
 

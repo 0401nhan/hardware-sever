@@ -128,7 +128,7 @@ Admin browser
 ```
 
 For each gateway, set these fields from the server dashboard `System > Tailscale remote`, or when
-creating a manual gateway:
+creating a manual gateway. A token is not required for this directory-only mode:
 
 ```json
 {
@@ -153,6 +153,11 @@ Hardware-Server also keeps optional API-level proxy routes for immediate control
 Tailscale. Those proxy routes require the machine running Hardware-Server to be joined to the same
 tailnet as the IPC/Moxa gateway. The normal operator flow is still the simpler browser redirect to
 the IPC UI.
+
+The legacy gateway push API (`/api/gateway/*` and `/api/telemetry`) is disabled by default in this
+architecture, so IPC heartbeat or telemetry requests are ignored instead of requiring a shared token.
+Set `GATEWAY_PUSH_API_ENABLED=true` only when you intentionally want the older heartbeat, telemetry,
+remote config, or cloud command queue workflow.
 
 ```bash
 TAILSCALE_GATEWAY_ADMIN_USERNAME=admin

@@ -115,10 +115,9 @@ test("dashboard starts at site list and remote disconnect returns home", () => {
   assert.match(html, /id="remoteDisconnectBtn"/);
   assert.match(html, />Về danh sách site</);
   assert.doesNotMatch(html, /Disconnection/);
-  assert.match(html, /Chưa có site kết nối/);
+  assert.match(html, /Chưa có site/);
   assert.match(html, /gateway\.id/);
-  assert.match(html, /GATEWAY_TOKEN hoặc PROVISIONING_TOKEN/);
-  assert.match(html, /\/api\/gateway\/heartbeat/);
+  assert.match(html, /Tailscale IP\/host/);
   assert.doesNotMatch(html, /id="logoutBtn"/);
   assert.doesNotMatch(html, /id="backHomeBtn"/);
   assert.doesNotMatch(html, /id="remoteRefreshBtn"/);

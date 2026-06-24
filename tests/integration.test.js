@@ -86,6 +86,36 @@ test("gateway token auth rejects bad bearer tokens and accepts registered tokens
   assert.equal(accepted.body.gateway.status, "online");
 });
 
+test("gateway push API is ignored by default for Tailscale directory mode", async (t) => {
+  const app = await startTestServer(t, {
+    GATEWAY_PUSH_API_ENABLED: "false",
+  });
+
+  const heartbeat = await requestJson(app.baseUrl, "/api/gateway/heartbeat", {
+    method: "POST",
+    body: {
+      gateway_id: "GW-DIRECTORY-001",
+      app_version: "0.2.0",
+    },
+  });
+  assert.equal(heartbeat.status, 200);
+  assert.deepEqual(heartbeat.body, {
+    ok: true,
+    ignored: true,
+    reason: "gateway_push_api_disabled",
+  });
+
+  const telemetry = await requestJson(app.baseUrl, "/api/telemetry", {
+    method: "POST",
+    body: {
+      gateway_id: "GW-DIRECTORY-001",
+      records: [],
+    },
+  });
+  assert.equal(telemetry.status, 200);
+  assert.equal(telemetry.body.ignored, true);
+});
+
 test("auto provisioning creates the gateway and default config", async (t) => {
   const app = await startTestServer(t);
   const sessionCookie = await login(app);
@@ -158,7 +188,6 @@ test("admin can store Tailscale remote access metadata for a gateway", async (t)
     id: "GW-TS-001",
     name: "Station Tailscale",
     site: "Station Tailscale",
-    token: "gateway-secret",
     remoteAccess: {
       enabled: true,
       method: "tailscale",
@@ -934,6 +963,7 @@ async function startTestServer(t, envOverrides = {}) {
     ADMIN_PASSWORD: "admin-password",
     SESSION_SECRET: "test-session-secret",
     TOKEN_HASH_SECRET: "test-token-secret",
+    GATEWAY_PUSH_API_ENABLED: "true",
     PROVISIONING_TOKEN: "provisioning-token",
     AUTO_REGISTER_GATEWAYS: "true",
     ...envOverrides,

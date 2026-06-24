@@ -2887,12 +2887,13 @@ export function renderDashboardPage({ publicUrl }) {
                 <label>Đường dẫn Gateway ID <input id="gatewayIdPath" autocomplete="off"></label>
                 <label>Độ trễ vòng poll ms <input id="pollLoopDelayMs" type="number" min="50" step="50"></label>
                 <label class="wide">URL máy chủ <input id="serverUrl" autocomplete="url"></label>
+                <label>Bật upload server <select id="serverEnabled"><option value="false">Tắt</option><option value="true">Bật</option></select></label>
                 <label>Token env <input id="tokenEnv" autocomplete="off"></label>
                 <label>Timeout ms <input id="timeoutMs" type="number" min="100"></label>
                 <label>Cỡ lô upload <input id="batchSize" type="number" min="1"></label>
                 <label>Chu kỳ upload ms <input id="uploadIntervalMs" type="number" min="500"></label>
                 <label class="wide">URL cấu hình từ xa <input id="remoteConfigUrl" autocomplete="url"></label>
-                <label>Bật cấu hình từ xa <select id="remoteConfigEnabled"><option value="true">Bật</option><option value="false">Tắt</option></select></label>
+                <label>Bật cấu hình từ xa <select id="remoteConfigEnabled"><option value="false">Tắt</option><option value="true">Bật</option></select></label>
                 <label>Remote token env <input id="remoteConfigTokenEnv" autocomplete="off"></label>
                 <label>Chu kỳ kiểm tra remote ms <input id="remoteConfigCheckIntervalMs" type="number" min="5000" step="1000"></label>
                 <label>Remote timeout ms <input id="remoteConfigTimeoutMs" type="number" min="1000" step="1000"></label>
@@ -3510,7 +3511,7 @@ export function renderDashboardPage({ publicUrl }) {
       setText("homeCloudState", online ? "Đồng bộ" : "-");
 
       if (!gateways.length) {
-        if (grid) grid.innerHTML = '<div class="empty-state"><strong>Chưa có site kết nối.</strong><span>Trên IPC, kiểm tra gateway.id, GATEWAY_TOKEN hoặc PROVISIONING_TOKEN, rồi xem log Hardware-Gateway. Site sẽ xuất hiện sau khi heartbeat gửi về /api/gateway/heartbeat.</span></div>';
+        if (grid) grid.innerHTML = '<div class="empty-state"><strong>Chưa có site.</strong><span>Tạo gateway thủ công và nhập Tailscale IP/host của IPC. Server chỉ dùng danh bạ này để mở Remote qua Tailscale.</span></div>';
         if (el("homeFocusGatewayName")) renderHomeFocus(null);
         renderHomeModules();
         applyAdminLanguage(el("homeView"));
@@ -4022,6 +4023,7 @@ export function renderDashboardPage({ publicUrl }) {
       return {
         gateway: { id: gatewayId, idPath: "/data/gateway-id", pollLoopDelayMs: 250 },
         server: {
+          enabled: false,
           url: publicUrl.replace(/\\/+$/, "") + "/api/telemetry",
           tokenEnv: "SERVER_TOKEN",
           timeoutMs: 10000,
@@ -4029,7 +4031,7 @@ export function renderDashboardPage({ publicUrl }) {
           uploadIntervalMs: 5000,
         },
         remoteConfig: {
-          enabled: true,
+          enabled: false,
           url: publicUrl.replace(/\\/+$/, "") + "/api/gateway",
           tokenEnv: "GATEWAY_TOKEN",
           checkIntervalMs: 30000,
@@ -4103,11 +4105,12 @@ export function renderDashboardPage({ publicUrl }) {
       el("gatewayIdPath").value = state.gateway?.idPath || "/data/gateway-id";
       el("pollLoopDelayMs").value = state.gateway?.pollLoopDelayMs ?? 250;
       el("serverUrl").value = state.server?.url || "";
+      el("serverEnabled").value = String(state.server?.enabled ?? false);
       el("tokenEnv").value = state.server?.tokenEnv || "SERVER_TOKEN";
       el("timeoutMs").value = state.server?.timeoutMs ?? 10000;
       el("batchSize").value = state.server?.batchSize ?? 100;
       el("uploadIntervalMs").value = state.server?.uploadIntervalMs ?? 5000;
-      el("remoteConfigEnabled").value = String(state.remoteConfig?.enabled ?? true);
+      el("remoteConfigEnabled").value = String(state.remoteConfig?.enabled ?? false);
       el("remoteConfigUrl").value = state.remoteConfig?.url || "";
       el("remoteConfigTokenEnv").value = state.remoteConfig?.tokenEnv || "GATEWAY_TOKEN";
       el("remoteConfigCheckIntervalMs").value = state.remoteConfig?.checkIntervalMs ?? 30000;
@@ -6487,6 +6490,7 @@ export function renderDashboardPage({ publicUrl }) {
         pollLoopDelayMs: numberValue("pollLoopDelayMs"),
       };
       state.server = {
+        enabled: el("serverEnabled").value === "true",
         url: el("serverUrl").value.trim(),
         tokenEnv: el("tokenEnv").value.trim(),
         timeoutMs: numberValue("timeoutMs"),

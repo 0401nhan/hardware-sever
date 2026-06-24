@@ -71,6 +71,7 @@ export function validateGatewayConfig(config, expectedGatewayId) {
   validateStorage(config.storage);
   validateInteger(config.gateway.pollLoopDelayMs, "gateway.pollLoopDelayMs", { min: 50, optional: true });
   validateInteger(config.gateway.maxConcurrentPollGroups, "gateway.maxConcurrentPollGroups", { min: 1, max: 64, optional: true });
+  validateBoolean(config.server.enabled, "server.enabled", { optional: true });
   validateInteger(config.server.timeoutMs, "server.timeoutMs", { min: 100, optional: true });
   validateInteger(config.server.batchSize, "server.batchSize", { min: 1, optional: true });
   validateInteger(config.server.uploadIntervalMs, "server.uploadIntervalMs", { min: 500, optional: true });
@@ -278,6 +279,7 @@ export function createDefaultGatewayConfig(gatewayId, publicUrl) {
       pollLoopDelayMs: 250,
     },
     server: {
+      enabled: false,
       url: `${publicUrl.replace(/\/+$/, "")}/api/telemetry`,
       tokenEnv: "SERVER_TOKEN",
       timeoutMs: 10000,
@@ -285,7 +287,7 @@ export function createDefaultGatewayConfig(gatewayId, publicUrl) {
       uploadIntervalMs: 5000,
     },
     remoteConfig: {
-      enabled: true,
+      enabled: false,
       url: `${publicUrl.replace(/\/+$/, "")}/api/gateway`,
       tokenEnv: "GATEWAY_TOKEN",
       checkIntervalMs: 30000,

@@ -37,6 +37,7 @@ const config = {
   tokenHashSecret: process.env.TOKEN_HASH_SECRET || process.env.ADMIN_PASSWORD || "development-token-secret",
   provisioningToken: process.env.PROVISIONING_TOKEN || "replace-me",
   autoRegisterGateways: String(process.env.AUTO_REGISTER_GATEWAYS || "true").toLowerCase() === "true",
+  gatewayPushApiEnabled: String(process.env.GATEWAY_PUSH_API_ENABLED || "false").toLowerCase() === "true",
   gatewayOfflineAfterMs: positiveIntegerEnv("GATEWAY_OFFLINE_AFTER_MS", 90_000),
   telemetryRetentionMs: nonNegativeIntegerEnv("TELEMETRY_RETENTION_MS", 30 * 24 * 60 * 60 * 1000),
   telemetryPruneIntervalMs: nonNegativeIntegerEnv("TELEMETRY_PRUNE_INTERVAL_MS", 60 * 60 * 1000),
@@ -109,6 +110,15 @@ server = http.createServer(async (req, res) => {
         ok: true,
       }, {
         "Set-Cookie": clearSessionCookie(req),
+      });
+    }
+
+    if (!config.gatewayPushApiEnabled && isGatewayPushApiRequest(req.method, pathname)) {
+      await drainRequestBody(req);
+      return sendJson(res, 200, {
+        ok: true,
+        ignored: true,
+        reason: "gateway_push_api_disabled",
       });
     }
 
@@ -793,6 +803,17 @@ function bearerToken(req) {
 
 function requestPath(req) {
   return new URL(req.url || "/", "http://localhost").pathname;
+}
+
+function isGatewayPushApiRequest(method, pathname) {
+  if (method !== "POST") return false;
+  return pathname === "/api/telemetry" || pathname.startsWith("/api/gateway/");
+}
+
+async function drainRequestBody(req) {
+  for await (const _chunk of req) {
+    // Drain only; directory mode intentionally ignores gateway push payloads.
+  }
 }
 
 function sendJson(res, statusCode, payload, headers = {}) {
