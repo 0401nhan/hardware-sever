@@ -39,9 +39,6 @@ export async function syncTailscaleGateways({
   uiPort = 80,
   sshPort = 22,
   tag = DEFAULT_TAG,
-  publicUrl = "",
-  createdBy = "tailscale-sync",
-  createDefaultConfig,
 } = {}) {
   if (!store) throw new Error("store is required");
 
@@ -69,21 +66,11 @@ export async function syncTailscaleGateways({
       id,
       name: existing?.name || peer.name || id,
       site: existing?.site || peer.site || "Tailscale",
-      token: "",
       remoteAccess,
     });
 
-    if (peer.online && typeof store.markHeartbeat === "function") {
-      gateway = await store.markHeartbeat(id, "tailscale") || gateway;
-    }
-
-    if (createDefaultConfig && !(await store.getLatestConfig(id))) {
-      await store.addConfigVersion({
-        gatewayId: id,
-        config: createDefaultConfig(id, publicUrl),
-        restartRequired: true,
-        createdBy,
-      });
+    if (peer.online && typeof store.markOnline === "function") {
+      gateway = await store.markOnline(id, "tailscale") || gateway;
     }
 
     synced.push(gateway);

@@ -1,10 +1,10 @@
 # Electric Bird Hardware Server
 
-Hardware-Server is the logged-in gateway directory for Electric Bird IPC/Moxa gateways.
+Hardware-Server is the logged-in Tailscale gateway directory for Electric Bird IPC/Moxa gateways.
 
 Current architecture:
 
-- Store gateways, Tailscale host/IP, sessions, templates, command history, and telemetry history in SQLite.
+- Store gateway records and Tailscale host/IP metadata in SQLite.
 - Auto-import online Linux peers from the local Tailscale client.
 - Show a small site list after login.
 - Open the real Hardware-Gateway UI through `/gateways/<gateway-id>/remote/`.
@@ -33,7 +33,6 @@ Required production values:
 ADMIN_USERNAME
 ADMIN_PASSWORD
 SESSION_SECRET
-TOKEN_HASH_SECRET
 ```
 
 ## Tailscale Remote Flow
@@ -74,25 +73,16 @@ TAILSCALE_SYNC_TAG=tag:gateway
 Manual gateway records can also be created from the dashboard with a Tailscale host or `100.x.x.x`
 IP address.
 
-## Remote Gateway API
+## Remote Gateway Proxy
 
-Hardware-Server proxies direct control calls to the IPC Hardware-Gateway Admin API through
-Tailscale:
+Hardware-Server proxies the IPC UI at:
 
-```bash
-curl -X POST https://server.electricbird.vn/api/gateways/GATEWAY_ID/tailscale/control \
-  -H "Content-Type: application/json" \
-  -b "hardware_server_session=<session-cookie>" \
-  -d '{"deviceName":"Huawei","action":"limit_power","percent":60,"durationMinutes":30}'
+```text
+/gateways/<gateway-id>/remote/
 ```
 
-Server-side Tailscale gateway login uses:
-
-```bash
-TAILSCALE_GATEWAY_ADMIN_USERNAME=admin
-TAILSCALE_GATEWAY_ADMIN_PASSWORD=admin
-TAILSCALE_GATEWAY_TIMEOUT_MS=10000
-```
+The admin browser stays on `server.electricbird.vn`; Hardware-Server reaches the IPC over Tailscale.
+IPC login still happens inside the proxied Hardware-Gateway UI.
 
 ## SQLite Data
 
@@ -102,16 +92,8 @@ Default database path:
 data/hardware-server.sqlite
 ```
 
-For Docker deployments this should be mounted as persistent storage.
-
-Telemetry retention defaults to 30 days:
-
-```text
-TELEMETRY_RETENTION_MS=2592000000
-TELEMETRY_PRUNE_INTERVAL_MS=3600000
-```
-
-Set `TELEMETRY_RETENTION_MS=0` to disable automatic telemetry cleanup.
+For Docker deployments this should be mounted as persistent storage. The database contains only the
+gateway directory and Tailscale remote metadata.
 
 ## Docker Compose
 
@@ -124,15 +106,4 @@ The app listens on port `7000`. Put Nginx/Caddy in front for TLS:
 
 ```text
 https://server.electricbird.vn -> http://127.0.0.1:7000
-```
-
-## Legacy Push API
-
-The older outbound heartbeat, remote config, telemetry ingest, and cloud command queue API is kept
-only for backward compatibility and is disabled by default.
-
-Leave this unset for the current Tailscale architecture:
-
-```text
-GATEWAY_PUSH_API_ENABLED=false
 ```

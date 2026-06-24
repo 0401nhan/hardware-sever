@@ -1,23 +1,18 @@
 {
   "name": "hardware-server",
   "version": "0.1.13",
-  "description": "Electric Bird hardware cloud server for gateway registry, telemetry, and remote config.",
+  "description": "Electric Bird hardware server for logged-in Tailscale gateway remote access.",
   "type": "module",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "test": "node --test",
-    "build:css": "tailwindcss -i ./src/styles/admin-tailwind.css -o ./public/assets/admin-tailwind.css --minify"
+    "test": "node --test"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
-    "sql.js": "^1.14.1",
-    "yaml": "^2.9.0"
-  },
-  "devDependencies": {
-    "tailwindcss": "^3.4.17"
+    "sql.js": "^1.14.1"
   }
 }

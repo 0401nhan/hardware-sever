@@ -1,5 +1,3 @@
-const GATEWAY_SESSION_COOKIE = "rs485_admin_session";
-
 export function gatewayTailscaleBaseUrl(gateway) {
   const remote = gateway?.remoteAccess || {};
   if (!remote.enabled) {
@@ -11,7 +9,7 @@ export function gatewayTailscaleBaseUrl(gateway) {
     throw gatewayClientError(409, "Tailscale host or IP is required for this gateway");
   }
 
-  const port = positivePort(remote.uiPort || 3000);
+  const port = positivePort(remote.uiPort || 80);
   const hasScheme = /^[a-z][a-z\d+.-]*:\/\//i.test(endpoint);
   let url;
 
@@ -33,76 +31,11 @@ export function gatewayTailscaleBaseUrl(gateway) {
 
 export async function getGatewayPublicJson({ gateway, path, timeoutMs }) {
   const baseUrl = gatewayTailscaleBaseUrl(gateway);
-  const payload = await requestGatewayJson({
-    method: "GET",
-    baseUrl,
-    path,
-    timeoutMs,
-  });
-
-  return {
-    baseUrl,
-    payload,
-  };
-}
-
-export async function postGatewayAdminJson({ gateway, path, body, credentials, timeoutMs }) {
-  const baseUrl = gatewayTailscaleBaseUrl(gateway);
-  const cookie = await loginGatewayAdmin({ baseUrl, credentials, timeoutMs });
-  const payload = await requestGatewayJson({
-    method: "POST",
-    baseUrl,
-    path,
-    cookie,
-    body,
-    timeoutMs,
-  });
-
-  return {
-    baseUrl,
-    payload,
-  };
-}
-
-async function loginGatewayAdmin({ baseUrl, credentials, timeoutMs }) {
-  if (!credentials?.username || !credentials?.password) {
-    throw gatewayClientError(500, "Gateway admin credentials are not configured");
-  }
-
-  const response = await fetchWithTimeout(joinUrl(baseUrl, "/api/login"), {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      username: credentials.username,
-      password: credentials.password,
-    }),
-  }, timeoutMs);
-  const payload = await readResponsePayload(response);
-
-  if (!response.ok || payload?.ok === false) {
-    throw gatewayClientError(502, `Gateway login failed: ${payloadMessage(payload) || `HTTP ${response.status}`}`);
-  }
-
-  const cookie = sessionCookieFromHeaders(response.headers);
-  if (!cookie) {
-    throw gatewayClientError(502, "Gateway login did not return an admin session cookie");
-  }
-
-  return cookie;
-}
-
-async function requestGatewayJson({ method, baseUrl, path, cookie, body, timeoutMs }) {
   const response = await fetchWithTimeout(joinUrl(baseUrl, path), {
-    method,
+    method: "GET",
     headers: {
       Accept: "application/json",
-      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
-      ...(cookie ? { Cookie: cookie } : {}),
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
   }, timeoutMs);
   const payload = await readResponsePayload(response);
 
@@ -111,7 +44,10 @@ async function requestGatewayJson({ method, baseUrl, path, cookie, body, timeout
     throw gatewayClientError(statusCode, payloadMessage(payload) || `Gateway request failed with HTTP ${response.status}`);
   }
 
-  return payload;
+  return {
+    baseUrl,
+    payload,
+  };
 }
 
 async function fetchWithTimeout(url, options, timeoutMs = 10000) {
@@ -151,17 +87,6 @@ async function readResponsePayload(response) {
   }
 }
 
-function sessionCookieFromHeaders(headers) {
-  const setCookieHeaders = typeof headers.getSetCookie === "function"
-    ? headers.getSetCookie()
-    : [headers.get("set-cookie")].filter(Boolean);
-  const session = setCookieHeaders.find((cookie) => cookie.toLowerCase().startsWith(`${GATEWAY_SESSION_COOKIE}=`))
-    || setCookieHeaders[0]
-    || "";
-
-  return session.split(";")[0] || "";
-}
-
 function payloadMessage(payload) {
   if (!payload) return "";
   if (typeof payload === "string") return payload;
@@ -180,7 +105,7 @@ function hostForUrl(endpoint) {
 
 function positivePort(value) {
   const port = Number.parseInt(String(value || ""), 10);
-  return Number.isInteger(port) && port > 0 && port <= 65535 ? port : 3000;
+  return Number.isInteger(port) && port > 0 && port <= 65535 ? port : 80;
 }
 
 function gatewayClientError(statusCode, message) {

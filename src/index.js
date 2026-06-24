@@ -5,12 +5,9 @@ import fs from "node:fs";
 import http from "node:http";
 
 import { openDatabase } from "./db.js";
-import { readDeviceTemplateSeed } from "./deviceTemplates.js";
 import { gatewayRemoteAccessFromBody, normalizeRemoteAccess } from "./remoteAccess.js";
-import { normalizeCommandSchedule } from "./schedule.js";
-import { gatewayTailscaleBaseUrl, getGatewayPublicJson, postGatewayAdminJson } from "./tailscaleGatewayClient.js";
+import { gatewayTailscaleBaseUrl, getGatewayPublicJson } from "./tailscaleGatewayClient.js";
 import { readTailscaleStatusJson, syncTailscaleGateways } from "./tailscaleDiscovery.js";
-import { createDefaultGatewayConfig, validateGatewayConfig } from "./validation.js";
 import { renderDashboardPage, renderLoginPage } from "./ui.js";
 
 const PUBLIC_DIR = new URL("../public/", import.meta.url);
@@ -21,29 +18,16 @@ const PUBLIC_ASSETS = new Map([
   ["/logo/logo-mediumsize.png", "logo/logo-mediumsize.png"],
   ["/logo/logo-smallsize.png", "logo/logo-smallsize.png"],
 ]);
-const PUBLIC_TEXT_ASSETS = new Map([
-  ["/assets/admin-tailwind.css", "assets/admin-tailwind.css"],
-]);
-
 const config = {
   host: process.env.HOST || "0.0.0.0",
   port: Number.parseInt(process.env.PORT || "8080", 10),
   publicUrl: process.env.PUBLIC_URL || "https://server.electricbird.vn",
   dbPath: process.env.DB_PATH || "data/hardware-server.sqlite",
-  deviceTemplatesPath: process.env.DEVICE_TEMPLATES_PATH || "config/device-templates.yml",
   adminUsername: process.env.ADMIN_USERNAME || "admin",
   adminPassword: process.env.ADMIN_PASSWORD || "admin",
   sessionSecret: process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD || "development-session-secret",
   sessionTtlMs: positiveIntegerEnv("ADMIN_SESSION_TTL_MS", 7 * 24 * 60 * 60 * 1000),
-  tokenHashSecret: process.env.TOKEN_HASH_SECRET || process.env.ADMIN_PASSWORD || "development-token-secret",
-  provisioningToken: process.env.PROVISIONING_TOKEN || "replace-me",
-  autoRegisterGateways: String(process.env.AUTO_REGISTER_GATEWAYS || "true").toLowerCase() === "true",
-  gatewayPushApiEnabled: String(process.env.GATEWAY_PUSH_API_ENABLED || "false").toLowerCase() === "true",
   gatewayOfflineAfterMs: positiveIntegerEnv("GATEWAY_OFFLINE_AFTER_MS", 90_000),
-  telemetryRetentionMs: nonNegativeIntegerEnv("TELEMETRY_RETENTION_MS", 30 * 24 * 60 * 60 * 1000),
-  telemetryPruneIntervalMs: nonNegativeIntegerEnv("TELEMETRY_PRUNE_INTERVAL_MS", 60 * 60 * 1000),
-  tailscaleGatewayAdminUsername: process.env.TAILSCALE_GATEWAY_ADMIN_USERNAME || process.env.GATEWAY_ADMIN_USERNAME || "admin",
-  tailscaleGatewayAdminPassword: process.env.TAILSCALE_GATEWAY_ADMIN_PASSWORD || process.env.GATEWAY_ADMIN_PASSWORD || "admin",
   tailscaleGatewayTimeoutMs: positiveIntegerEnv("TAILSCALE_GATEWAY_TIMEOUT_MS", 10000),
   tailscaleSyncEnabled: booleanEnv("TAILSCALE_SYNC_ENABLED", true),
   tailscaleSyncIntervalMs: positiveIntegerEnv("TAILSCALE_SYNC_INTERVAL_MS", 30000),
@@ -58,7 +42,6 @@ const config = {
 };
 
 let store;
-let templateSeed;
 let server;
 let tailscaleSyncTimer;
 let tailscaleSyncPromise;
@@ -69,673 +52,233 @@ main().catch((error) => {
 });
 
 async function main() {
-store = await openDatabase(config.dbPath, config.tokenHashSecret, {
-  offlineAfterMs: config.gatewayOfflineAfterMs,
-  telemetryRetentionMs: config.telemetryRetentionMs,
-  telemetryPruneIntervalMs: config.telemetryPruneIntervalMs,
-});
-templateSeed = readDeviceTemplateSeed(config.deviceTemplatesPath);
-await store.seedDeviceTemplates(templateSeed.templates);
-startTailscaleSyncLoop();
+  store = await openDatabase(config.dbPath, {
+    offlineAfterMs: config.gatewayOfflineAfterMs,
+  });
+  startTailscaleSyncLoop();
 
-server = http.createServer(async (req, res) => {
-  try {
-    const pathname = requestPath(req);
+  server = http.createServer(async (req, res) => {
+    try {
+      const pathname = requestPath(req);
 
-    if ((req.method === "GET" || req.method === "HEAD") && PUBLIC_ASSETS.has(pathname)) {
-      return sendFile(res, new URL(PUBLIC_ASSETS.get(pathname), PUBLIC_DIR), "image/png", req.method === "HEAD");
-    }
-
-    if ((req.method === "GET" || req.method === "HEAD") && PUBLIC_TEXT_ASSETS.has(pathname)) {
-      return sendFile(res, new URL(PUBLIC_TEXT_ASSETS.get(pathname), PUBLIC_DIR), "text/css; charset=utf-8", req.method === "HEAD");
-    }
-
-    if (req.method === "GET" && pathname === "/api/health") {
-      return sendJson(res, 200, {
-        ok: true,
-        time: new Date().toISOString(),
-      });
-    }
-
-    if (req.method === "GET" && pathname === "/login") {
-      if (isAdminAuthenticated(req)) return redirect(res, "/");
-      return sendHtml(res, renderLoginPage());
-    }
-
-    if (req.method === "POST" && pathname === "/api/login") {
-      const body = await readJsonBody(req);
-
-      if (!isValidLogin(body)) {
-        return sendJson(res, 401, {
-          ok: false,
-          error: "Invalid username or password",
-        });
+      if ((req.method === "GET" || req.method === "HEAD") && PUBLIC_ASSETS.has(pathname)) {
+        return sendFile(res, new URL(PUBLIC_ASSETS.get(pathname), PUBLIC_DIR), "image/png", req.method === "HEAD");
       }
 
-      return sendJson(res, 200, {
-        ok: true,
-      }, {
-        "Set-Cookie": buildSessionCookie(req),
-      });
-    }
-
-    if (req.method === "POST" && pathname === "/api/logout") {
-      return sendJson(res, 200, {
-        ok: true,
-      }, {
-        "Set-Cookie": clearSessionCookie(req),
-      });
-    }
-
-    if (!config.gatewayPushApiEnabled && isGatewayPushApiRequest(req.method, pathname)) {
-      await drainRequestBody(req);
-      return sendJson(res, 200, {
-        ok: true,
-        ignored: true,
-        reason: "gateway_push_api_disabled",
-      });
-    }
-
-    if (req.method === "POST" && pathname === "/api/gateway/heartbeat") {
-      const body = await readJsonBody(req);
-      await authenticateGateway(req, body.gateway_id);
-      const gateway = await store.markHeartbeat(body.gateway_id, body.app_version || "");
-
-      return sendJson(res, 200, {
-        ok: true,
-        gateway,
-      });
-    }
-
-    if (req.method === "POST" && pathname === "/api/gateway/config/check") {
-      const body = await readJsonBody(req);
-      await authenticateGateway(req, body.gateway_id);
-      const latest = await store.getLatestConfig(body.gateway_id);
-
-      if (!latest) {
+      if (req.method === "GET" && pathname === "/api/health") {
         return sendJson(res, 200, {
           ok: true,
-          changed: false,
+          time: new Date().toISOString(),
         });
       }
 
-      const currentVersion = Number.parseInt(body.current_version || "0", 10);
-      const currentHash = String(body.current_hash || "");
-      const changed = latest.version > currentVersion || latest.configHash !== currentHash;
-
-      return sendJson(res, 200, {
-        ok: true,
-        changed,
-        ...(changed ? {
-          version: latest.version,
-          config_hash: latest.configHash,
-          restart_required: latest.restartRequired,
-          config: latest.config,
-        } : {}),
-      });
-    }
-
-    if (req.method === "POST" && pathname === "/api/gateway/config/status") {
-      const body = await readJsonBody(req);
-      await authenticateGateway(req, body.gateway_id);
-      const status = String(body.status || "").trim();
-      const version = Number.parseInt(body.config_version || "0", 10);
-      const configHash = String(body.config_hash ?? body.configHash ?? "").trim();
-
-      if (!["pending", "applied", "failed"].includes(status)) {
-        throw httpError(400, "status must be pending, applied, or failed");
+      if (req.method === "GET" && pathname === "/login") {
+        if (isAdminAuthenticated(req)) return redirect(res, "/");
+        return sendHtml(res, renderLoginPage());
       }
 
-      if (!Number.isInteger(version) || version < 1) {
-        throw httpError(400, "config_version must be a positive integer");
-      }
+      if (req.method === "POST" && pathname === "/api/login") {
+        const body = await readJsonBody(req);
 
-      if (!configHash) {
-        throw httpError(400, "config_hash is required");
-      }
+        if (!isValidLogin(body)) {
+          return sendJson(res, 401, {
+            ok: false,
+            error: "Invalid username or password",
+          });
+        }
 
-      const result = await store.updateConfigStatus({
-        gatewayId: body.gateway_id,
-        version,
-        configHash,
-        status,
-        message: body.message || "",
-        appVersion: body.app_version || "",
-      });
-
-      return sendJson(res, 200, {
-        ok: true,
-        ignored: Boolean(result.ignored),
-        ...(result.reason ? { reason: result.reason } : {}),
-        gateway: result.gateway,
-      });
-    }
-
-    if (req.method === "POST" && pathname === "/api/gateway/commands/check") {
-      const body = await readJsonBody(req);
-      await authenticateGateway(req, body.gateway_id);
-      const command = await store.nextGatewayCommand(body.gateway_id);
-
-      return sendJson(res, 200, {
-        ok: true,
-        command: command ? gatewayCommandPayload(command) : null,
-      });
-    }
-
-    if (req.method === "POST" && pathname === "/api/gateway/commands/status") {
-      const body = await readJsonBody(req);
-      await authenticateGateway(req, body.gateway_id);
-      const status = String(body.status || "").trim();
-
-      if (!body.command_id) {
-        return sendJson(res, 400, {
-          ok: false,
-          error: "command_id is required",
+        return sendJson(res, 200, {
+          ok: true,
+        }, {
+          "Set-Cookie": buildSessionCookie(req),
         });
       }
 
-      if (!["running", "applied", "failed"].includes(status)) {
-        return sendJson(res, 400, {
-          ok: false,
-          error: "status must be running, applied, or failed",
+      if (req.method === "POST" && pathname === "/api/logout") {
+        return sendJson(res, 200, {
+          ok: true,
+        }, {
+          "Set-Cookie": clearSessionCookie(req),
         });
       }
 
-      const command = await store.updateGatewayCommandStatus({
-        gatewayId: body.gateway_id,
-        commandId: String(body.command_id),
-        status,
-        message: body.message || "",
-        result: body.result ?? null,
-        appVersion: body.app_version || "",
-      });
+      if (!isAdminAuthenticated(req)) {
+        if (pathname.startsWith("/api/")) {
+          return sendJson(res, 401, {
+            ok: false,
+            error: "Authentication required",
+          });
+        }
 
-      if (!command) {
-        return sendJson(res, 404, {
-          ok: false,
-          error: "Command not found",
+        return redirect(res, "/login");
+      }
+
+      if (req.method === "GET" && pathname === "/") {
+        return sendHtml(res, renderDashboardPage({ publicUrl: config.publicUrl }));
+      }
+
+      const gatewayRemoteProxyMatch = pathname.match(/^\/gateways\/([^/]+)\/remote(\/.*)?$/);
+      if (gatewayRemoteProxyMatch) {
+        const gatewayId = decodeURIComponent(gatewayRemoteProxyMatch[1]);
+        const gateway = await store.getGateway(gatewayId);
+
+        if (!gateway) {
+          return sendJson(res, 404, {
+            ok: false,
+            error: "Gateway not found",
+          });
+        }
+
+        const url = new URL(req.url || "/", "http://localhost");
+        const proxyBasePath = `/gateways/${encodeURIComponent(gatewayId)}/remote`;
+        const remotePath = gatewayRemoteProxyMatch[2] || "/";
+
+        if (!gatewayRemoteProxyMatch[2]) {
+          return redirect(res, `${proxyBasePath}/${url.search}`);
+        }
+
+        return proxyGatewayRemote(req, res, {
+          gateway,
+          proxyBasePath,
+          remotePath,
+          search: url.search,
         });
       }
 
-      return sendJson(res, 200, {
-        ok: true,
-        command,
-      });
-    }
-
-    if (req.method === "POST" && pathname === "/api/gateway/device-templates") {
-      const body = await readJsonBody(req);
-      await authenticateGateway(req, body.gateway_id);
-      const templates = await store.listDeviceTemplates();
-
-      return sendJson(res, 200, {
-        ok: true,
-        templates,
-        count: templates.length,
-      });
-    }
-
-    if (req.method === "POST" && pathname === "/api/telemetry") {
-      const body = await readJsonBody(req);
-      await authenticateGateway(req, body.gateway_id);
-
-      if (!Array.isArray(body.records)) {
-        return sendJson(res, 400, {
-          ok: false,
-          error: "Request body must include a records array",
+      if (req.method === "GET" && pathname === "/api/gateways") {
+        await syncTailscaleGatewaysIfEnabled("list");
+        return sendJson(res, 200, {
+          ok: true,
+          gateways: await store.listGateways(),
         });
       }
 
-      const telemetryResult = await store.insertTelemetry(body.gateway_id, body.records);
-
-      return sendJson(res, 200, {
-        ok: true,
-        accepted: body.records.length,
-        inserted: telemetryResult.inserted,
-        ignored: telemetryResult.ignored,
-      });
-    }
-
-    if (!isAdminAuthenticated(req)) {
-      if (pathname.startsWith("/api/")) {
-        return sendJson(res, 401, {
-          ok: false,
-          error: "Authentication required",
+      if (req.method === "POST" && pathname === "/api/tailscale/sync") {
+        const result = await syncTailscaleGatewaysIfEnabled("manual", { force: true });
+        return sendJson(res, 200, {
+          ok: true,
+          ...(result || { skipped: true }),
         });
       }
 
-      return redirect(res, "/login");
-    }
+      if (req.method === "POST" && pathname === "/api/gateways") {
+        const body = await readJsonBody(req);
+        const id = String(body.id || body.gateway_id || "").trim();
 
-    if (req.method === "GET" && pathname === "/") {
-      return sendHtml(res, renderDashboardPage({ publicUrl: config.publicUrl }));
-    }
+        if (!id) {
+          return sendJson(res, 400, {
+            ok: false,
+            error: "Gateway ID is required",
+          });
+        }
 
-    const gatewayRemoteProxyMatch = pathname.match(/^\/gateways\/([^/]+)\/remote(\/.*)?$/);
-    if (gatewayRemoteProxyMatch) {
-      const gatewayId = decodeURIComponent(gatewayRemoteProxyMatch[1]);
-      const gateway = await store.getGateway(gatewayId);
+        const gateway = await store.upsertGateway({
+          id,
+          name: String(body.name || id).trim(),
+          site: String(body.site || "").trim(),
+          remoteAccess: gatewayRemoteAccessFromBody(body),
+        });
 
-      if (!gateway) {
-        return sendJson(res, 404, {
-          ok: false,
-          error: "Gateway not found",
+        return sendJson(res, 200, {
+          ok: true,
+          gateway,
         });
       }
 
-      const url = new URL(req.url || "/", "http://localhost");
-      const proxyBasePath = `/gateways/${encodeURIComponent(gatewayId)}/remote`;
-      const remotePath = gatewayRemoteProxyMatch[2] || "/";
+      const gatewayMatch = pathname.match(/^\/api\/gateways\/([^/]+)$/);
+      if (gatewayMatch && req.method === "GET") {
+        const gateway = await store.getGateway(decodeURIComponent(gatewayMatch[1]));
 
-      if (!gatewayRemoteProxyMatch[2]) {
-        return redirect(res, `${proxyBasePath}/${url.search}`);
-      }
+        if (!gateway) {
+          return sendJson(res, 404, {
+            ok: false,
+            error: "Gateway not found",
+          });
+        }
 
-      return proxyGatewayRemote(req, res, {
-        gateway,
-        proxyBasePath,
-        remotePath,
-        search: url.search,
-      });
-    }
-
-    if (req.method === "GET" && pathname === "/api/device-templates") {
-      const templates = await store.listDeviceTemplates();
-
-      return sendJson(res, 200, {
-        ok: true,
-        seedPath: templateSeed.resolvedPath,
-        templates,
-        count: templates.length,
-      });
-    }
-
-    if (req.method === "PUT" && pathname === "/api/device-templates") {
-      const body = await readJsonBody(req);
-
-      if (!Array.isArray(body.templates)) {
-        return sendJson(res, 400, {
-          ok: false,
-          error: "Request body must include a templates array",
+        return sendJson(res, 200, {
+          ok: true,
+          gateway,
         });
       }
 
-      const templates = await store.saveDeviceTemplates(body.templates);
+      if (gatewayMatch && (req.method === "PUT" || req.method === "PATCH")) {
+        const gatewayId = decodeURIComponent(gatewayMatch[1]);
+        const body = await readJsonBody(req);
+        const gateway = await store.updateGatewayRemoteAccess(gatewayId, normalizeRemoteAccess(body.remoteAccess ?? body));
 
-      return sendJson(res, 200, {
-        ok: true,
-        templates,
-        count: templates.length,
-      });
-    }
+        if (!gateway) {
+          return sendJson(res, 404, {
+            ok: false,
+            error: "Gateway not found",
+          });
+        }
 
-    if (req.method === "GET" && pathname === "/api/gateways") {
-      await syncTailscaleGatewaysIfEnabled("list");
-      return sendJson(res, 200, {
-        ok: true,
-        gateways: redactGatewaySecrets(await store.listGateways()),
-      });
-    }
-
-    if (req.method === "POST" && pathname === "/api/tailscale/sync") {
-      const result = await syncTailscaleGatewaysIfEnabled("manual", { force: true });
-      return sendJson(res, 200, {
-        ok: true,
-        ...(result || { skipped: true }),
-        gateways: redactGatewaySecrets(result?.gateways || []),
-      });
-    }
-
-    if (req.method === "POST" && pathname === "/api/gateways") {
-      const body = await readJsonBody(req);
-      const id = String(body.id || body.gateway_id || "").trim();
-
-      if (!id) {
-        return sendJson(res, 400, {
-          ok: false,
-          error: "Gateway ID is required",
+        return sendJson(res, 200, {
+          ok: true,
+          gateway,
         });
       }
 
-      const gateway = await store.upsertGateway({
-        id,
-        name: String(body.name || id).trim(),
-        site: String(body.site || "").trim(),
-        token: String(body.token || ""),
-        remoteAccess: gatewayRemoteAccessFromBody(body),
-      });
+      if (gatewayMatch && req.method === "DELETE") {
+        const gatewayId = decodeURIComponent(gatewayMatch[1]);
+        const gateway = await store.deleteGateway(gatewayId);
 
-      const latest = await store.getLatestConfig(id);
-      if (!latest) {
-        const defaultConfig = createDefaultGatewayConfig(id, config.publicUrl);
-        await store.addConfigVersion({
-          gatewayId: id,
-          config: defaultConfig,
-          restartRequired: true,
-          createdBy: config.adminUsername,
+        if (!gateway) {
+          return sendJson(res, 404, {
+            ok: false,
+            error: "Gateway not found",
+          });
+        }
+
+        return sendJson(res, 200, {
+          ok: true,
+          gateway,
         });
       }
 
-      return sendJson(res, 200, {
-        ok: true,
-        gateway: redactGatewaySecrets(gateway),
-      });
-    }
+      const gatewayTailscaleHealthMatch = pathname.match(/^\/api\/gateways\/([^/]+)\/tailscale\/health$/);
+      if (gatewayTailscaleHealthMatch && req.method === "GET") {
+        const gatewayId = decodeURIComponent(gatewayTailscaleHealthMatch[1]);
+        const gateway = await store.getGateway(gatewayId);
 
-    const gatewayMatch = pathname.match(/^\/api\/gateways\/([^/]+)$/);
-    if (gatewayMatch && (req.method === "PUT" || req.method === "PATCH")) {
-      const gatewayId = decodeURIComponent(gatewayMatch[1]);
-      const body = await readJsonBody(req);
-      const gateway = await store.updateGatewayRemoteAccess(gatewayId, normalizeRemoteAccess(body.remoteAccess ?? body));
+        if (!gateway) {
+          return sendJson(res, 404, {
+            ok: false,
+            error: "Gateway not found",
+          });
+        }
 
-      if (!gateway) {
-        return sendJson(res, 404, {
-          ok: false,
-          error: "Gateway not found",
+        const result = await getGatewayPublicJson({
+          gateway,
+          path: "/api/health",
+          timeoutMs: config.tailscaleGatewayTimeoutMs,
+        });
+
+        return sendJson(res, 200, {
+          ok: true,
+          mode: "tailscale_proxy",
+          gatewayBaseUrl: result.baseUrl,
+          gateway: result.payload,
         });
       }
 
-      return sendJson(res, 200, {
-        ok: true,
-        gateway: redactGatewaySecrets(gateway),
+      sendJson(res, 404, {
+        ok: false,
+        error: "Not found",
+      });
+    } catch (error) {
+      const status = error.statusCode || 500;
+      console.error(error);
+      sendJson(res, status, {
+        ok: false,
+        error: error.message,
       });
     }
+  });
 
-    if (gatewayMatch && req.method === "DELETE") {
-      const gatewayId = decodeURIComponent(gatewayMatch[1]);
-      const gateway = await store.deleteGateway(gatewayId);
-
-      if (!gateway) {
-        return sendJson(res, 404, {
-          ok: false,
-          error: "Gateway not found",
-        });
-      }
-
-      return sendJson(res, 200, {
-        ok: true,
-        gateway: redactGatewaySecrets(gateway),
-      });
-    }
-
-    const gatewayConfigMatch = pathname.match(/^\/api\/gateways\/([^/]+)\/config$/);
-    if (gatewayConfigMatch && req.method === "GET") {
-      const gatewayId = decodeURIComponent(gatewayConfigMatch[1]);
-      const latest = await store.getLatestConfig(gatewayId);
-
-      return sendJson(res, 200, {
-        ok: true,
-        ...(latest ? {
-          version: latest.version,
-          configHash: latest.configHash,
-          restartRequired: latest.restartRequired,
-          config: latest.config,
-        } : {
-          version: null,
-          config: null,
-        }),
-      });
-    }
-
-    if (gatewayConfigMatch && req.method === "PUT") {
-      const gatewayId = decodeURIComponent(gatewayConfigMatch[1]);
-      const body = await readJsonBody(req);
-
-      if (!await store.getGateway(gatewayId)) {
-        return sendJson(res, 404, {
-          ok: false,
-          error: "Gateway not found",
-        });
-      }
-
-      validateGatewayConfig(body.config, gatewayId);
-      const latest = await store.addConfigVersion({
-        gatewayId,
-        config: body.config,
-        // Gateway runtime components are initialized from config at startup; remote config is not hot-reloadable.
-        restartRequired: true,
-        createdBy: config.adminUsername,
-      });
-
-      return sendJson(res, 200, {
-        ok: true,
-        version: latest.version,
-        configHash: latest.configHash,
-        restartRequired: latest.restartRequired,
-      });
-    }
-
-    const gatewayCommandsMatch = pathname.match(/^\/api\/gateways\/([^/]+)\/commands$/);
-    if (gatewayCommandsMatch && req.method === "GET") {
-      const gatewayId = decodeURIComponent(gatewayCommandsMatch[1]);
-
-      if (!await store.getGateway(gatewayId)) {
-        return sendJson(res, 404, {
-          ok: false,
-          error: "Gateway not found",
-        });
-      }
-
-      return sendJson(res, 200, {
-        ok: true,
-        commands: await store.listGatewayCommands(gatewayId, 100),
-      });
-    }
-
-    const gatewayCommandMatch = pathname.match(/^\/api\/gateways\/([^/]+)\/commands\/([^/]+)$/);
-    if (gatewayCommandMatch && req.method === "DELETE") {
-      const gatewayId = decodeURIComponent(gatewayCommandMatch[1]);
-      const commandId = decodeURIComponent(gatewayCommandMatch[2]);
-
-      if (!await store.getGateway(gatewayId)) {
-        return sendJson(res, 404, {
-          ok: false,
-          error: "Gateway not found",
-        });
-      }
-
-      const result = await store.cancelGatewayCommand({ gatewayId, commandId });
-      if (!result) {
-        return sendJson(res, 404, {
-          ok: false,
-          error: "Command not found",
-        });
-      }
-
-      return sendJson(res, 200, {
-        ok: true,
-        ...result,
-      });
-    }
-
-    const gatewayControlMatch = pathname.match(/^\/api\/gateways\/([^/]+)\/control$/);
-    if (gatewayControlMatch && req.method === "POST") {
-      const gatewayId = decodeURIComponent(gatewayControlMatch[1]);
-      const body = await readJsonBody(req);
-
-      if (!await store.getGateway(gatewayId)) {
-        return sendJson(res, 404, {
-          ok: false,
-          error: "Gateway not found",
-        });
-      }
-
-      const payload = normalizeInverterControlPayload(body);
-      const schedule = normalizeCommandSchedule(body.schedule || body);
-      const command = await store.createGatewayCommand({
-        gatewayId,
-        action: payload.action,
-        payload,
-        createdBy: config.adminUsername,
-        schedule: schedule?.schedule || null,
-        nextRunAt: schedule?.nextRunAt || null,
-      });
-
-      return sendJson(res, 200, {
-        ok: true,
-        command,
-      });
-    }
-
-    const gatewayTailscaleHealthMatch = pathname.match(/^\/api\/gateways\/([^/]+)\/tailscale\/health$/);
-    if (gatewayTailscaleHealthMatch && req.method === "GET") {
-      const gatewayId = decodeURIComponent(gatewayTailscaleHealthMatch[1]);
-      const gateway = await store.getGateway(gatewayId);
-
-      if (!gateway) {
-        return sendJson(res, 404, {
-          ok: false,
-          error: "Gateway not found",
-        });
-      }
-
-      const result = await getGatewayPublicJson({
-        gateway,
-        path: "/api/health",
-        timeoutMs: config.tailscaleGatewayTimeoutMs,
-      });
-
-      return sendJson(res, 200, {
-        ok: true,
-        mode: "tailscale_direct",
-        gatewayBaseUrl: result.baseUrl,
-        gateway: result.payload,
-      });
-    }
-
-    const gatewayTailscaleControlMatch = pathname.match(/^\/api\/gateways\/([^/]+)\/tailscale\/control$/);
-    if (gatewayTailscaleControlMatch && req.method === "POST") {
-      const gatewayId = decodeURIComponent(gatewayTailscaleControlMatch[1]);
-      const body = await readJsonBody(req);
-      const gateway = await store.getGateway(gatewayId);
-
-      if (!gateway) {
-        return sendJson(res, 404, {
-          ok: false,
-          error: "Gateway not found",
-        });
-      }
-
-      const payload = normalizeInverterControlPayload(body);
-      const schedule = normalizeCommandSchedule(body.schedule || body);
-      const result = await postGatewayAdminJson({
-        gateway,
-        path: "/api/inverter/control",
-        body: {
-          ...payload,
-          ...(body.scheduleWindow ? { scheduleWindow: body.scheduleWindow } : {}),
-          ...(schedule ? { schedule: schedule.schedule } : {}),
-        },
-        credentials: gatewayAdminCredentials(),
-        timeoutMs: config.tailscaleGatewayTimeoutMs,
-      });
-
-      return sendJson(res, 200, {
-        ok: true,
-        mode: "tailscale_direct",
-        gatewayBaseUrl: result.baseUrl,
-        result: result.payload,
-      });
-    }
-
-    const gatewayTailscaleWriteMatch = pathname.match(/^\/api\/gateways\/([^/]+)\/tailscale\/modbus\/write$/);
-    if (gatewayTailscaleWriteMatch && req.method === "POST") {
-      const gatewayId = decodeURIComponent(gatewayTailscaleWriteMatch[1]);
-      const body = await readJsonBody(req);
-      const gateway = await store.getGateway(gatewayId);
-
-      if (!gateway) {
-        return sendJson(res, 404, {
-          ok: false,
-          error: "Gateway not found",
-        });
-      }
-
-      const result = await postGatewayAdminJson({
-        gateway,
-        path: "/api/modbus/write",
-        body,
-        credentials: gatewayAdminCredentials(),
-        timeoutMs: config.tailscaleGatewayTimeoutMs,
-      });
-
-      return sendJson(res, 200, {
-        ok: true,
-        mode: "tailscale_direct",
-        gatewayBaseUrl: result.baseUrl,
-        result: result.payload,
-      });
-    }
-
-    const telemetryMatch = pathname.match(/^\/api\/gateways\/([^/]+)\/telemetry\/latest$/);
-    if (telemetryMatch && req.method === "GET") {
-      const gatewayId = decodeURIComponent(telemetryMatch[1]);
-      return sendJson(res, 200, {
-        ok: true,
-        records: await store.latestTelemetry(gatewayId, 100),
-      });
-    }
-
-    sendJson(res, 404, {
-      ok: false,
-      error: "Not found",
-    });
-  } catch (error) {
-    const status = error.statusCode || 500;
-    console.error(error);
-    sendJson(res, status, {
-      ok: false,
-      error: error.message,
-    });
-  }
-});
-
-server.listen(config.port, config.host, () => {
-  console.log(`Hardware server listening on http://${config.host}:${config.port}`);
-});
-}
-
-async function authenticateGateway(req, gatewayId) {
-  if (!gatewayId) throw httpError(400, "gateway_id is required");
-
-  const token = bearerToken(req);
-  const existing = await store.getGateway(gatewayId);
-
-  if (!existing && canAutoRegisterGateway(token)) {
-    await store.autoRegisterGateway(gatewayId, token);
-    await ensureDefaultGatewayConfig(gatewayId, "auto-provision");
-    return;
-  }
-
-  if (!await store.verifyGatewayToken(gatewayId, token)) {
-    throw httpError(401, "Invalid gateway token");
-  }
-
-  await ensureDefaultGatewayConfig(gatewayId, "server");
-}
-
-function gatewayAdminCredentials() {
-  return {
-    username: config.tailscaleGatewayAdminUsername,
-    password: config.tailscaleGatewayAdminPassword,
-  };
-}
-
-function canAutoRegisterGateway(token) {
-  if (!config.autoRegisterGateways || !token) return false;
-  if (!config.provisioningToken) return true;
-  return safeEqual(token, config.provisioningToken);
-}
-
-async function ensureDefaultGatewayConfig(gatewayId, createdBy) {
-  if (await store.getLatestConfig(gatewayId)) return;
-
-  const defaultConfig = createDefaultGatewayConfig(gatewayId, config.publicUrl);
-  await store.addConfigVersion({
-    gatewayId,
-    config: defaultConfig,
-    restartRequired: true,
-    createdBy,
+  server.listen(config.port, config.host, () => {
+    console.log(`Hardware server listening on http://${config.host}:${config.port}`);
   });
 }
 
@@ -904,7 +447,7 @@ async function readJsonBody(req) {
 
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > 5 * 1024 * 1024) {
+    if (size > 1024 * 1024) {
       throw httpError(413, "Request body is too large");
     }
     chunks.push(chunk);
@@ -991,25 +534,8 @@ function parseCookies(req) {
   }, {});
 }
 
-function bearerToken(req) {
-  const header = String(req.headers.authorization || "");
-  const match = header.match(/^Bearer\s+(.+)$/i);
-  return match ? match[1].trim() : "";
-}
-
 function requestPath(req) {
   return new URL(req.url || "/", "http://localhost").pathname;
-}
-
-function isGatewayPushApiRequest(method, pathname) {
-  if (method !== "POST") return false;
-  return pathname === "/api/telemetry" || pathname.startsWith("/api/gateway/");
-}
-
-async function drainRequestBody(req) {
-  for await (const _chunk of req) {
-    // Drain only; directory mode intentionally ignores gateway push payloads.
-  }
 }
 
 function startTailscaleSyncLoop() {
@@ -1027,7 +553,7 @@ function startTailscaleSyncLoop() {
   tailscaleSyncTimer.unref?.();
 }
 
-async function syncTailscaleGatewaysIfEnabled(reason, { force = false } = {}) {
+async function syncTailscaleGatewaysIfEnabled(_reason, { force = false } = {}) {
   if (!config.tailscaleSyncEnabled) return null;
   if (tailscaleSyncPromise && !force) return tailscaleSyncPromise;
 
@@ -1038,9 +564,6 @@ async function syncTailscaleGatewaysIfEnabled(reason, { force = false } = {}) {
     uiPort: config.tailscaleSyncUiPort,
     sshPort: config.tailscaleSyncSshPort,
     tag: config.tailscaleSyncTag,
-    publicUrl: config.publicUrl,
-    createdBy: `tailscale-sync:${reason}`,
-    createDefaultConfig: createDefaultGatewayConfig,
     readStatus: () => readTailscaleStatusJson({
       cliPath: config.tailscaleSyncCliPath,
       statusJson: config.tailscaleSyncStatusJson,
@@ -1112,88 +635,6 @@ function redirect(res, location) {
   res.end();
 }
 
-function redactGatewaySecrets(gatewayOrGateways) {
-  if (Array.isArray(gatewayOrGateways)) return gatewayOrGateways.map(redactGatewaySecrets);
-  if (!gatewayOrGateways) return gatewayOrGateways;
-  const { tokenHash, ...gateway } = gatewayOrGateways;
-  return gateway;
-}
-
-function gatewayCommandPayload(command) {
-  return {
-    id: command.id,
-    action: command.action,
-    payload: command.payload,
-    schedule: command.schedule,
-    scheduledAt: command.scheduledAt,
-    nextRunAt: command.nextRunAt,
-    createdAt: command.createdAt,
-  };
-}
-
-function normalizeInverterControlPayload(body) {
-  const deviceName = stringField(body.deviceName ?? body.device);
-  const stationId = stringField(body.stationId ?? body.station);
-  const action = normalizeControlAction(body.action);
-
-  if (!deviceName && !stationId) throw httpError(400, "deviceName or stationId is required");
-  if (!action) throw httpError(400, "action is required");
-
-  const payload = {
-    action,
-  };
-  if (stationId) payload.stationId = stationId;
-  else payload.deviceName = deviceName;
-
-  for (const field of ["value", "percent", "kw", "watts", "durationSeconds", "durationMinutes", "durationHours", "delayMs", "rebootDelayMs"]) {
-    if (body[field] !== undefined) {
-      payload[field] = finiteNumber(body[field], field);
-    }
-  }
-
-  return payload;
-}
-
-function normalizeControlAction(action) {
-  const normalized = stringField(action).toLowerCase().replace(/[\s-]+/g, "_");
-  const aliases = {
-    on: "start",
-    start: "start",
-    startup: "start",
-    boot: "start",
-    off: "stop",
-    stop: "stop",
-    shutdown: "stop",
-    restart: "reboot",
-    reboot: "reboot",
-    limit_power: "limit_power",
-    power_limit: "limit_power",
-    set_power_limit: "limit_power",
-    clear_power_limit: "clear_power_limit",
-    remove_power_limit: "clear_power_limit",
-    unlimit: "clear_power_limit",
-  };
-  const actionName = aliases[normalized] || normalized;
-
-  if (!["start", "stop", "reboot", "limit_power", "clear_power_limit"].includes(actionName)) {
-    throw httpError(400, `Unsupported inverter control action '${action}'`);
-  }
-
-  return actionName;
-}
-
-function finiteNumber(value, field) {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    throw httpError(400, `${field} must be a finite number`);
-  }
-
-  return value;
-}
-
-function stringField(value) {
-  return typeof value === "string" ? value.trim() : "";
-}
-
 function httpError(statusCode, message) {
   const error = new Error(message);
   error.statusCode = statusCode;
@@ -1210,11 +651,6 @@ function safeEqual(input, expected) {
 function positiveIntegerEnv(name, fallback) {
   const value = Number.parseInt(process.env[name] || "", 10);
   return Number.isInteger(value) && value > 0 ? value : fallback;
-}
-
-function nonNegativeIntegerEnv(name, fallback) {
-  const value = Number.parseInt(process.env[name] || "", 10);
-  return Number.isInteger(value) && value >= 0 ? value : fallback;
 }
 
 function booleanEnv(name, fallback) {
