@@ -2509,6 +2509,7 @@ export function renderDashboardPage({ publicUrl }) {
     <symbol id="icon-settings" viewBox="0 0 24 24"><path d="M12.2 2h-.4l-.8 3a7.8 7.8 0 0 0-1.8.8L6.4 4.3l-.3.3-2 3.5.3.3 2.4.7a8 8 0 0 0 0 2L4.4 12l-.3.3 2 3.5.3.3 2.8-1.5a7.8 7.8 0 0 0 1.8.8l.8 3h.4l.8-3a7.8 7.8 0 0 0 1.8-.8l2.8 1.5.3-.3 2-3.5-.3-.3-2.4-.8a8 8 0 0 0 0-2l2.4-.7.3-.3-2-3.5-.3-.3-2.8 1.5a7.8 7.8 0 0 0-1.8-.8L12.2 2z"></path><circle cx="12" cy="12" r="3"></circle></symbol>
     <symbol id="icon-cloud" viewBox="0 0 24 24"><path d="M17.5 19H7a5 5 0 0 1-.6-10A7 7 0 0 1 20 11.5 3.8 3.8 0 0 1 17.5 19z"></path></symbol>
     <symbol id="icon-network" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="6" rx="1"></rect><rect x="2" y="16" width="6" height="6" rx="1"></rect><rect x="16" y="16" width="6" height="6" rx="1"></rect><path d="M12 8v4M5 16v-2a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2"></path></symbol>
+    <symbol id="icon-tailscale" viewBox="0 0 24 24"><circle cx="7" cy="7" r="2.2"></circle><circle cx="17" cy="7" r="2.2"></circle><circle cx="7" cy="17" r="2.2"></circle><circle cx="17" cy="17" r="2.2"></circle><circle cx="12" cy="12" r="1.5"></circle><path d="M9.2 7h5.6M7 9.2v5.6M17 9.2v5.6M9.2 17h5.6M9 9l2 2M15 9l-2 2M9 15l2-2M15 15l-2-2"></path></symbol>
     <symbol id="icon-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"></path><path d="M3 6h.01M3 12h.01M3 18h.01"></path></symbol>
     <symbol id="icon-hard-drive" viewBox="0 0 24 24"><path d="M22 12H2l3-8h14l3 8z"></path><path d="M2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6"></path><path d="M6 16h.01M10 16h.01"></path></symbol>
   </svg>
@@ -2617,7 +2618,7 @@ export function renderDashboardPage({ publicUrl }) {
           <span class="connectivity-icon"><svg class="app-icon"><use href="#icon-server"></use></svg></span>
         </span>
         <span id="sidebarTailscaleStatus" class="connectivity-tile status-waiting" title="Tailscale" aria-label="Tailscale">
-          <span class="connectivity-icon"><svg class="app-icon"><use href="#icon-network"></use></svg></span>
+          <span class="connectivity-icon"><svg class="app-icon"><use href="#icon-tailscale"></use></svg></span>
         </span>
       </div>
     </aside>
@@ -2644,7 +2645,7 @@ export function renderDashboardPage({ publicUrl }) {
                 <option value="en">English</option>
               </select>
             </label>
-            <button id="openTailscaleUiBtn" class="subtle icon-only hidden" type="button" title="Gateway UI qua Tailscale" aria-label="Gateway UI qua Tailscale"><svg class="app-icon"><use href="#icon-network"></use></svg><span class="visually-hidden">Gateway UI qua Tailscale</span></button>
+            <button id="openTailscaleUiBtn" class="subtle icon-only hidden" type="button" title="Gateway UI qua Tailscale" aria-label="Gateway UI qua Tailscale"><svg class="app-icon"><use href="#icon-tailscale"></use></svg><span class="visually-hidden">Gateway UI qua Tailscale</span></button>
             <button id="remoteDisconnectBtn" class="subtle icon-only" type="button" title="Về danh sách site" aria-label="Về danh sách site"><svg class="app-icon"><use href="#icon-arrow-left"></use></svg><span class="visually-hidden">Về danh sách site</span></button>
           </div>
           <div class="status-chip">
@@ -2848,7 +2849,7 @@ export function renderDashboardPage({ publicUrl }) {
                 <p>Server lưu IP/host riêng để mở Gateway UI đang chạy trên IPC/Moxa.</p>
               </div>
               <div class="actions">
-                <button id="openTailscaleUiSystemBtn" class="subtle icon-text" type="button"><svg class="app-icon"><use href="#icon-network"></use></svg>Mở UI</button>
+                <button id="openTailscaleUiSystemBtn" class="subtle icon-text" type="button"><svg class="app-icon"><use href="#icon-tailscale"></use></svg>Mở UI</button>
                 <button id="saveRemoteAccessBtn" class="primary icon-only" type="button" title="Lưu Tailscale" aria-label="Lưu Tailscale"><svg class="app-icon"><use href="#icon-save"></use></svg><span class="visually-hidden">Lưu Tailscale</span></button>
               </div>
             </div>
