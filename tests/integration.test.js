@@ -1034,7 +1034,6 @@ async function startTestServer(t, envOverrides = {}) {
     HOST: "127.0.0.1",
     PORT: String(port),
     PUBLIC_URL: `http://127.0.0.1:${port}`,
-    STORE_DRIVER: "sqlite",
     DB_PATH: dbPath,
     DEVICE_TEMPLATES_PATH: templatePath,
     ADMIN_USERNAME: "admin",

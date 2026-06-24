@@ -22,9 +22,6 @@ services:
       AUTO_REGISTER_GATEWAYS: ${AUTO_REGISTER_GATEWAYS:-true}
       TELEMETRY_RETENTION_MS: ${TELEMETRY_RETENTION_MS:-2592000000}
       TELEMETRY_PRUNE_INTERVAL_MS: ${TELEMETRY_PRUNE_INTERVAL_MS:-3600000}
-      STORE_DRIVER: ${STORE_DRIVER:-mongodb}
-      MONGODB_URI: ${MONGODB_URI:?MONGODB_URI is required}
-      MONGODB_DB: ${MONGODB_DB:-hardware_gateway}
     logging:
       driver: json-file
       options:

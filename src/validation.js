@@ -76,7 +76,6 @@ export function validateGatewayConfig(config, expectedGatewayId) {
   validateInteger(config.server.batchSize, "server.batchSize", { min: 1, optional: true });
   validateInteger(config.server.uploadIntervalMs, "server.uploadIntervalMs", { min: 500, optional: true });
   validateRemoteConfig(config.remoteConfig);
-  validateMongo(config.mongo);
   validateIec104(config.iec104);
   const loggerIds = validateLoggers(config.loggers);
   validateStations(config.stations, config.devices, loggerIds);
@@ -293,16 +292,6 @@ export function createDefaultGatewayConfig(gatewayId, publicUrl) {
       checkIntervalMs: 30000,
       timeoutMs: 10000,
       statePath: "/data/remote-config-state.json",
-    },
-    mongo: {
-      enabled: false,
-      uriEnv: "MONGODB_URI",
-      dbNameEnv: "MONGODB_DB",
-      dbName: "hardware_gateway",
-      checkIntervalMs: 30000,
-      uploadIntervalMs: 5000,
-      batchSize: 100,
-      statePath: "/data/mongo-sync-state.json",
     },
     iec104: {
       enabled: false,
@@ -644,23 +633,6 @@ function validateRemoteConfig(remoteConfig = {}) {
 
   if (remoteConfig.statePath !== undefined && !remoteConfig.statePath) {
     throw new Error("Invalid gateway config. remoteConfig.statePath must not be empty");
-  }
-}
-
-function validateMongo(mongo = {}) {
-  if (!mongo.enabled) return;
-
-  if (!mongo.uriEnv) {
-    throw new Error("Invalid gateway config. mongo.uriEnv is required when mongo.enabled is true");
-  }
-  if (!mongo.dbName && !mongo.dbNameEnv) {
-    throw new Error("Invalid gateway config. mongo.dbName or mongo.dbNameEnv is required when mongo.enabled is true");
-  }
-  validateInteger(mongo.checkIntervalMs, "mongo.checkIntervalMs", { min: 5000, optional: true });
-  validateInteger(mongo.uploadIntervalMs, "mongo.uploadIntervalMs", { min: 500, optional: true });
-  validateInteger(mongo.batchSize, "mongo.batchSize", { min: 1, optional: true });
-  if (mongo.statePath !== undefined && !mongo.statePath) {
-    throw new Error("Invalid gateway config. mongo.statePath must not be empty");
   }
 }
 

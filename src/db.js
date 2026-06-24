@@ -20,22 +20,6 @@ const DAY_MINUTES = 24 * 60;
 const WEEK_MINUTES = 7 * DAY_MINUTES;
 
 export async function openDatabase(dbPath, tokenHashSecret, options = {}) {
-  if (mongoStoreEnabled()) {
-    const uri = process.env.MONGODB_URI || process.env.MONGO_URI || "";
-
-    if (!uri) {
-      throw new Error("MONGODB_URI is required when STORE_DRIVER=mongodb");
-    }
-
-    const { openMongoStore } = await import("./mongoStore.js");
-    return openMongoStore({
-      uri,
-      dbName: process.env.MONGODB_DB || process.env.MONGO_DB || "hardware_gateway",
-      tokenHashSecret,
-      options,
-    });
-  }
-
   fs.mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true });
   const db = await openSqliteDatabase(dbPath);
 
@@ -182,11 +166,6 @@ export async function openDatabase(dbPath, tokenHashSecret, options = {}) {
   store.pruneTelemetry({ force: true });
 
   return store;
-}
-
-function mongoStoreEnabled() {
-  const driver = String(process.env.STORE_DRIVER || process.env.DB_DRIVER || "").trim().toLowerCase();
-  return driver === "mongodb" || driver === "mongo";
 }
 
 function ensureTemplateRegisterColumns(db) {

@@ -2786,7 +2786,7 @@ export function renderDashboardPage({ publicUrl }) {
             <div class="panel-title-row">
               <div>
                 <h2 class="panel-title">Lưu trữ & Đồng bộ</h2>
-                <p>Queue nội bộ, giới hạn lưu trữ, upload HTTP/Mongo và IEC104 runtime.</p>
+                <p>Queue nội bộ, giới hạn lưu trữ, upload HTTP và IEC104 runtime.</p>
               </div>
               <div class="actions">
                 <button id="refreshRuntimeBtn" class="subtle icon-only" type="button" title="Làm mới" aria-label="Làm mới"><svg class="app-icon"><use href="#icon-refresh"></use></svg><span class="visually-hidden">Làm mới</span></button>
@@ -2899,14 +2899,6 @@ export function renderDashboardPage({ publicUrl }) {
                 <label>Chu kỳ kiểm tra remote ms <input id="remoteConfigCheckIntervalMs" type="number" min="5000" step="1000"></label>
                 <label>Remote timeout ms <input id="remoteConfigTimeoutMs" type="number" min="1000" step="1000"></label>
                 <label class="wide">Đường dẫn trạng thái remote <input id="remoteConfigStatePath" autocomplete="off"></label>
-                <label>Bật Mongo <select id="mongoEnabled"><option value="false">Tắt</option><option value="true">Bật</option></select></label>
-                <label>Mongo URI env <input id="mongoUriEnv" autocomplete="off"></label>
-                <label>Mongo DB env <input id="mongoDbNameEnv" autocomplete="off"></label>
-                <label>Tên Mongo DB <input id="mongoDbName" autocomplete="off"></label>
-                <label>Chu kỳ Mongo ms <input id="mongoCheckIntervalMs" type="number" min="5000" step="1000"></label>
-                <label>Chu kỳ upload Mongo ms <input id="mongoUploadIntervalMs" type="number" min="500" step="500"></label>
-                <label>Cỡ lô Mongo <input id="mongoBatchSize" type="number" min="1"></label>
-                <label class="wide">Đường dẫn trạng thái Mongo <input id="mongoStatePath" autocomplete="off"></label>
                 <label class="wide">Đường dẫn queue <input id="queuePath" autocomplete="off"></label>
               </div>
             </section>
@@ -3958,7 +3950,7 @@ export function renderDashboardPage({ publicUrl }) {
           '<td>' + escapeHtml(queue.maxBytes ? formatBytes(queue.maxBytes) : "-") + '</td>' +
           '<td>' + escapeHtml(queue.retentionMs ? formatMs(queue.retentionMs) : "-") + '</td>' +
           '<td>' + escapeHtml(pending === null ? "-" : formatCompactNumber(pending)) + '</td>' +
-          '<td>' + escapeHtml(config.mongo?.enabled ? "MongoDB" : "HTTP") + '</td>' +
+          '<td>' + escapeHtml(config.server?.enabled ? "HTTP" : "Local") + '</td>' +
         '</tr>';
       }).join("") || '<tr><td colspan="7" class="empty-state">Chưa có dữ liệu lưu trữ.</td></tr>';
     }
@@ -4126,16 +4118,6 @@ export function renderDashboardPage({ publicUrl }) {
           timeoutMs: 10000,
           statePath: "/data/remote-config-state.json",
         },
-        mongo: {
-          enabled: false,
-          uriEnv: "MONGODB_URI",
-          dbNameEnv: "MONGODB_DB",
-          dbName: "hardware_gateway",
-          checkIntervalMs: 30000,
-          uploadIntervalMs: 5000,
-          batchSize: 100,
-          statePath: "/data/mongo-sync-state.json",
-        },
         iec104: {
           enabled: true,
           mode: "server",
@@ -4204,14 +4186,6 @@ export function renderDashboardPage({ publicUrl }) {
       el("remoteConfigCheckIntervalMs").value = state.remoteConfig?.checkIntervalMs ?? 30000;
       el("remoteConfigTimeoutMs").value = state.remoteConfig?.timeoutMs ?? 10000;
       el("remoteConfigStatePath").value = state.remoteConfig?.statePath || "/data/remote-config-state.json";
-      el("mongoEnabled").value = String(state.mongo?.enabled ?? false);
-      el("mongoUriEnv").value = state.mongo?.uriEnv || "MONGODB_URI";
-      el("mongoDbNameEnv").value = state.mongo?.dbNameEnv || "MONGODB_DB";
-      el("mongoDbName").value = state.mongo?.dbName || "hardware_gateway";
-      el("mongoCheckIntervalMs").value = state.mongo?.checkIntervalMs ?? 30000;
-      el("mongoUploadIntervalMs").value = state.mongo?.uploadIntervalMs ?? 5000;
-      el("mongoBatchSize").value = state.mongo?.batchSize ?? 100;
-      el("mongoStatePath").value = state.mongo?.statePath || "/data/mongo-sync-state.json";
       el("iec104Enabled").checked = state.iec104?.enabled ?? true;
       el("iec104Mode").value = "server";
       el("iec104Host").value = state.iec104?.host || "0.0.0.0";
@@ -5075,13 +5049,12 @@ export function renderDashboardPage({ publicUrl }) {
 
       const queue = state.storage?.queue || {};
       const archive = state.storage?.archive || {};
-      const mongo = state.mongo || {};
       const remoteConfig = state.remoteConfig || {};
       const records = homeTelemetry.get(selectedId) || [];
       const pending = homeGatewayMetrics(records).queueRecords;
       setText("queueRecords", pending === null ? "-" : formatCompactNumber(pending));
       setText("queueBytes", queue.maxBytes ? formatBytes(queue.maxBytes) : "-");
-      setText("runtimeCloudMode", mongo.enabled ? "MongoDB" : "HTTP");
+      setText("runtimeCloudMode", state.server?.enabled ? "HTTP" : "Local");
       setText("runtimeIec104", state.iec104?.enabled ? ((state.iec104.mode || "server") + " / enabled") : "Tắt");
       const rows = [
         ["Đường dẫn queue", state.storage?.queuePath || "-", "File queue local trên IPC"],
@@ -5094,7 +5067,6 @@ export function renderDashboardPage({ publicUrl }) {
         ["Retention", queue.retentionMs ? formatMs(queue.retentionMs) : "-", "Thời gian giữ dữ liệu local"],
         ["Pending records", pending === null ? "-" : formatCompactNumber(pending), "Metric do gateway gửi lên nếu có"],
         ["Remote config", remoteConfig.enabled ? "Enable" : "Disable", hostFromUrl(remoteConfig.url || "") || "-"],
-        ["Mongo sync", mongo.enabled ? "Enable" : "Disable", mongo.dbName || mongo.dbNameEnv || "-"],
         ["Runtime IEC104", state.iec104?.enabled ? ((state.iec104.mode || "server") + " / enabled") : "Tắt", "Trạng thái endpoint IEC104"],
       ];
 
@@ -6596,16 +6568,7 @@ export function renderDashboardPage({ publicUrl }) {
         timeoutMs: numberValue("remoteConfigTimeoutMs"),
         statePath: el("remoteConfigStatePath").value.trim(),
       };
-      state.mongo = {
-        enabled: el("mongoEnabled").value === "true",
-        uriEnv: el("mongoUriEnv").value.trim(),
-        dbNameEnv: el("mongoDbNameEnv").value.trim(),
-        dbName: el("mongoDbName").value.trim(),
-        checkIntervalMs: numberValue("mongoCheckIntervalMs"),
-        uploadIntervalMs: numberValue("mongoUploadIntervalMs"),
-        batchSize: numberValue("mongoBatchSize"),
-        statePath: el("mongoStatePath").value.trim(),
-      };
+      delete state.mongo;
       state.iec104 = {
         ...(state.iec104 || {}),
         enabled: el("iec104Enabled").checked,
@@ -7057,7 +7020,6 @@ export function renderDashboardPage({ publicUrl }) {
       const parts = [];
       if (state.iec104?.enabled) parts.push("IEC104");
       parts.push("HTTP");
-      if (state.mongo?.enabled) parts.push("Mongo");
       return parts.join(" + ");
     }
 

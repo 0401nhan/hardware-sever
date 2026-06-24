@@ -188,43 +188,16 @@ curl -X POST https://server.electricbird.vn/api/gateways/GATEWAY_ID/tailscale/co
 ```
 
 This route logs in to the Gateway Admin API through the saved Tailscale host/IP, then calls
-`/api/inverter/control` on the gateway. Use `Cloud queue` when Hardware-Server is not on the tailnet
-or when the IPC is temporarily offline.
-
-## Cloud MongoDB Mode
-
-Set these on Hardware-Server to use Cloud MongoDB instead of local SQLite:
-
-```bash
-STORE_DRIVER=mongodb
-MONGODB_URI=mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/
-MONGODB_DB=hardware_gateway
-```
-
-If the host reports `querySrv ECONNREFUSED _mongodb._tcp...`, its DNS resolver is refusing
-MongoDB Atlas SRV lookups. Either change the host DNS resolver to one that supports SRV records,
-or replace the `mongodb+srv://` URI with a standard seed-list URI:
-
-```bash
-MONGODB_URI=mongodb://USER:PASSWORD@HOST1:27017,HOST2:27017,HOST3:27017/hardware_gateway?tls=true&replicaSet=REPLICA_SET&authSource=admin&retryWrites=true&w=majority
-```
-
-Hardware-Server and Hardware-Gateway share these collections: `gateways`, `config_versions`, `telemetry_records`, `gateway_commands`, `device_templates`, and `template_library_metadata`. Use a restricted MongoDB user for gateways; do not place an Atlas admin credential on an IPC.
+`/api/inverter/control` on the gateway. Use `Cloud queue` only when Hardware-Server cannot reach
+the IPC over Tailscale or when the IPC is temporarily offline.
 
 ## Docker Compose
 
-Production Compose expects an external MongoDB URI from `.env`:
+Production Compose stores Hardware-Server data in the SQLite database volume:
 
 ```bash
 docker compose up -d --build
 docker compose logs -f hardware-server
-```
-
-For local testing with a MongoDB container, use the local overlay:
-
-```powershell
-$env:MONGODB_URI="mongodb://mongo:27017/hardware_gateway"
-docker compose -f docker-compose.yml -f docker-compose.local-mongo.yml up -d --build
 ```
 
 The container listens on port `7000`. Put Nginx/Caddy in front of it for TLS:
@@ -250,4 +223,5 @@ TELEMETRY_RETENTION_MS=2592000000
 TELEMETRY_PRUNE_INTERVAL_MS=3600000
 ```
 
-Set `TELEMETRY_RETENTION_MS=0` to disable automatic telemetry cleanup. MongoDB mode creates a TTL index for new telemetry records and also prunes older records by `createdAt`; SQLite mode prunes `telemetry_records` during startup and ingest.
+Set `TELEMETRY_RETENTION_MS=0` to disable automatic telemetry cleanup. SQLite prunes
+`telemetry_records` during startup and ingest.
