@@ -2616,8 +2616,8 @@ export function renderDashboardPage({ publicUrl }) {
         <span id="sidebarInternetStatus" class="connectivity-tile status-waiting" title="Internet" aria-label="Internet">
           <span class="connectivity-icon"><svg class="app-icon"><use href="#icon-server"></use></svg></span>
         </span>
-        <span id="sidebarCloudStatus" class="connectivity-tile status-waiting" title="Cloud MongoDB" aria-label="Cloud MongoDB">
-          <span class="connectivity-icon"><svg class="app-icon"><use href="#icon-cloud"></use></svg></span>
+        <span id="sidebarTailscaleStatus" class="connectivity-tile status-waiting" title="Tailscale" aria-label="Tailscale">
+          <span class="connectivity-icon"><svg class="app-icon"><use href="#icon-network"></use></svg></span>
         </span>
       </div>
     </aside>
@@ -5202,7 +5202,7 @@ export function renderDashboardPage({ publicUrl }) {
     function renderConnectivityStatus() {
       updateConnectivityTile("sidebarLanStatus", lanConnectivityStatus());
       updateConnectivityTile("sidebarInternetStatus", internetConnectivityStatus());
-      updateConnectivityTile("sidebarCloudStatus", cloudConnectivityStatus());
+      updateConnectivityTile("sidebarTailscaleStatus", tailscaleConnectivityStatus());
     }
 
     function updateConnectivityTile(id, status) {
@@ -5261,26 +5261,25 @@ export function renderDashboardPage({ publicUrl }) {
       };
     }
 
-    function cloudConnectivityStatus() {
-      const mongo = state?.mongo || {};
-      if (!mongo.enabled) {
-        return {
-          kind: "waiting",
-          title: "MongoDB disabled",
-        };
-      }
-
+    function tailscaleConnectivityStatus() {
       const status = gatewayDisplayStatus(selectedGateway);
       if (status.kind === "online") {
         return {
           kind: "online",
-          title: "MongoDB enabled: " + (mongo.dbName || mongo.dbNameEnv || "database"),
+          title: "Tailscale connected to " + (selectedGateway?.id || "gateway"),
+        };
+      }
+
+      if (selectedGateway && remoteAccessUiUrl(selectedGateway)) {
+        return {
+          kind: status.kind === "offline" ? "warning" : status.kind,
+          title: status.title || "Tailscale remote access is configured",
         };
       }
 
       return {
-        kind: status.kind === "offline" ? "warning" : status.kind,
-        title: "MongoDB enabled, gateway not online",
+        kind: "waiting",
+        title: "Tailscale waiting for gateway selection",
       };
     }
 
