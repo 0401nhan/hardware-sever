@@ -5,6 +5,7 @@ export function renderLoginPage() {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Electric Bird Hardware Server</title>
+  <link rel="icon" href="/favicon.ico">
   <style>
     body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #172033; background: #eef3f7; }
     .login-screen { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
@@ -67,6 +68,7 @@ export function renderDashboardPage({ publicUrl }) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Electric Bird Hardware Server</title>
+  <link rel="icon" href="/favicon.ico">
   <style>
     :root { color-scheme: light; --ink: #172033; --muted: #607089; --line: #d7e1ec; --panel: #fff; --wash: #eef3f7; --accent: #f97316; --good: #16a34a; --warn: #b45309; --bad: #b42318; }
     * { box-sizing: border-box; }

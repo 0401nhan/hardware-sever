@@ -12,6 +12,7 @@ import { renderDashboardPage, renderLoginPage } from "./ui.js";
 
 const PUBLIC_DIR = new URL("../public/", import.meta.url);
 const PUBLIC_ASSETS = new Map([
+  ["/favicon.ico", "logo/logo-login-mark.png"],
   ["/logo/logo-login-mark.png", "logo/logo-login-mark.png"],
   ["/logo/logo-smallsize.png", "logo/logo-smallsize.png"],
 ]);

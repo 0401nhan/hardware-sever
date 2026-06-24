@@ -51,6 +51,15 @@ test("admin session cookie is Secure when public URL is HTTPS", async (t) => {
   assert.match(response.headers.get("set-cookie"), /;\s*Secure\b/);
 });
 
+test("server serves a browser favicon", async (t) => {
+  const app = await startTestServer(t);
+
+  const response = await fetch(`${app.baseUrl}/favicon.ico`);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-type"), "image/png");
+  assert.ok(Number(response.headers.get("content-length")) > 0);
+});
+
 test("admin can store, update, and delete Tailscale gateway metadata", async (t) => {
   const app = await startTestServer(t);
   const sessionCookie = await login(app);

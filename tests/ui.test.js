@@ -11,6 +11,7 @@ test("login page posts to the admin login API", () => {
   assert.match(html, /Tài khoản/);
   assert.match(html, /Mật khẩu/);
   assert.match(html, /Đăng nhập/);
+  assert.match(html, /<link rel="icon" href="\/favicon\.ico">/);
   assert.match(html, /\/api\/login/);
   assert.doesNotMatch(html, /Forgot password|Request access|Sign in/);
 });
@@ -27,6 +28,7 @@ test("dashboard is only a Tailscale gateway directory", () => {
   const html = renderDashboardPage({ publicUrl: "https://example.test" });
 
   assert.match(html, /Danh bạ gateway Tailscale/);
+  assert.match(html, /<link rel="icon" href="\/favicon\.ico">/);
   assert.match(html, /id="gatewayGrid"/);
   assert.match(html, /id="manualGatewayPanel"/);
   assert.match(html, /name="tailscaleHost"/);
