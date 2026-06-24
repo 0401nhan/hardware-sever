@@ -248,7 +248,7 @@ test("admin can store Tailscale remote access metadata for a gateway", async (t)
     redirect: "manual",
   });
   assert.equal(authenticatedRemote.status, 302);
-  assert.equal(authenticatedRemote.headers.get("location"), "http://station-ts-001-new:8080");
+  assert.equal(authenticatedRemote.headers.get("location"), "/gateways/GW-TS-001/remote/");
 });
 
 test("gateway config check and status report use the latest admin config", async (t) => {
@@ -586,6 +586,57 @@ test("admin can execute inverter control directly through a Tailscale gateway", 
   }]);
 });
 
+test("admin remote page proxies the Tailscale gateway UI through the server", async (t) => {
+  const gatewayAdmin = await startFakeGatewayAdmin(t);
+  const app = await startTestServer(t);
+  const sessionCookie = await login(app);
+
+  await createGateway(app, sessionCookie, {
+    id: "GW-TS-PROXY-001",
+    remoteAccess: {
+      enabled: true,
+      method: "tailscale",
+      host: "127.0.0.1",
+      uiPort: gatewayAdmin.port,
+    },
+  });
+
+  const rootRedirect = await fetch(`${app.baseUrl}/gateways/GW-TS-PROXY-001/remote`, {
+    headers: { Cookie: sessionCookie },
+    redirect: "manual",
+  });
+  assert.equal(rootRedirect.status, 302);
+  assert.equal(rootRedirect.headers.get("location"), "/gateways/GW-TS-PROXY-001/remote/");
+
+  const remotePage = await fetch(`${app.baseUrl}/gateways/GW-TS-PROXY-001/remote/`, {
+    headers: { Cookie: sessionCookie },
+  });
+  assert.equal(remotePage.status, 200);
+  const html = await remotePage.text();
+  assert.match(html, /\/gateways\/GW-TS-PROXY-001\/remote\/api\/config/);
+  assert.match(html, /\/gateways\/GW-TS-PROXY-001\/remote\/assets\/admin-tailwind\.css/);
+  assert.match(html, /window\.location\.assign\("\/gateways\/GW-TS-PROXY-001\/remote\/"\)/);
+  assert.match(html, /window\.location\.assign\("\/gateways\/GW-TS-PROXY-001\/remote\/login"\)/);
+  assert.doesNotMatch(html, /fetch\("\/api\/config"\)/);
+
+  const health = await requestJson(app.baseUrl, "/gateways/GW-TS-PROXY-001/remote/api/health", {
+    cookie: sessionCookie,
+  });
+  assert.equal(health.status, 200);
+  assert.equal(health.body.ok, true);
+
+  const loginResponse = await requestJson(app.baseUrl, "/gateways/GW-TS-PROXY-001/remote/api/login", {
+    method: "POST",
+    cookie: sessionCookie,
+    body: {
+      username: "admin",
+      password: "admin",
+    },
+  });
+  assert.equal(loginResponse.status, 200);
+  assert.match(loginResponse.headers.get("set-cookie") || "", /Path=\/gateways\/GW-TS-PROXY-001\/remote/);
+});
+
 test("tailscale direct control requires gateway remote access metadata", async (t) => {
   const app = await startTestServer(t);
   const sessionCookie = await login(app);
@@ -869,6 +920,33 @@ async function startFakeGatewayAdmin(t, { username = "admin", password = "admin"
         });
       }
 
+      if (req.method === "GET" && pathname === "/") {
+        return sendTest(res, 200, `
+          <!doctype html>
+          <html>
+            <head>
+              <link rel="stylesheet" href="/assets/admin-tailwind.css">
+              <link rel="icon" href="/favicon.ico">
+            </head>
+            <body>
+              <script>
+                fetch("/api/config");
+                window.location.assign("/");
+                window.location.assign("/login");
+              </script>
+            </body>
+          </html>
+        `, {
+          "Content-Type": "text/html; charset=utf-8",
+        });
+      }
+
+      if (req.method === "GET" && pathname === "/assets/admin-tailwind.css") {
+        return sendTest(res, 200, "body{color:#111}", {
+          "Content-Type": "text/css; charset=utf-8",
+        });
+      }
+
       if (req.method === "POST" && pathname === "/api/login") {
         const body = await readTestJsonBody(req);
         if (body.username !== username || body.password !== password) {
@@ -1056,6 +1134,14 @@ function sendTestJson(res, statusCode, body, headers = {}) {
     ...headers,
   });
   res.end(JSON.stringify(body));
+}
+
+function sendTest(res, statusCode, body, headers = {}) {
+  res.writeHead(statusCode, {
+    "Cache-Control": "no-store",
+    ...headers,
+  });
+  res.end(body);
 }
 
 async function requestJson(baseUrl, pathname, { method = "GET", token, cookie, body } = {}) {

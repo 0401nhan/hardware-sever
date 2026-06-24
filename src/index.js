@@ -297,9 +297,9 @@ server = http.createServer(async (req, res) => {
       return sendHtml(res, renderDashboardPage({ publicUrl: config.publicUrl }));
     }
 
-    const gatewayRemotePageMatch = pathname.match(/^\/gateways\/([^/]+)\/remote$/);
-    if (gatewayRemotePageMatch && req.method === "GET") {
-      const gatewayId = decodeURIComponent(gatewayRemotePageMatch[1]);
+    const gatewayRemoteProxyMatch = pathname.match(/^\/gateways\/([^/]+)\/remote(\/.*)?$/);
+    if (gatewayRemoteProxyMatch) {
+      const gatewayId = decodeURIComponent(gatewayRemoteProxyMatch[1]);
       const gateway = await store.getGateway(gatewayId);
 
       if (!gateway) {
@@ -309,7 +309,20 @@ server = http.createServer(async (req, res) => {
         });
       }
 
-      return redirect(res, gatewayTailscaleBaseUrl(gateway));
+      const url = new URL(req.url || "/", "http://localhost");
+      const proxyBasePath = `/gateways/${encodeURIComponent(gatewayId)}/remote`;
+      const remotePath = gatewayRemoteProxyMatch[2] || "/";
+
+      if (!gatewayRemoteProxyMatch[2]) {
+        return redirect(res, `${proxyBasePath}/${url.search}`);
+      }
+
+      return proxyGatewayRemote(req, res, {
+        gateway,
+        proxyBasePath,
+        remotePath,
+        search: url.search,
+      });
     }
 
     if (req.method === "GET" && pathname === "/api/device-templates") {
@@ -700,6 +713,165 @@ async function ensureDefaultGatewayConfig(gatewayId, createdBy) {
     restartRequired: true,
     createdBy,
   });
+}
+
+async function proxyGatewayRemote(req, res, { gateway, proxyBasePath, remotePath, search = "" }) {
+  const gatewayBaseUrl = gatewayTailscaleBaseUrl(gateway);
+  const targetUrl = new URL(`${remotePath}${search}`, `${gatewayBaseUrl}/`);
+  const body = ["GET", "HEAD"].includes(req.method || "") ? undefined : await readRawBody(req);
+  const response = await fetch(targetUrl, {
+    method: req.method,
+    headers: proxyRequestHeaders(req, body),
+    body,
+    redirect: "manual",
+    ...(body === undefined ? {} : { duplex: "half" }),
+  });
+
+  const responseHeaders = proxyResponseHeaders(response, {
+    gatewayBaseUrl,
+    proxyBasePath,
+  });
+  const contentType = response.headers.get("content-type") || "";
+  const payload = Buffer.from(await response.arrayBuffer());
+
+  if (req.method === "HEAD") {
+    res.writeHead(response.status, responseHeaders);
+    return res.end();
+  }
+
+  if (contentType.includes("text/html")) {
+    const html = rewriteGatewayProxyHtml(payload.toString("utf8"), proxyBasePath);
+    responseHeaders["Content-Length"] = Buffer.byteLength(html);
+    res.writeHead(response.status, responseHeaders);
+    return res.end(html);
+  }
+
+  responseHeaders["Content-Length"] = payload.length;
+  res.writeHead(response.status, responseHeaders);
+  return res.end(payload);
+}
+
+async function readRawBody(req) {
+  const chunks = [];
+  let size = 0;
+
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > 20 * 1024 * 1024) {
+      throw httpError(413, "Request body is too large");
+    }
+    chunks.push(chunk);
+  }
+
+  return chunks.length ? Buffer.concat(chunks) : undefined;
+}
+
+function proxyRequestHeaders(req, body) {
+  const headers = {};
+  const skip = new Set([
+    "accept-encoding",
+    "connection",
+    "content-length",
+    "host",
+    "keep-alive",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "te",
+    "trailer",
+    "transfer-encoding",
+    "upgrade",
+  ]);
+
+  for (const [key, value] of Object.entries(req.headers)) {
+    const lower = key.toLowerCase();
+    if (skip.has(lower)) continue;
+    if (lower === "cookie") {
+      const cookie = proxyCookieHeader(value);
+      if (cookie) headers[key] = cookie;
+      continue;
+    }
+    headers[key] = Array.isArray(value) ? value.join(", ") : String(value);
+  }
+
+  if (body) headers["Content-Length"] = String(body.length);
+  return headers;
+}
+
+function proxyCookieHeader(value) {
+  return String(Array.isArray(value) ? value.join("; ") : value || "")
+    .split(";")
+    .map((item) => item.trim())
+    .filter((item) => item && !item.toLowerCase().startsWith("hardware_server_session="))
+    .join("; ");
+}
+
+function proxyResponseHeaders(response, { gatewayBaseUrl, proxyBasePath }) {
+  const headers = {};
+  const skip = new Set([
+    "connection",
+    "content-encoding",
+    "content-length",
+    "keep-alive",
+    "set-cookie",
+    "transfer-encoding",
+  ]);
+
+  for (const [key, value] of response.headers) {
+    const lower = key.toLowerCase();
+    if (skip.has(lower)) continue;
+    if (lower === "location") {
+      headers.Location = rewriteGatewayProxyLocation(value, gatewayBaseUrl, proxyBasePath);
+      continue;
+    }
+    headers[key] = value;
+  }
+
+  const setCookie = proxySetCookieHeaders(response.headers, proxyBasePath);
+  if (setCookie.length) headers["Set-Cookie"] = setCookie;
+  return headers;
+}
+
+function proxySetCookieHeaders(headers, proxyBasePath) {
+  const cookies = typeof headers.getSetCookie === "function"
+    ? headers.getSetCookie()
+    : [headers.get("set-cookie")].filter(Boolean);
+
+  return cookies.map((cookie) => {
+    let next = cookie.replace(/;\s*Domain=[^;]*/gi, "");
+    next = /;\s*Path=/i.test(next)
+      ? next.replace(/;\s*Path=[^;]*/i, `; Path=${proxyBasePath}`)
+      : `${next}; Path=${proxyBasePath}`;
+    return next;
+  });
+}
+
+function rewriteGatewayProxyLocation(location, gatewayBaseUrl, proxyBasePath) {
+  if (!location) return location;
+
+  try {
+    const gatewayUrl = new URL(gatewayBaseUrl);
+    const nextUrl = new URL(location, `${gatewayBaseUrl}/`);
+    if (nextUrl.origin === gatewayUrl.origin) {
+      return `${proxyBasePath}${nextUrl.pathname === "/" ? "/" : nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+    }
+  } catch {
+    // Fall through to relative rewrite.
+  }
+
+  if (location.startsWith("/")) return `${proxyBasePath}${location}`;
+  if (!/^[a-z][a-z\d+.-]*:\/\//i.test(location)) return `${proxyBasePath}/${location}`;
+  return location;
+}
+
+function rewriteGatewayProxyHtml(html, proxyBasePath) {
+  const base = proxyBasePath.replace(/\/+$/, "");
+  return html
+    .replace(/window\.location\.assign\((["'])\/([^"']*)\1\)/g, (_match, quote, path) => {
+      return `window.location.assign(${quote}${base}/${path}${quote})`;
+    })
+    .replace(/(["'])\/(api|assets)(?=\/|\?)/g, `$1${base}/$2`)
+    .replace(/(["'])\/favicon\.ico(["'])/g, `$1${base}/favicon.ico$2`)
+    .replace(/(["'])\/login(["'])/g, `$1${base}/login$2`);
 }
 
 async function readJsonBody(req) {

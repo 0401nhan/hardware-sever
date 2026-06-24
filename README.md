@@ -123,7 +123,7 @@ Recommended layout:
 Admin browser
   -> login to Hardware-Server
   -> click Remote
-  -> Hardware-Server redirects to http://<tailscale-host-or-100.x-ip>:<gateway-ui-port>
+  -> Hardware-Server proxies /gateways/<gateway-id>/remote/* to the IPC over Tailscale
   -> login to Hardware-Gateway on IPC/Moxa
 ```
 
@@ -144,15 +144,13 @@ creating a manual gateway. A token is not required for this directory-only mode:
 }
 ```
 
-The `Remote` link is served through `/gateways/<gateway-id>/remote`, so a Hardware-Server admin
-session is required before the redirect is issued. In this direct-link mode, the admin
-laptop/browser must also be connected to the same Tailscale tailnet. Do not expose the Gateway UI
-directly to the public Internet.
+The `Remote` link is served through `/gateways/<gateway-id>/remote/`, so a Hardware-Server admin
+session is required before any IPC page is proxied. The browser can be outside the tailnet because
+the machine running Hardware-Server performs the Tailscale connection to the IPC/Moxa gateway.
+Do not expose the Gateway UI directly to the public Internet.
 
-Hardware-Server also keeps optional API-level proxy routes for immediate control calls over
-Tailscale. Those proxy routes require the machine running Hardware-Server to be joined to the same
-tailnet as the IPC/Moxa gateway. The normal operator flow is still the simpler browser redirect to
-the IPC UI.
+Hardware-Server also keeps API-level proxy routes for immediate control calls over Tailscale. The
+machine running Hardware-Server must be joined to the same tailnet as the IPC/Moxa gateway.
 
 The legacy gateway push API (`/api/gateway/*` and `/api/telemetry`) is disabled by default in this
 architecture, so IPC heartbeat or telemetry requests are ignored instead of requiring a shared token.
