@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 
 import { MongoClient } from "mongodb";
+import { defaultRemoteAccess, normalizeRemoteAccess } from "./remoteAccess.js";
 import { commandStatusForNextRun, isRecurringSchedule, nextScheduledRun, scheduledWindowEndRun } from "./schedule.js";
 
 const DEFAULT_GATEWAY_OFFLINE_AFTER_MS = 90_000;
@@ -102,10 +103,11 @@ export class MongoHardwareStore {
     return gateway;
   }
 
-  async upsertGateway({ id, name = "", site = "", token = "" }) {
+  async upsertGateway({ id, name = "", site = "", token = "", remoteAccess }) {
     const now = new Date().toISOString();
     const existing = await this.getGateway(id);
     const tokenHash = token ? this.hashToken(token) : existing?.tokenHash;
+    const remote = normalizeRemoteAccess(remoteAccess ?? existing?.remoteAccess ?? defaultRemoteAccess());
 
     if (!tokenHash) {
       throw new Error("Gateway token is required");
@@ -119,6 +121,7 @@ export class MongoHardwareStore {
           name,
           site,
           tokenHash,
+          remoteAccess: remote,
           updatedAt: now,
         },
         $setOnInsert: {
@@ -129,6 +132,22 @@ export class MongoHardwareStore {
       { upsert: true },
     );
 
+    return this.getGateway(id);
+  }
+
+  async updateGatewayRemoteAccess(id, remoteAccess) {
+    if (!await this.getGateway(id)) return null;
+    const now = new Date().toISOString();
+    const remote = normalizeRemoteAccess(remoteAccess);
+    await this.gateways.updateOne(
+      { _id: id },
+      {
+        $set: {
+          remoteAccess: remote,
+          updatedAt: now,
+        },
+      },
+    );
     return this.getGateway(id);
   }
 
@@ -796,6 +815,7 @@ function mapGatewayDoc(row, offlineAfterMs, now) {
     name: row.name || "",
     site: row.site || "",
     tokenHash: row.tokenHash,
+    remoteAccess: normalizeRemoteAccess(row.remoteAccess ?? defaultRemoteAccess()),
     status: gatewayStatus(row, offlineAfterMs, now),
     lastSeenAt: row.lastSeenAt,
     appVersion: row.appVersion,

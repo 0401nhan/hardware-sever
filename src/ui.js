@@ -1312,6 +1312,17 @@ export function renderDashboardPage({ publicUrl }) {
       font-size: 14px;
       line-height: 1.35;
     }
+    .gateway-remote {
+      min-height: 44px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-soft);
+      color: var(--muted-strong);
+      font-size: 12px;
+      font-weight: 750;
+      overflow-wrap: anywhere;
+    }
     .gateway-card-actions { justify-content: flex-end; }
     .badge {
       display: inline-flex;
@@ -2533,6 +2544,9 @@ export function renderDashboardPage({ publicUrl }) {
                 <h2 class="panel-title">Site</h2>
                 <p>Trạng thái gateway, telemetry và cấu hình IPC.</p>
               </div>
+              <div class="actions">
+                <button id="addManualGatewayBtn" class="subtle icon-text" type="button"><svg class="app-icon"><use href="#icon-plus"></use></svg>Gateway</button>
+              </div>
             </div>
             <div id="gatewayHomeGrid" class="gateway-grid"></div>
           </section>
@@ -2549,7 +2563,13 @@ export function renderDashboardPage({ publicUrl }) {
             <label>Gateway ID<input name="id" required></label>
             <label>Name<input name="name"></label>
             <label>Site<input name="site"></label>
-            <label>Token<input name="token" required></label>
+            <label>Token<input name="token"></label>
+            <label>Tailscale <select name="remoteAccessEnabled"><option value="false">Off</option><option value="true">On</option></select></label>
+            <label>Tailscale host<input name="tailscaleHost" placeholder="tram-a-gw-01"></label>
+            <label>Tailscale IP<input name="tailscaleIp" placeholder="100.x.x.x"></label>
+            <label>Gateway UI port<input name="tailscaleUiPort" type="number" min="1" max="65535" value="3000"></label>
+            <label>SSH port<input name="tailscaleSshPort" type="number" min="1" max="65535" value="22"></label>
+            <label>Tailscale tag<input name="tailscaleTag" value="tag:gateway"></label>
             <div class="actions"><button class="primary icon-only" type="submit" title="Save gateway" aria-label="Save gateway"><svg class="app-icon"><use href="#icon-save"></use></svg><span class="visually-hidden">Save gateway</span></button></div>
           </form>
         </section>
@@ -2623,6 +2643,7 @@ export function renderDashboardPage({ publicUrl }) {
                 <option value="en">English</option>
               </select>
             </label>
+            <button id="openTailscaleUiBtn" class="subtle icon-only hidden" type="button" title="Gateway UI qua Tailscale" aria-label="Gateway UI qua Tailscale"><svg class="app-icon"><use href="#icon-network"></use></svg><span class="visually-hidden">Gateway UI qua Tailscale</span></button>
             <button id="remoteDisconnectBtn" class="subtle icon-only" type="button" title="Về danh sách site" aria-label="Về danh sách site"><svg class="app-icon"><use href="#icon-arrow-left"></use></svg><span class="visually-hidden">Về danh sách site</span></button>
           </div>
           <div class="status-chip">
@@ -2674,6 +2695,9 @@ export function renderDashboardPage({ publicUrl }) {
             <div class="control-layout">
               <label class="control-target">Đối tượng
                 <select id="controlDeviceName"></select>
+              </label>
+              <label class="control-target">Kênh điều khiển
+                <select id="controlTransport"></select>
               </label>
               <div class="control-stack">
                 <div class="control-actions">
@@ -2816,6 +2840,24 @@ export function renderDashboardPage({ publicUrl }) {
               <div class="metric"><span>Thiết bị</span><strong id="systemDeviceCount">0</strong></div>
               <div class="metric"><span>Cổng</span><strong id="systemPortCount">0</strong></div>
               <div class="metric"><span>Mẫu</span><strong id="systemTemplateCount">0</strong></div>
+            </div>
+            <div class="section-header">
+              <div class="section-title">
+                <h2>Tailscale remote</h2>
+                <p>Server lưu IP/host riêng để mở Gateway UI đang chạy trên IPC/Moxa.</p>
+              </div>
+              <div class="actions">
+                <button id="openTailscaleUiSystemBtn" class="subtle icon-text" type="button"><svg class="app-icon"><use href="#icon-network"></use></svg>Mở UI</button>
+                <button id="saveRemoteAccessBtn" class="primary icon-only" type="button" title="Lưu Tailscale" aria-label="Lưu Tailscale"><svg class="app-icon"><use href="#icon-save"></use></svg><span class="visually-hidden">Lưu Tailscale</span></button>
+              </div>
+            </div>
+            <div class="grid">
+              <label>Bật Tailscale <select id="remoteAccessEnabled"><option value="false">Off</option><option value="true">On</option></select></label>
+              <label>Tailscale host <input id="remoteAccessHost" placeholder="tram-a-gw-01"></label>
+              <label>Tailscale IP <input id="remoteAccessIp" placeholder="100.x.x.x"></label>
+              <label>Gateway UI port <input id="remoteAccessUiPort" type="number" min="1" max="65535" step="1"></label>
+              <label>SSH port <input id="remoteAccessSshPort" type="number" min="1" max="65535" step="1"></label>
+              <label>Tailscale tag <input id="remoteAccessTag" placeholder="tag:gateway"></label>
             </div>
           </section>
         </div>
@@ -3089,6 +3131,7 @@ export function renderDashboardPage({ publicUrl }) {
     let telemetry = { time: null, devices: [] };
     let commands = [];
     let selectedControlDevice = "";
+    let selectedControlTransport = "tailscale";
     let templates = [];
     let homeTelemetry = new Map();
     let homeConfigs = new Map();
@@ -3477,6 +3520,9 @@ export function renderDashboardPage({ publicUrl }) {
       if (grid) {
         grid.innerHTML = gateways.map((gateway) => {
           const status = gateway.status || "offline";
+          const tailscaleUrl = remoteAccessUiUrl(gateway);
+          const remoteDisabled = tailscaleUrl ? "" : " disabled";
+          const remoteTitle = tailscaleUrl ? "Remote IPC qua Tailscale" : "Chua co Tailscale host/IP";
           return \`
             <article class="gateway-card is-\${escapeHtml(status)}">
               <div class="gateway-card-head">
@@ -3490,8 +3536,9 @@ export function renderDashboardPage({ publicUrl }) {
                 <div class="gateway-stat"><span>Last seen</span><strong>\${escapeHtml(formatDateTime(gateway.lastSeenAt))}</strong></div>
                 <div class="gateway-stat"><span>Config</span><strong>\${escapeHtml((gateway.appliedConfigVersion || "-") + " / " + (gateway.desiredConfigVersion || gateway.latestConfigVersion || "-"))}</strong></div>
               </div>
+              <div class="gateway-remote">Tailscale: \${escapeHtml(remoteAccessLabel(gateway))}</div>
               <div class="actions gateway-card-actions">
-                <button class="primary icon-only" type="button" data-remote-gateway="\${escapeHtml(gateway.id)}" title="Remote" aria-label="Remote"><svg class="app-icon"><use href="#icon-monitor"></use></svg><span class="visually-hidden">Remote</span></button>
+                <button class="primary icon-only" type="button" data-remote-gateway="\${escapeHtml(gateway.id)}" title="\${escapeHtml(remoteTitle)}" aria-label="\${escapeHtml(remoteTitle)}"\${remoteDisabled}><svg class="app-icon"><use href="#icon-monitor"></use></svg><span class="visually-hidden">Remote</span></button>
                 <button class="danger icon-only" type="button" data-delete-gateway="\${escapeHtml(gateway.id)}" title="Xóa" aria-label="Xóa"><svg class="app-icon"><use href="#icon-alert-circle"></use></svg><span class="visually-hidden">Xóa</span></button>
               </div>
             </article>
@@ -3535,6 +3582,49 @@ export function renderDashboardPage({ publicUrl }) {
         offline: "--",
       };
       return labels[status] || status || "-";
+    }
+
+    function remoteAccessLabel(gateway) {
+      const remote = gateway?.remoteAccess || {};
+      if (!remote.enabled) return "Off";
+      const endpoint = remote.ip || remote.host;
+      if (!endpoint) return "Missing host/IP";
+      return endpoint + ":" + (remote.uiPort || 3000);
+    }
+
+    function remoteAccessUiUrl(gateway) {
+      const remote = gateway?.remoteAccess || {};
+      if (!remote.enabled) return "";
+      const endpoint = remote.ip || remote.host;
+      if (!endpoint) return "";
+      const lowerEndpoint = endpoint.toLowerCase();
+      if (lowerEndpoint.startsWith("http://") || lowerEndpoint.startsWith("https://")) return endpoint;
+      const host = endpoint.includes(":") && !endpoint.startsWith("[") ? "[" + endpoint + "]" : endpoint;
+      return "http://" + host + ":" + (remote.uiPort || 3000);
+    }
+
+    function openGatewayRemote(gatewayId = selectedId) {
+      const gateway = gateways.find((item) => item.id === gatewayId) || selectedGateway || {};
+      if (!remoteAccessUiUrl(gateway)) {
+        setStatus("Chua co Tailscale host/IP cho gateway", "error");
+        return;
+      }
+      window.open("/gateways/" + encodeURIComponent(gatewayId) + "/remote", "_blank", "noopener");
+      setStatus("Da mo Remote IPC qua Tailscale", "ok");
+    }
+
+    function openTailscaleGateway(gatewayId = selectedId) {
+      openGatewayRemote(gatewayId);
+    }
+
+    function updateTailscaleUiButtons() {
+      const enabled = Boolean(remoteAccessUiUrl(selectedGateway));
+      for (const id of ["openTailscaleUiBtn", "openTailscaleUiSystemBtn"]) {
+        const button = el(id);
+        if (!button) continue;
+        button.classList.toggle("hidden", !selectedId || (!enabled && id === "openTailscaleUiBtn"));
+        button.disabled = Boolean(selectedId) && !enabled;
+      }
     }
 
     function homeFleetMetrics() {
@@ -3834,6 +3924,7 @@ export function renderDashboardPage({ publicUrl }) {
     async function openRemote(gatewayId) {
       selectedId = gatewayId;
       selectedGateway = gateways.find((gateway) => gateway.id === gatewayId) || { id: gatewayId };
+      selectedControlTransport = remoteAccessUiUrl(selectedGateway) ? "tailscale" : "cloud";
       el("homeView").classList.add("hidden");
       el("remoteView").classList.remove("hidden");
       setStatus("Loading...");
@@ -4709,6 +4800,7 @@ export function renderDashboardPage({ publicUrl }) {
       const deviceSelect = el("controlDeviceName");
       const devices = inverterControlDevices();
       const disabled = !devices.length;
+      renderControlTransport();
 
       if (disabled) {
         deviceSelect.innerHTML = '<option value="">Chưa có thiết bị inverter</option>';
@@ -4724,11 +4816,39 @@ export function renderDashboardPage({ publicUrl }) {
       document.querySelectorAll("[data-control-action], #powerLimitForm button").forEach((button) => {
         button.disabled = disabled;
       });
+      if (el("controlTransport")) el("controlTransport").disabled = disabled;
       document.querySelectorAll("#controlScheduleMode, #controlScheduleAt, #controlScheduleUntil, #controlScheduleTime, #controlScheduleEndTime, #controlScheduleMaxRuns, #controlScheduleEndAt, [data-schedule-weekday]").forEach((input) => {
         input.disabled = disabled;
       });
       updateControlScheduleFields();
       renderCommandHistory();
+    }
+
+    function renderControlTransport() {
+      const transport = el("controlTransport");
+      if (!transport) return;
+
+      const tailscaleReady = Boolean(remoteAccessUiUrl(selectedGateway));
+      if (selectedControlTransport !== "cloud" && selectedControlTransport !== "tailscale") {
+        selectedControlTransport = tailscaleReady ? "tailscale" : "cloud";
+      }
+      if (selectedControlTransport === "tailscale" && !tailscaleReady) {
+        selectedControlTransport = "cloud";
+      }
+
+      transport.innerHTML = [
+        '<option value="tailscale"' + (tailscaleReady ? "" : " disabled") + '>Tailscale direct</option>',
+        '<option value="cloud">Cloud queue</option>',
+      ].join("");
+      transport.value = selectedControlTransport;
+      transport.title = tailscaleReady
+        ? "Gửi lệnh trực tiếp tới Gateway Admin API qua Tailscale"
+        : "Gateway chưa có Tailscale host/IP";
+    }
+
+    function activeControlTransport() {
+      const value = el("controlTransport")?.value || selectedControlTransport || "cloud";
+      return value === "tailscale" && remoteAccessUiUrl(selectedGateway) ? "tailscale" : "cloud";
     }
 
     function updateControlScheduleFields() {
@@ -4946,6 +5066,45 @@ export function renderDashboardPage({ publicUrl }) {
       setText("systemDeviceCount", String((state.devices || []).length));
       setText("systemPortCount", String(Object.keys(state.ports || {}).length));
       setText("systemTemplateCount", String(templates.length));
+
+      const remote = selectedGateway?.remoteAccess || {};
+      if (el("remoteAccessEnabled")) el("remoteAccessEnabled").value = String(Boolean(remote.enabled));
+      if (el("remoteAccessHost")) el("remoteAccessHost").value = remote.host || "";
+      if (el("remoteAccessIp")) el("remoteAccessIp").value = remote.ip || "";
+      if (el("remoteAccessUiPort")) el("remoteAccessUiPort").value = remote.uiPort || 3000;
+      if (el("remoteAccessSshPort")) el("remoteAccessSshPort").value = remote.sshPort || 22;
+      if (el("remoteAccessTag")) el("remoteAccessTag").value = remote.tag || "tag:gateway";
+      updateTailscaleUiButtons();
+    }
+
+    function collectRemoteAccess() {
+      const host = el("remoteAccessHost")?.value.trim() || "";
+      const ip = el("remoteAccessIp")?.value.trim() || "";
+      return {
+        enabled: el("remoteAccessEnabled")?.value === "true",
+        method: "tailscale",
+        host,
+        ip,
+        uiPort: Number(el("remoteAccessUiPort")?.value || 3000),
+        sshPort: Number(el("remoteAccessSshPort")?.value || 22),
+        tag: el("remoteAccessTag")?.value.trim() || "tag:gateway",
+      };
+    }
+
+    async function saveRemoteAccess() {
+      if (!selectedId) return;
+      const payload = await requestJson("/api/gateways/" + encodeURIComponent(selectedId), {
+        method: "PUT",
+        body: JSON.stringify({
+          remoteAccess: collectRemoteAccess(),
+        }),
+      });
+      selectedGateway = payload.gateway;
+      gateways = gateways.map((gateway) => gateway.id === selectedId ? payload.gateway : gateway);
+      renderHome();
+      renderRemoteSystem();
+      renderInverterControl();
+      setStatus("Da luu Tailscale remote", "ok");
     }
 
     function renderConnectivityStatus() {
@@ -5048,15 +5207,33 @@ export function renderDashboardPage({ publicUrl }) {
       }
 
       const schedule = collectControlSchedule();
+      const body = {
+        deviceName,
+        action,
+        ...extra,
+        ...(schedule ? { schedule } : {}),
+      };
+      const transport = activeControlTransport();
+
+      if (transport === "tailscale") {
+        setStatus((schedule ? "Đang gửi lịch qua Tailscale " : "Đang gửi Tailscale ") + actionLabel(action) + "...");
+        const payload = await requestJson("/api/gateways/" + encodeURIComponent(selectedId) + "/tailscale/control", {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+        const result = payload.result || {};
+        if (result.command) {
+          setStatus("Đã gửi lịch qua Tailscale: " + actionLabel(result.command.action || action), "ok");
+        } else {
+          setStatus("Đã chạy qua Tailscale: " + actionLabel(result.action || action), "ok");
+        }
+        return;
+      }
+
       setStatus((schedule ? "Đang hẹn " : "Đang queue ") + actionLabel(action) + "...");
       const payload = await requestJson("/api/gateways/" + encodeURIComponent(selectedId) + "/control", {
         method: "POST",
-        body: JSON.stringify({
-          deviceName,
-          action,
-          ...extra,
-          ...(schedule ? { schedule } : {}),
-        }),
+        body: JSON.stringify(body),
       });
 
       commands = [payload.command, ...commands.filter((command) => command.id !== payload.command.id)].slice(0, 100);
@@ -7108,12 +7285,17 @@ export function renderDashboardPage({ publicUrl }) {
 
       if (target.dataset.remoteGateway) {
         event.preventDefault();
-        openRemote(target.dataset.remoteGateway).catch((error) => setStatus(error.message, "error"));
+        openGatewayRemote(target.dataset.remoteGateway);
         return;
       }
       if (target.dataset.deleteGateway) {
         event.preventDefault();
         deleteGateway(target.dataset.deleteGateway).catch((error) => setStatus(error.message, "error"));
+        return;
+      }
+      if (target.dataset.openTailscaleGateway) {
+        event.preventDefault();
+        openTailscaleGateway(target.dataset.openTailscaleGateway);
         return;
       }
       if (target.dataset.homeTarget) {
@@ -7143,6 +7325,14 @@ export function renderDashboardPage({ publicUrl }) {
         backHome();
         return;
       }
+      if (target.id === "openTailscaleUiBtn" || target.id === "openTailscaleUiSystemBtn") {
+        openTailscaleGateway(selectedId);
+        return;
+      }
+      if (target.id === "saveRemoteAccessBtn") {
+        saveRemoteAccess().catch((error) => setStatus(error.message, "error"));
+        return;
+      }
       if (target.id === "homeLogoutBtn") logout().catch((error) => console.error(error));
       if (target.id === "addManualGatewayBtn" || target.id === "addManualGatewayBtn2") el("manualGatewayPanel").classList.toggle("hidden");
       if (target.id === "homeTelemetryRefreshBtn") loadHomeTelemetry().catch((error) => console.error(error));
@@ -7152,7 +7342,8 @@ export function renderDashboardPage({ publicUrl }) {
       if (target.dataset.restartGateway !== undefined) restartGateway().catch((error) => setStatus(error.message, "error"));
       if (target.dataset.controlAction) {
         const action = target.dataset.controlAction;
-        if (["stop", "reboot"].includes(action) && !confirm("Queue " + actionLabel(action) + " for " + (el("controlDeviceName").value || "selected inverter") + "?")) return;
+        const verb = activeControlTransport() === "tailscale" ? "Gửi Tailscale" : "Queue";
+        if (["stop", "reboot"].includes(action) && !confirm(verb + " " + actionLabel(action) + " for " + (el("controlDeviceName").value || "selected inverter") + "?")) return;
         queueInverterControl(action).catch((error) => setStatus(error.message, "error"));
       }
       if (target.dataset.cancelCommand) {
@@ -7190,6 +7381,11 @@ export function renderDashboardPage({ publicUrl }) {
       }
       if (target?.id === "controlDeviceName") {
         selectedControlDevice = target.value;
+        return;
+      }
+      if (target?.id === "controlTransport") {
+        selectedControlTransport = target.value === "tailscale" ? "tailscale" : "cloud";
+        renderControlTransport();
         return;
       }
       if (target?.id === "controlScheduleMode") {
@@ -7250,6 +7446,15 @@ export function renderDashboardPage({ publicUrl }) {
           name: form.get("name"),
           site: form.get("site"),
           token: form.get("token"),
+          remoteAccess: {
+            enabled: form.get("remoteAccessEnabled") === "true",
+            method: "tailscale",
+            host: String(form.get("tailscaleHost") || "").trim(),
+            ip: String(form.get("tailscaleIp") || "").trim(),
+            uiPort: Number(form.get("tailscaleUiPort") || 3000),
+            sshPort: Number(form.get("tailscaleSshPort") || 22),
+            tag: String(form.get("tailscaleTag") || "tag:gateway").trim(),
+          },
         }),
       });
       event.currentTarget.reset();

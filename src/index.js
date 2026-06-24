@@ -6,7 +6,9 @@ import http from "node:http";
 
 import { openDatabase } from "./db.js";
 import { readDeviceTemplateSeed } from "./deviceTemplates.js";
+import { gatewayRemoteAccessFromBody, normalizeRemoteAccess } from "./remoteAccess.js";
 import { normalizeCommandSchedule } from "./schedule.js";
+import { gatewayTailscaleBaseUrl, getGatewayPublicJson, postGatewayAdminJson } from "./tailscaleGatewayClient.js";
 import { createDefaultGatewayConfig, validateGatewayConfig } from "./validation.js";
 import { renderDashboardPage, renderLoginPage } from "./ui.js";
 
@@ -38,6 +40,9 @@ const config = {
   gatewayOfflineAfterMs: positiveIntegerEnv("GATEWAY_OFFLINE_AFTER_MS", 90_000),
   telemetryRetentionMs: nonNegativeIntegerEnv("TELEMETRY_RETENTION_MS", 30 * 24 * 60 * 60 * 1000),
   telemetryPruneIntervalMs: nonNegativeIntegerEnv("TELEMETRY_PRUNE_INTERVAL_MS", 60 * 60 * 1000),
+  tailscaleGatewayAdminUsername: process.env.TAILSCALE_GATEWAY_ADMIN_USERNAME || process.env.GATEWAY_ADMIN_USERNAME || "admin",
+  tailscaleGatewayAdminPassword: process.env.TAILSCALE_GATEWAY_ADMIN_PASSWORD || process.env.GATEWAY_ADMIN_PASSWORD || "admin",
+  tailscaleGatewayTimeoutMs: positiveIntegerEnv("TAILSCALE_GATEWAY_TIMEOUT_MS", 10000),
 };
 
 let store;
@@ -282,6 +287,21 @@ server = http.createServer(async (req, res) => {
       return sendHtml(res, renderDashboardPage({ publicUrl: config.publicUrl }));
     }
 
+    const gatewayRemotePageMatch = pathname.match(/^\/gateways\/([^/]+)\/remote$/);
+    if (gatewayRemotePageMatch && req.method === "GET") {
+      const gatewayId = decodeURIComponent(gatewayRemotePageMatch[1]);
+      const gateway = await store.getGateway(gatewayId);
+
+      if (!gateway) {
+        return sendJson(res, 404, {
+          ok: false,
+          error: "Gateway not found",
+        });
+      }
+
+      return redirect(res, gatewayTailscaleBaseUrl(gateway));
+    }
+
     if (req.method === "GET" && pathname === "/api/device-templates") {
       const templates = await store.listDeviceTemplates();
 
@@ -335,6 +355,7 @@ server = http.createServer(async (req, res) => {
         name: String(body.name || id).trim(),
         site: String(body.site || "").trim(),
         token: String(body.token || ""),
+        remoteAccess: gatewayRemoteAccessFromBody(body),
       });
 
       const latest = await store.getLatestConfig(id);
@@ -355,6 +376,24 @@ server = http.createServer(async (req, res) => {
     }
 
     const gatewayMatch = pathname.match(/^\/api\/gateways\/([^/]+)$/);
+    if (gatewayMatch && (req.method === "PUT" || req.method === "PATCH")) {
+      const gatewayId = decodeURIComponent(gatewayMatch[1]);
+      const body = await readJsonBody(req);
+      const gateway = await store.updateGatewayRemoteAccess(gatewayId, normalizeRemoteAccess(body.remoteAccess ?? body));
+
+      if (!gateway) {
+        return sendJson(res, 404, {
+          ok: false,
+          error: "Gateway not found",
+        });
+      }
+
+      return sendJson(res, 200, {
+        ok: true,
+        gateway: redactGatewaySecrets(gateway),
+      });
+    }
+
     if (gatewayMatch && req.method === "DELETE") {
       const gatewayId = decodeURIComponent(gatewayMatch[1]);
       const gateway = await store.deleteGateway(gatewayId);
@@ -491,6 +530,96 @@ server = http.createServer(async (req, res) => {
       });
     }
 
+    const gatewayTailscaleHealthMatch = pathname.match(/^\/api\/gateways\/([^/]+)\/tailscale\/health$/);
+    if (gatewayTailscaleHealthMatch && req.method === "GET") {
+      const gatewayId = decodeURIComponent(gatewayTailscaleHealthMatch[1]);
+      const gateway = await store.getGateway(gatewayId);
+
+      if (!gateway) {
+        return sendJson(res, 404, {
+          ok: false,
+          error: "Gateway not found",
+        });
+      }
+
+      const result = await getGatewayPublicJson({
+        gateway,
+        path: "/api/health",
+        timeoutMs: config.tailscaleGatewayTimeoutMs,
+      });
+
+      return sendJson(res, 200, {
+        ok: true,
+        mode: "tailscale_direct",
+        gatewayBaseUrl: result.baseUrl,
+        gateway: result.payload,
+      });
+    }
+
+    const gatewayTailscaleControlMatch = pathname.match(/^\/api\/gateways\/([^/]+)\/tailscale\/control$/);
+    if (gatewayTailscaleControlMatch && req.method === "POST") {
+      const gatewayId = decodeURIComponent(gatewayTailscaleControlMatch[1]);
+      const body = await readJsonBody(req);
+      const gateway = await store.getGateway(gatewayId);
+
+      if (!gateway) {
+        return sendJson(res, 404, {
+          ok: false,
+          error: "Gateway not found",
+        });
+      }
+
+      const payload = normalizeInverterControlPayload(body);
+      const schedule = normalizeCommandSchedule(body.schedule || body);
+      const result = await postGatewayAdminJson({
+        gateway,
+        path: "/api/inverter/control",
+        body: {
+          ...payload,
+          ...(body.scheduleWindow ? { scheduleWindow: body.scheduleWindow } : {}),
+          ...(schedule ? { schedule: schedule.schedule } : {}),
+        },
+        credentials: gatewayAdminCredentials(),
+        timeoutMs: config.tailscaleGatewayTimeoutMs,
+      });
+
+      return sendJson(res, 200, {
+        ok: true,
+        mode: "tailscale_direct",
+        gatewayBaseUrl: result.baseUrl,
+        result: result.payload,
+      });
+    }
+
+    const gatewayTailscaleWriteMatch = pathname.match(/^\/api\/gateways\/([^/]+)\/tailscale\/modbus\/write$/);
+    if (gatewayTailscaleWriteMatch && req.method === "POST") {
+      const gatewayId = decodeURIComponent(gatewayTailscaleWriteMatch[1]);
+      const body = await readJsonBody(req);
+      const gateway = await store.getGateway(gatewayId);
+
+      if (!gateway) {
+        return sendJson(res, 404, {
+          ok: false,
+          error: "Gateway not found",
+        });
+      }
+
+      const result = await postGatewayAdminJson({
+        gateway,
+        path: "/api/modbus/write",
+        body,
+        credentials: gatewayAdminCredentials(),
+        timeoutMs: config.tailscaleGatewayTimeoutMs,
+      });
+
+      return sendJson(res, 200, {
+        ok: true,
+        mode: "tailscale_direct",
+        gatewayBaseUrl: result.baseUrl,
+        result: result.payload,
+      });
+    }
+
     const telemetryMatch = pathname.match(/^\/api\/gateways\/([^/]+)\/telemetry\/latest$/);
     if (telemetryMatch && req.method === "GET") {
       const gatewayId = decodeURIComponent(telemetryMatch[1]);
@@ -536,6 +665,13 @@ async function authenticateGateway(req, gatewayId) {
   }
 
   await ensureDefaultGatewayConfig(gatewayId, "server");
+}
+
+function gatewayAdminCredentials() {
+  return {
+    username: config.tailscaleGatewayAdminUsername,
+    password: config.tailscaleGatewayAdminPassword,
+  };
 }
 
 function canAutoRegisterGateway(token) {

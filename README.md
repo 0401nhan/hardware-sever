@@ -111,6 +111,55 @@ GATEWAY_TOKEN=<gateway-token>
 7. Gateway polls `/api/gateway/config/check`.
 8. Gateway validates, saves to local SQLite, restarts, and reports status.
 
+## Tailscale Remote IPC UI
+
+Hardware-Server stores private Tailscale access metadata for each IPC/Moxa gateway. The server
+dashboard is intentionally only a logged-in gateway directory: click `Remote` on the home page and
+Hardware-Server redirects to the real Gateway UI running on the IPC.
+
+Recommended layout:
+
+```text
+Admin browser
+  -> login to Hardware-Server
+  -> click Remote
+  -> Hardware-Server redirects to http://<tailscale-host-or-100.x-ip>:<gateway-ui-port>
+  -> login to Hardware-Gateway on IPC/Moxa
+```
+
+For each gateway, set these fields from the server dashboard `System > Tailscale remote`, or when
+creating a manual gateway:
+
+```json
+{
+  "remoteAccess": {
+    "enabled": true,
+    "method": "tailscale",
+    "host": "tram-a-gw-01",
+    "ip": "100.64.10.20",
+    "uiPort": 3000,
+    "sshPort": 22,
+    "tag": "tag:gateway"
+  }
+}
+```
+
+The `Remote` link is served through `/gateways/<gateway-id>/remote`, so a Hardware-Server admin
+session is required before the redirect is issued. In this direct-link mode, the admin
+laptop/browser must also be connected to the same Tailscale tailnet. Do not expose the Gateway UI
+directly to the public Internet.
+
+Hardware-Server also keeps optional API-level proxy routes for immediate control calls over
+Tailscale. Those proxy routes require the machine running Hardware-Server to be joined to the same
+tailnet as the IPC/Moxa gateway. The normal operator flow is still the simpler browser redirect to
+the IPC UI.
+
+```bash
+TAILSCALE_GATEWAY_ADMIN_USERNAME=admin
+TAILSCALE_GATEWAY_ADMIN_PASSWORD=admin
+TAILSCALE_GATEWAY_TIMEOUT_MS=10000
+```
+
 ## Remote Inverter Control
 
 Admins can queue inverter control commands from the dashboard `Inverter Control` tab or through the API:
@@ -125,6 +174,19 @@ curl -X POST https://server.electricbird.vn/api/gateways/GATEWAY_ID/control \
 Station-level commands are also supported by using `stationId` instead of `deviceName`; the gateway decides whether to use logger plant control or inverter fanout from its local config.
 
 Supported actions are `on`/`start`/`boot`, `off`/`stop`/`shutdown`, `reboot`/`restart`, `limit_power`, and `clear_power_limit`. The gateway polls `/api/gateway/commands/check`, executes the command locally through Modbus, then reports `/api/gateway/commands/status`.
+
+For direct Tailscale execution, use the dashboard `Control` tab and select `Tailscale direct`, or call:
+
+```bash
+curl -X POST https://server.electricbird.vn/api/gateways/GATEWAY_ID/tailscale/control \
+  -H "Content-Type: application/json" \
+  -b "hardware_server_session=<session-cookie>" \
+  -d '{"deviceName":"Huawei","action":"limit_power","percent":60,"durationMinutes":30}'
+```
+
+This route logs in to the Gateway Admin API through the saved Tailscale host/IP, then calls
+`/api/inverter/control` on the gateway. Use `Cloud queue` when Hardware-Server is not on the tailnet
+or when the IPC is temporarily offline.
 
 ## Cloud MongoDB Mode
 

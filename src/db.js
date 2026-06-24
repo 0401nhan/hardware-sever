@@ -4,6 +4,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 
 import initSqlJs from "sql.js";
+import { defaultRemoteAccess, normalizeRemoteAccess } from "./remoteAccess.js";
 import { commandStatusForNextRun, isRecurringSchedule, nextScheduledRun, scheduledWindowEndRun } from "./schedule.js";
 
 const require = createRequire(import.meta.url);
@@ -47,6 +48,13 @@ export async function openDatabase(dbPath, tokenHashSecret, options = {}) {
       name TEXT NOT NULL DEFAULT '',
       site TEXT NOT NULL DEFAULT '',
       token_hash TEXT NOT NULL,
+      remote_access_enabled INTEGER NOT NULL DEFAULT 0,
+      remote_access_method TEXT NOT NULL DEFAULT 'tailscale',
+      tailscale_host TEXT NOT NULL DEFAULT '',
+      tailscale_ip TEXT NOT NULL DEFAULT '',
+      tailscale_ui_port INTEGER NOT NULL DEFAULT 3000,
+      tailscale_ssh_port INTEGER NOT NULL DEFAULT 22,
+      tailscale_tag TEXT NOT NULL DEFAULT 'tag:gateway',
       status TEXT NOT NULL DEFAULT 'offline',
       last_seen_at TEXT,
       app_version TEXT,
@@ -168,6 +176,7 @@ export async function openDatabase(dbPath, tokenHashSecret, options = {}) {
 
   ensureTemplateRegisterColumns(db);
   ensureGatewayCommandScheduleColumns(db);
+  ensureGatewayRemoteAccessColumns(db);
 
   const store = new HardwareStore(db, tokenHashSecret, options);
   store.pruneTelemetry({ force: true });
@@ -229,6 +238,26 @@ function ensureGatewayCommandScheduleColumns(db) {
   `);
 }
 
+function ensureGatewayRemoteAccessColumns(db) {
+  const columns = new Set(
+    db.prepare("PRAGMA table_info(gateways)").all().map((row) => row.name),
+  );
+
+  const migrations = [
+    ["remote_access_enabled", "ALTER TABLE gateways ADD COLUMN remote_access_enabled INTEGER NOT NULL DEFAULT 0"],
+    ["remote_access_method", "ALTER TABLE gateways ADD COLUMN remote_access_method TEXT NOT NULL DEFAULT 'tailscale'"],
+    ["tailscale_host", "ALTER TABLE gateways ADD COLUMN tailscale_host TEXT NOT NULL DEFAULT ''"],
+    ["tailscale_ip", "ALTER TABLE gateways ADD COLUMN tailscale_ip TEXT NOT NULL DEFAULT ''"],
+    ["tailscale_ui_port", "ALTER TABLE gateways ADD COLUMN tailscale_ui_port INTEGER NOT NULL DEFAULT 3000"],
+    ["tailscale_ssh_port", "ALTER TABLE gateways ADD COLUMN tailscale_ssh_port INTEGER NOT NULL DEFAULT 22"],
+    ["tailscale_tag", "ALTER TABLE gateways ADD COLUMN tailscale_tag TEXT NOT NULL DEFAULT 'tag:gateway'"],
+  ];
+
+  for (const [column, statement] of migrations) {
+    if (!columns.has(column)) db.exec(statement);
+  }
+}
+
 export class HardwareStore {
   constructor(db, tokenHashSecret, {
     offlineAfterMs = DEFAULT_GATEWAY_OFFLINE_AFTER_MS,
@@ -271,24 +300,91 @@ export class HardwareStore {
     return gateway;
   }
 
-  upsertGateway({ id, name = "", site = "", token = "" }) {
+  upsertGateway({ id, name = "", site = "", token = "", remoteAccess }) {
     const now = new Date().toISOString();
     const existing = this.getGateway(id);
     const tokenHash = token ? this.hashToken(token) : existing?.tokenHash;
+    const remote = normalizeRemoteAccess(remoteAccess ?? existing?.remoteAccess ?? defaultRemoteAccess());
 
     if (!tokenHash) {
       throw new Error("Gateway token is required");
     }
 
     this.db.prepare(`
-      INSERT INTO gateways (id, name, site, token_hash, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO gateways (
+        id,
+        name,
+        site,
+        token_hash,
+        remote_access_enabled,
+        remote_access_method,
+        tailscale_host,
+        tailscale_ip,
+        tailscale_ui_port,
+        tailscale_ssh_port,
+        tailscale_tag,
+        created_at,
+        updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         name = excluded.name,
         site = excluded.site,
         token_hash = excluded.token_hash,
+        remote_access_enabled = excluded.remote_access_enabled,
+        remote_access_method = excluded.remote_access_method,
+        tailscale_host = excluded.tailscale_host,
+        tailscale_ip = excluded.tailscale_ip,
+        tailscale_ui_port = excluded.tailscale_ui_port,
+        tailscale_ssh_port = excluded.tailscale_ssh_port,
+        tailscale_tag = excluded.tailscale_tag,
         updated_at = excluded.updated_at
-    `).run(id, name, site, tokenHash, now, now);
+    `).run(
+      id,
+      name,
+      site,
+      tokenHash,
+      remote.enabled ? 1 : 0,
+      remote.method,
+      remote.host,
+      remote.ip,
+      remote.uiPort,
+      remote.sshPort,
+      remote.tag,
+      now,
+      now,
+    );
+
+    return this.getGateway(id);
+  }
+
+  updateGatewayRemoteAccess(id, remoteAccess) {
+    if (!this.getGateway(id)) return null;
+    const remote = normalizeRemoteAccess(remoteAccess);
+    const now = new Date().toISOString();
+
+    this.db.prepare(`
+      UPDATE gateways
+      SET remote_access_enabled = ?,
+          remote_access_method = ?,
+          tailscale_host = ?,
+          tailscale_ip = ?,
+          tailscale_ui_port = ?,
+          tailscale_ssh_port = ?,
+          tailscale_tag = ?,
+          updated_at = ?
+      WHERE id = ?
+    `).run(
+      remote.enabled ? 1 : 0,
+      remote.method,
+      remote.host,
+      remote.ip,
+      remote.uiPort,
+      remote.sshPort,
+      remote.tag,
+      now,
+      id,
+    );
 
     return this.getGateway(id);
   }
@@ -1435,6 +1531,15 @@ function mapGatewayRow(row, offlineAfterMs = DEFAULT_GATEWAY_OFFLINE_AFTER_MS, n
     name: row.name,
     site: row.site,
     tokenHash: row.token_hash,
+    remoteAccess: normalizeRemoteAccess({
+      enabled: Boolean(row.remote_access_enabled),
+      method: row.remote_access_method,
+      host: row.tailscale_host,
+      ip: row.tailscale_ip,
+      uiPort: row.tailscale_ui_port,
+      sshPort: row.tailscale_ssh_port,
+      tag: row.tailscale_tag,
+    }),
     status: gatewayStatus(row, offlineAfterMs, now),
     lastSeenAt: row.last_seen_at,
     appVersion: row.app_version,

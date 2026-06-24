@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import fs from "node:fs";
+import http from "node:http";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -147,6 +148,78 @@ test("admin can delete a gateway and its site from the server list", async (t) =
     cookie: sessionCookie,
   });
   assert.equal(missing.status, 404);
+});
+
+test("admin can store Tailscale remote access metadata for a gateway", async (t) => {
+  const app = await startTestServer(t);
+  const sessionCookie = await login(app);
+
+  const created = await createGateway(app, sessionCookie, {
+    id: "GW-TS-001",
+    name: "Station Tailscale",
+    site: "Station Tailscale",
+    token: "gateway-secret",
+    remoteAccess: {
+      enabled: true,
+      method: "tailscale",
+      host: "station-ts-001",
+      ip: "100.64.10.20",
+      uiPort: 3000,
+      sshPort: 22,
+      tag: "tag:gateway",
+    },
+  });
+
+  assert.deepEqual(created.remoteAccess, {
+    enabled: true,
+    method: "tailscale",
+    host: "station-ts-001",
+    ip: "100.64.10.20",
+    uiPort: 3000,
+    sshPort: 22,
+    tag: "tag:gateway",
+  });
+  assert.equal(created.tokenHash, undefined);
+
+  const updated = await requestJson(app.baseUrl, "/api/gateways/GW-TS-001", {
+    method: "PUT",
+    cookie: sessionCookie,
+    body: {
+      remoteAccess: {
+        enabled: true,
+        host: "station-ts-001-new",
+        uiPort: 8080,
+      },
+    },
+  });
+
+  assert.equal(updated.status, 200);
+  assert.equal(updated.body.gateway.remoteAccess.host, "station-ts-001-new");
+  assert.equal(updated.body.gateway.remoteAccess.ip, "");
+  assert.equal(updated.body.gateway.remoteAccess.uiPort, 8080);
+  assert.equal(updated.body.gateway.remoteAccess.sshPort, 22);
+
+  const listed = await requestJson(app.baseUrl, "/api/gateways", {
+    cookie: sessionCookie,
+  });
+  assert.equal(listed.status, 200);
+  assert.equal(listed.body.gateways[0].remoteAccess.host, "station-ts-001-new");
+  assert.equal(listed.body.gateways[0].tokenHash, undefined);
+
+  const unauthenticatedRemote = await fetch(`${app.baseUrl}/gateways/GW-TS-001/remote`, {
+    redirect: "manual",
+  });
+  assert.equal(unauthenticatedRemote.status, 302);
+  assert.equal(unauthenticatedRemote.headers.get("location"), "/login");
+
+  const authenticatedRemote = await fetch(`${app.baseUrl}/gateways/GW-TS-001/remote`, {
+    headers: {
+      Cookie: sessionCookie,
+    },
+    redirect: "manual",
+  });
+  assert.equal(authenticatedRemote.status, 302);
+  assert.equal(authenticatedRemote.headers.get("location"), "http://station-ts-001-new:8080");
 });
 
 test("gateway config check and status report use the latest admin config", async (t) => {
@@ -429,6 +502,83 @@ test("admin can queue station control commands for gateway execution", async (t)
   assert.deepEqual(check.body.command.payload, queued.body.command.payload);
 });
 
+test("admin can execute inverter control directly through a Tailscale gateway", async (t) => {
+  const gatewayAdmin = await startFakeGatewayAdmin(t, {
+    username: "gateway-admin",
+    password: "gateway-password",
+  });
+  const app = await startTestServer(t, {
+    TAILSCALE_GATEWAY_ADMIN_USERNAME: "gateway-admin",
+    TAILSCALE_GATEWAY_ADMIN_PASSWORD: "gateway-password",
+  });
+  const sessionCookie = await login(app);
+
+  await createGateway(app, sessionCookie, {
+    id: "GW-TS-DIRECT-001",
+    token: "gateway-secret",
+    remoteAccess: {
+      enabled: true,
+      method: "tailscale",
+      host: "127.0.0.1",
+      uiPort: gatewayAdmin.port,
+      sshPort: 22,
+      tag: "tag:gateway",
+    },
+  });
+
+  const health = await requestJson(app.baseUrl, "/api/gateways/GW-TS-DIRECT-001/tailscale/health", {
+    cookie: sessionCookie,
+  });
+  assert.equal(health.status, 200);
+  assert.equal(health.body.gatewayBaseUrl, gatewayAdmin.baseUrl);
+  assert.equal(health.body.gateway.ok, true);
+
+  const direct = await requestJson(app.baseUrl, "/api/gateways/GW-TS-DIRECT-001/tailscale/control", {
+    method: "POST",
+    cookie: sessionCookie,
+    body: {
+      deviceName: "Huawei",
+      action: "limit_power",
+      percent: 60,
+      durationMinutes: 15,
+    },
+  });
+
+  assert.equal(direct.status, 200);
+  assert.equal(direct.body.mode, "tailscale_direct");
+  assert.equal(direct.body.gatewayBaseUrl, gatewayAdmin.baseUrl);
+  assert.equal(direct.body.result.ok, true);
+  assert.equal(direct.body.result.device, "Huawei");
+  assert.deepEqual(gatewayAdmin.controls, [{
+    deviceName: "Huawei",
+    action: "limit_power",
+    percent: 60,
+    durationMinutes: 15,
+  }]);
+});
+
+test("tailscale direct control requires gateway remote access metadata", async (t) => {
+  const app = await startTestServer(t);
+  const sessionCookie = await login(app);
+
+  await createGateway(app, sessionCookie, {
+    id: "GW-NO-TS-001",
+    token: "gateway-secret",
+  });
+
+  const direct = await requestJson(app.baseUrl, "/api/gateways/GW-NO-TS-001/tailscale/control", {
+    method: "POST",
+    cookie: sessionCookie,
+    body: {
+      deviceName: "Huawei",
+      action: "start",
+    },
+  });
+
+  assert.equal(direct.status, 409);
+  assert.match(direct.body.error, /Tailscale remote access is not enabled/);
+});
+
 test("admin can schedule inverter control commands", async (t) => {
   const app = await startTestServer(t);
   const sessionCookie = await login(app);
@@ -676,6 +826,94 @@ test("telemetry ingest stores records and ignores duplicate record ids", async (
   );
 });
 
+async function startFakeGatewayAdmin(t, { username = "admin", password = "admin" } = {}) {
+  const controls = [];
+  const writes = [];
+  const server = http.createServer(async (req, res) => {
+    try {
+      const pathname = new URL(req.url || "/", "http://localhost").pathname;
+
+      if (req.method === "GET" && pathname === "/api/health") {
+        return sendTestJson(res, 200, {
+          ok: true,
+          time: new Date().toISOString(),
+        });
+      }
+
+      if (req.method === "POST" && pathname === "/api/login") {
+        const body = await readTestJsonBody(req);
+        if (body.username !== username || body.password !== password) {
+          return sendTestJson(res, 401, {
+            ok: false,
+            error: "Invalid username or password",
+          });
+        }
+
+        return sendTestJson(res, 200, {
+          ok: true,
+        }, {
+          "Set-Cookie": "rs485_admin_session=fake-session; HttpOnly; Path=/",
+        });
+      }
+
+      if (!String(req.headers.cookie || "").includes("rs485_admin_session=fake-session")) {
+        return sendTestJson(res, 401, {
+          ok: false,
+          error: "Authentication required",
+        });
+      }
+
+      if (req.method === "POST" && pathname === "/api/inverter/control") {
+        const body = await readTestJsonBody(req);
+        controls.push(body);
+        return sendTestJson(res, 200, {
+          ok: true,
+          device: body.deviceName,
+          stationId: body.stationId,
+          action: body.action,
+          mode: "fake",
+        });
+      }
+
+      if (req.method === "POST" && pathname === "/api/modbus/write") {
+        const body = await readTestJsonBody(req);
+        writes.push(body);
+        return sendTestJson(res, 200, {
+          ok: true,
+          device: body.deviceName,
+          register: body.registerName,
+        });
+      }
+
+      sendTestJson(res, 404, {
+        ok: false,
+        error: "Not found",
+      });
+    } catch (error) {
+      sendTestJson(res, 500, {
+        ok: false,
+        error: error.message,
+      });
+    }
+  });
+
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  t.after(async () => {
+    await new Promise((resolve) => server.close(resolve));
+  });
+
+  const { port } = server.address();
+  return {
+    port,
+    baseUrl: `http://127.0.0.1:${port}`,
+    controls,
+    writes,
+  };
+}
+
 async function startTestServer(t, envOverrides = {}) {
   const port = await getFreePort();
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hardware-server-integration-"));
@@ -772,6 +1010,22 @@ async function createGateway(app, cookie, gateway) {
   assert.equal(response.body.gateway.id, gateway.id);
 
   return response.body.gateway;
+}
+
+async function readTestJsonBody(req) {
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  const raw = Buffer.concat(chunks).toString("utf8");
+  return raw ? JSON.parse(raw) : {};
+}
+
+function sendTestJson(res, statusCode, body, headers = {}) {
+  res.writeHead(statusCode, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+    ...headers,
+  });
+  res.end(JSON.stringify(body));
 }
 
 async function requestJson(baseUrl, pathname, { method = "GET", token, cookie, body } = {}) {
