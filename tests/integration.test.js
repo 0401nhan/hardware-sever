@@ -241,6 +241,36 @@ test("admin remote page proxies the Tailscale gateway UI through the server", as
   assert.match(loginResponse.headers.get("set-cookie") || "", /Path=\/gateways\/GW-TS-PROXY-001\/remote/);
 });
 
+test("admin remote proxy returns gateway timeout without exiting server", async (t) => {
+  const gatewayAdmin = await startHangingGatewayAdmin(t);
+  const app = await startTestServer(t, {
+    TAILSCALE_GATEWAY_TIMEOUT_MS: "75",
+  });
+  const sessionCookie = await login(app);
+
+  await createGateway(app, sessionCookie, {
+    id: "GW-TS-TIMEOUT-001",
+    remoteAccess: {
+      enabled: true,
+      method: "tailscale",
+      host: "127.0.0.1",
+      uiPort: gatewayAdmin.port,
+    },
+  });
+
+  const timeout = await requestJson(app.baseUrl, "/gateways/GW-TS-TIMEOUT-001/remote/", {
+    cookie: sessionCookie,
+  });
+  assert.equal(timeout.status, 504);
+  assert.equal(timeout.body.ok, false);
+  assert.match(timeout.body.error, /Cannot reach Tailscale gateway/);
+  assert.match(timeout.body.error, /timed out/);
+
+  const health = await requestJson(app.baseUrl, "/api/health");
+  assert.equal(health.status, 200);
+  assert.equal(health.body.ok, true);
+});
+
 test("tailscale health requires gateway remote metadata", async (t) => {
   const app = await startTestServer(t);
   const sessionCookie = await login(app);
@@ -329,6 +359,32 @@ async function startFakeGatewayAdmin(t, { username = "admin", password = "admin"
     server.listen(0, "127.0.0.1", resolve);
   });
   t.after(async () => {
+    await new Promise((resolve) => server.close(resolve));
+  });
+
+  const { port } = server.address();
+  return {
+    port,
+    baseUrl: `http://127.0.0.1:${port}`,
+  };
+}
+
+async function startHangingGatewayAdmin(t) {
+  const sockets = new Set();
+  const server = http.createServer(() => {});
+  server.on("connection", (socket) => {
+    sockets.add(socket);
+    socket.once("close", () => {
+      sockets.delete(socket);
+    });
+  });
+
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  t.after(async () => {
+    for (const socket of sockets) socket.destroy();
     await new Promise((resolve) => server.close(resolve));
   });
 

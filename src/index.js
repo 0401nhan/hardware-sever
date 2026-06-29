@@ -135,12 +135,13 @@ async function main() {
           return redirect(res, `${proxyBasePath}/${url.search}`);
         }
 
-        return proxyGatewayRemote(req, res, {
+        await proxyGatewayRemote(req, res, {
           gateway,
           proxyBasePath,
           remotePath,
           search: url.search,
         });
+        return;
       }
 
       if (req.method === "GET" && pathname === "/api/gateways") {
@@ -284,20 +285,35 @@ async function proxyGatewayRemote(req, res, { gateway, proxyBasePath, remotePath
   const gatewayBaseUrl = gatewayTailscaleBaseUrl(gateway);
   const targetUrl = new URL(`${remotePath}${search}`, `${gatewayBaseUrl}/`);
   const body = ["GET", "HEAD"].includes(req.method || "") ? undefined : await readRawBody(req);
-  const response = await fetch(targetUrl, {
-    method: req.method,
-    headers: proxyRequestHeaders(req, body),
-    body,
-    redirect: "manual",
-    ...(body === undefined ? {} : { duplex: "half" }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.tailscaleGatewayTimeoutMs);
+  let response;
+  let payload = Buffer.alloc(0);
+
+  try {
+    response = await fetch(targetUrl, {
+      method: req.method,
+      headers: proxyRequestHeaders(req, body),
+      body,
+      redirect: "manual",
+      signal: controller.signal,
+      ...(body === undefined ? {} : { duplex: "half" }),
+    });
+
+    if (req.method !== "HEAD") {
+      payload = Buffer.from(await response.arrayBuffer());
+    }
+  } catch (error) {
+    throw gatewayProxyError(error, targetUrl, config.tailscaleGatewayTimeoutMs);
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const responseHeaders = proxyResponseHeaders(response, {
     gatewayBaseUrl,
     proxyBasePath,
   });
   const contentType = response.headers.get("content-type") || "";
-  const payload = Buffer.from(await response.arrayBuffer());
 
   if (req.method === "HEAD") {
     res.writeHead(response.status, responseHeaders);
@@ -314,6 +330,18 @@ async function proxyGatewayRemote(req, res, { gateway, proxyBasePath, remotePath
   responseHeaders["Content-Length"] = payload.length;
   res.writeHead(response.status, responseHeaders);
   return res.end(payload);
+}
+
+function gatewayProxyError(error, targetUrl, timeoutMs) {
+  const isTimeout = error?.name === "AbortError"
+    || error?.cause?.code === "UND_ERR_CONNECT_TIMEOUT"
+    || error?.code === "UND_ERR_CONNECT_TIMEOUT";
+  const statusCode = isTimeout ? 504 : 502;
+  const reason = isTimeout
+    ? `request timed out after ${timeoutMs}ms`
+    : error?.message || "request failed";
+
+  return httpError(statusCode, `Cannot reach Tailscale gateway at ${targetUrl}: ${reason}`);
 }
 
 async function readRawBody(req) {
