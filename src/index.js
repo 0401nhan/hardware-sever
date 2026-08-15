@@ -6,7 +6,7 @@ import http from "node:http";
 
 import { openDatabase } from "./db.js";
 import { gatewayRemoteAccessFromBody, normalizeRemoteAccess } from "./remoteAccess.js";
-import { gatewayTailscaleBaseUrl, getGatewayPublicJson } from "./tailscaleGatewayClient.js";
+import { gatewayTailscaleBaseUrls, getGatewayPublicJson } from "./tailscaleGatewayClient.js";
 import { readTailscaleStatusJson, syncTailscaleGateways } from "./tailscaleDiscovery.js";
 import { renderDashboardPage, renderLoginPage } from "./ui.js";
 
@@ -37,12 +37,17 @@ const config = {
   tailscaleSyncUiPort: positiveIntegerEnv("TAILSCALE_SYNC_UI_PORT", 80),
   tailscaleSyncSshPort: positiveIntegerEnv("TAILSCALE_SYNC_SSH_PORT", 22),
   tailscaleSyncTag: process.env.TAILSCALE_SYNC_TAG || "tag:gateway",
+  gatewayProxyRetryAttempts: positiveIntegerEnv("GATEWAY_PROXY_RETRY_ATTEMPTS", 2),
+  gatewayProxyBackoffBaseMs: positiveIntegerEnv("GATEWAY_PROXY_BACKOFF_BASE_MS", 1000),
+  gatewayProxyBackoffMaxMs: positiveIntegerEnv("GATEWAY_PROXY_BACKOFF_MAX_MS", 30000),
+  gatewayProxyLogIntervalMs: positiveIntegerEnv("GATEWAY_PROXY_LOG_INTERVAL_MS", 60000),
 };
 
 let store;
 let server;
 let tailscaleSyncTimer;
 let tailscaleSyncPromise;
+const gatewayProxyStates = new Map();
 
 main().catch((error) => {
   console.error(error);
@@ -268,11 +273,13 @@ async function main() {
       });
     } catch (error) {
       const status = error.statusCode || 500;
-      console.error(error);
+      if (!error.suppressLog) console.error(error);
       sendJson(res, status, {
         ok: false,
         error: error.message,
-      });
+      }, error.retryAfterSeconds ? {
+        "Retry-After": String(error.retryAfterSeconds),
+      } : {});
     }
   });
 
@@ -282,29 +289,31 @@ async function main() {
 }
 
 async function proxyGatewayRemote(req, res, { gateway, proxyBasePath, remotePath, search = "" }) {
-  const gatewayBaseUrl = gatewayTailscaleBaseUrl(gateway);
-  const targetUrl = new URL(`${remotePath}${search}`, `${gatewayBaseUrl}/`);
+  assertGatewayProxyReady(gateway.id);
+  const gatewayBaseUrls = gatewayTailscaleBaseUrls(gateway);
   const body = ["GET", "HEAD"].includes(req.method || "") ? undefined : await readRawBody(req);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.tailscaleGatewayTimeoutMs);
   let response;
   let payload = Buffer.alloc(0);
+  let gatewayBaseUrl;
 
   try {
-    response = await fetch(targetUrl, {
-      method: req.method,
-      headers: proxyRequestHeaders(req, body),
+    ({ response, payload, gatewayBaseUrl } = await fetchGatewayCandidates({
+      gatewayBaseUrls,
+      remotePath,
+      search,
+      req,
       body,
-      redirect: "manual",
       signal: controller.signal,
-      ...(body === undefined ? {} : { duplex: "half" }),
-    });
-
-    if (req.method !== "HEAD") {
-      payload = Buffer.from(await response.arrayBuffer());
-    }
+      retryAttempts: config.gatewayProxyRetryAttempts,
+    }));
+    recordGatewayProxySuccess(gateway.id, gatewayBaseUrl);
   } catch (error) {
-    throw gatewayProxyError(error, targetUrl, config.tailscaleGatewayTimeoutMs);
+    const targetUrl = new URL(`${remotePath}${search}`, `${gatewayBaseUrls[0]}/`);
+    const proxyError = gatewayProxyError(error, targetUrl, config.tailscaleGatewayTimeoutMs);
+    recordGatewayProxyFailure(gateway.id, proxyError);
+    throw proxyError;
   } finally {
     clearTimeout(timeout);
   }
@@ -332,16 +341,145 @@ async function proxyGatewayRemote(req, res, { gateway, proxyBasePath, remotePath
   return res.end(payload);
 }
 
+async function fetchGatewayCandidates({
+  gatewayBaseUrls,
+  remotePath,
+  search,
+  req,
+  body,
+  signal,
+  retryAttempts,
+}) {
+  const idempotent = ["GET", "HEAD"].includes(req.method || "");
+  const attempts = idempotent ? Math.max(1, retryAttempts) : 1;
+  let lastError;
+
+  for (const gatewayBaseUrl of gatewayBaseUrls) {
+    const targetUrl = new URL(`${remotePath}${search}`, `${gatewayBaseUrl}/`);
+
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        const response = await fetch(targetUrl, {
+          method: req.method,
+          headers: proxyRequestHeaders(req, body),
+          body,
+          redirect: "manual",
+          signal,
+          ...(body === undefined ? {} : { duplex: "half" }),
+        });
+        const payload = req.method === "HEAD"
+          ? Buffer.alloc(0)
+          : Buffer.from(await response.arrayBuffer());
+
+        return { response, payload, gatewayBaseUrl };
+      } catch (error) {
+        lastError = error;
+        if (signal.aborted || attempt >= attempts || !isRetryableGatewayError(error)) break;
+        await delay(100 * attempt, signal);
+      }
+    }
+  }
+
+  throw lastError || new Error("No Tailscale gateway endpoint was reachable");
+}
+
+function assertGatewayProxyReady(gatewayId, now = Date.now()) {
+  const state = gatewayProxyStates.get(gatewayId);
+  if (!state || state.nextAttemptAt <= now) return;
+
+  const retryAfterMs = state.nextAttemptAt - now;
+  const error = httpError(503, `Tailscale gateway is temporarily unavailable; retry in ${Math.ceil(retryAfterMs / 1000)}s`);
+  error.retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
+  error.suppressLog = true;
+  throw error;
+}
+
+function recordGatewayProxyFailure(gatewayId, error, now = Date.now()) {
+  const previous = gatewayProxyStates.get(gatewayId);
+  const failures = (previous?.failures ?? 0) + 1;
+  const backoffMs = Math.min(
+    config.gatewayProxyBackoffMaxMs,
+    config.gatewayProxyBackoffBaseMs * (2 ** Math.min(failures - 1, 10)),
+  );
+  const shouldLog = !previous || now - previous.lastLoggedAt >= config.gatewayProxyLogIntervalMs;
+  const suppressed = previous?.suppressed ?? 0;
+
+  gatewayProxyStates.set(gatewayId, {
+    failures,
+    nextAttemptAt: now + backoffMs,
+    lastLoggedAt: shouldLog ? now : previous.lastLoggedAt,
+    suppressed: shouldLog ? 0 : suppressed + 1,
+  });
+  error.suppressLog = true;
+
+  if (shouldLog) {
+    console.warn(`Tailscale gateway ${gatewayId} unreachable: ${error.message}${suppressed ? ` (${suppressed} repeated errors suppressed)` : ""}`);
+  }
+}
+
+function recordGatewayProxySuccess(gatewayId, gatewayBaseUrl) {
+  const previous = gatewayProxyStates.get(gatewayId);
+  if (!previous) return;
+
+  gatewayProxyStates.delete(gatewayId);
+  console.info(`Tailscale gateway ${gatewayId} recovered via ${gatewayBaseUrl} after ${previous.failures} failed request(s)`);
+}
+
+function isRetryableGatewayError(error) {
+  if (!error || error.name === "AbortError") return false;
+  const code = error?.cause?.code || error.code || error?.cause?.errno || error.errno;
+  if ([
+    "EAI_AGAIN",
+    "ECONNABORTED",
+    "ECONNREFUSED",
+    "ECONNRESET",
+    "EHOSTUNREACH",
+    "ENETUNREACH",
+    "EPIPE",
+    "ETIMEDOUT",
+    "UND_ERR_CONNECT_TIMEOUT",
+    "UND_ERR_SOCKET",
+  ].includes(code)) return true;
+
+  return error instanceof TypeError && /fetch failed/i.test(error.message || "");
+}
+
+function delay(ms, signal) {
+  return new Promise((resolve, reject) => {
+    const finish = (error) => {
+      clearTimeout(timer);
+      signal?.removeEventListener?.("abort", onAbort);
+      if (error) reject(error);
+      else resolve();
+    };
+    const onAbort = () => finish(Object.assign(new Error("Request aborted"), { name: "AbortError" }));
+    const timer = setTimeout(() => finish(), ms);
+
+    if (signal?.aborted) onAbort();
+    else signal?.addEventListener?.("abort", onAbort, { once: true });
+  });
+}
+
 function gatewayProxyError(error, targetUrl, timeoutMs) {
   const isTimeout = error?.name === "AbortError"
     || error?.cause?.code === "UND_ERR_CONNECT_TIMEOUT"
-    || error?.code === "UND_ERR_CONNECT_TIMEOUT";
+    || error?.code === "UND_ERR_CONNECT_TIMEOUT"
+    || error?.cause?.code === "ETIMEDOUT"
+    || error?.code === "ETIMEDOUT";
   const statusCode = isTimeout ? 504 : 502;
   const reason = isTimeout
     ? `request timed out after ${timeoutMs}ms`
-    : error?.message || "request failed";
+    : gatewayNetworkErrorReason(error);
 
   return httpError(statusCode, `Cannot reach Tailscale gateway at ${targetUrl}: ${reason}`);
+}
+
+function gatewayNetworkErrorReason(error) {
+  const cause = error?.cause;
+  const code = cause?.code || error?.code || cause?.errno || error?.errno;
+  const message = cause?.message || error?.message || "request failed";
+
+  return code && !String(message).includes(String(code)) ? `${code}: ${message}` : message;
 }
 
 async function readRawBody(req) {

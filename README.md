@@ -84,6 +84,18 @@ Hardware-Server proxies the IPC UI at:
 The admin browser stays on `server.electricbird.vn`; Hardware-Server reaches the IPC over Tailscale.
 IPC login still happens inside the proxied Hardware-Gateway UI.
 
+Transient Tailscale failures on safe `GET`/`HEAD` requests are retried once. Repeated failures use
+an exponential 1-30 second circuit-breaker so background telemetry requests do not flood the
+gateway or the server log. The proxy also tries the stored MagicDNS hostname when the stored
+Tailscale IPv4 endpoint fails. These defaults can be tuned with:
+
+```text
+GATEWAY_PROXY_RETRY_ATTEMPTS=2
+GATEWAY_PROXY_BACKOFF_BASE_MS=1000
+GATEWAY_PROXY_BACKOFF_MAX_MS=30000
+GATEWAY_PROXY_LOG_INTERVAL_MS=60000
+```
+
 ## SQLite Data
 
 Default database path:

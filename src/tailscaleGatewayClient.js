@@ -1,15 +1,25 @@
 export function gatewayTailscaleBaseUrl(gateway) {
+  return gatewayTailscaleBaseUrls(gateway)[0];
+}
+
+export function gatewayTailscaleBaseUrls(gateway) {
   const remote = gateway?.remoteAccess || {};
   if (!remote.enabled) {
     throw gatewayClientError(409, "Tailscale remote access is not enabled for this gateway");
   }
 
-  const endpoint = String(remote.ip || remote.host || "").trim();
-  if (!endpoint) {
+  const endpoints = [...new Set([remote.ip, remote.host]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean))];
+  if (endpoints.length === 0) {
     throw gatewayClientError(409, "Tailscale host or IP is required for this gateway");
   }
 
   const port = positivePort(remote.uiPort || 80);
+  return endpoints.map((endpoint) => endpointBaseUrl(endpoint, port));
+}
+
+function endpointBaseUrl(endpoint, port) {
   const hasScheme = /^[a-z][a-z\d+.-]*:\/\//i.test(endpoint);
   let url;
 
@@ -61,10 +71,18 @@ async function fetchWithTimeout(url, options, timeoutMs = 10000) {
     });
   } catch (error) {
     const statusCode = error?.name === "AbortError" ? 504 : 502;
-    throw gatewayClientError(statusCode, `Cannot reach Tailscale gateway at ${url}: ${error.message}`);
+    throw gatewayClientError(statusCode, `Cannot reach Tailscale gateway at ${url}: ${networkErrorReason(error)}`);
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function networkErrorReason(error) {
+  const cause = error?.cause;
+  const code = cause?.code || error?.code || cause?.errno || error?.errno;
+  const message = cause?.message || error?.message || "request failed";
+
+  return code && !String(message).includes(String(code)) ? `${code}: ${message}` : message;
 }
 
 async function readResponsePayload(response) {
