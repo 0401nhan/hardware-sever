@@ -241,6 +241,30 @@ test("admin remote page proxies the Tailscale gateway UI through the server", as
   assert.match(loginResponse.headers.get("set-cookie") || "", /Path=\/gateways\/GW-TS-PROXY-001\/remote/);
 });
 
+test("admin remote proxy retries an idempotent request after a transient socket failure", async (t) => {
+  const gatewayAdmin = await startFlakyGatewayAdmin(t);
+  const app = await startTestServer(t);
+  const sessionCookie = await login(app);
+
+  await createGateway(app, sessionCookie, {
+    id: "GW-TS-RETRY-001",
+    remoteAccess: {
+      enabled: true,
+      method: "tailscale",
+      host: "127.0.0.1",
+      uiPort: gatewayAdmin.port,
+    },
+  });
+
+  const health = await requestJson(app.baseUrl, "/gateways/GW-TS-RETRY-001/remote/api/health", {
+    cookie: sessionCookie,
+  });
+
+  assert.equal(health.status, 200);
+  assert.equal(health.body.ok, true);
+  assert.equal(gatewayAdmin.requests(), 2);
+});
+
 test("admin remote proxy returns gateway timeout without exiting server", async (t) => {
   const gatewayAdmin = await startHangingGatewayAdmin(t);
   const app = await startTestServer(t, {
@@ -265,6 +289,15 @@ test("admin remote proxy returns gateway timeout without exiting server", async 
   assert.equal(timeout.body.ok, false);
   assert.match(timeout.body.error, /Cannot reach Tailscale gateway/);
   assert.match(timeout.body.error, /timed out/);
+
+  const circuitStartedAt = Date.now();
+  const circuitOpen = await requestJson(app.baseUrl, "/gateways/GW-TS-TIMEOUT-001/remote/", {
+    cookie: sessionCookie,
+  });
+  assert.equal(circuitOpen.status, 503);
+  assert.match(circuitOpen.body.error, /temporarily unavailable/);
+  assert.equal(circuitOpen.headers.get("retry-after"), "1");
+  assert.ok(Date.now() - circuitStartedAt < 75);
 
   const health = await requestJson(app.baseUrl, "/api/health");
   assert.equal(health.status, 200);
@@ -392,6 +425,36 @@ async function startHangingGatewayAdmin(t) {
   return {
     port,
     baseUrl: `http://127.0.0.1:${port}`,
+  };
+}
+
+async function startFlakyGatewayAdmin(t) {
+  let requestCount = 0;
+  const server = http.createServer((req, res) => {
+    requestCount += 1;
+    if (requestCount === 1) {
+      req.socket.destroy();
+      return;
+    }
+
+    sendTestJson(res, 200, {
+      ok: true,
+      time: new Date().toISOString(),
+    });
+  });
+
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  t.after(async () => {
+    await new Promise((resolve) => server.close(resolve));
+  });
+
+  const { port } = server.address();
+  return {
+    port,
+    requests: () => requestCount,
   };
 }
 
