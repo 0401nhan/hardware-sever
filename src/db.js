@@ -107,15 +107,7 @@ function migrateGatewayDirectorySchema(db) {
 
   for (const row of existingRows) {
     const now = new Date().toISOString();
-    const remote = normalizeRemoteAccess({
-      enabled: Boolean(row.remote_access_enabled),
-      method: row.remote_access_method || "tailscale",
-      host: row.tailscale_host || "",
-      ip: row.tailscale_ip || "",
-      uiPort: row.tailscale_ui_port || 80,
-      sshPort: row.tailscale_ssh_port || 22,
-      tag: row.tailscale_tag || "tag:gateway",
-    });
+    const remote = normalizeLegacyRemoteAccess(row);
 
     insert.run(
       String(row.id || "").trim(),
@@ -135,6 +127,35 @@ function migrateGatewayDirectorySchema(db) {
       row.updated_at || now,
     );
   }
+}
+
+function normalizeLegacyRemoteAccess(row) {
+  const host = legacyString(row.tailscale_host);
+  const ip = legacyString(row.tailscale_ip);
+
+  return normalizeRemoteAccess({
+    enabled: legacyBoolean(row.remote_access_enabled) && Boolean(host || ip),
+    method: "tailscale",
+    host,
+    ip,
+    uiPort: legacyPort(row.tailscale_ui_port, 80),
+    sshPort: legacyPort(row.tailscale_ssh_port, 22),
+    tag: legacyString(row.tailscale_tag) || "tag:gateway",
+  });
+}
+
+function legacyString(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function legacyBoolean(value) {
+  if (value === true || value === 1) return true;
+  return ["1", "true", "yes", "on", "enabled"].includes(String(value || "").trim().toLowerCase());
+}
+
+function legacyPort(value, fallback) {
+  const port = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
+  return Number.isInteger(port) && port >= 1 && port <= 65535 ? port : fallback;
 }
 
 function tableExists(db, name) {

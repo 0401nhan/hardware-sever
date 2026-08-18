@@ -209,10 +209,15 @@ test("migration repairs legacy NULL gateway ports before running the health chec
     INSERT INTO gateways (
       id, name, remote_access_enabled, remote_access_method, tailscale_ip,
       tailscale_ui_port, tailscale_ssh_port, status, created_at, updated_at
-    ) VALUES (
-      'legacy-null-port', 'Legacy', 1, 'tailscale', '100.77.152.66',
-      80, NULL, 'online', '2026-08-18T00:00:00.000Z', '2026-08-18T00:00:00.000Z'
-    );
+    ) VALUES
+      (
+        'legacy-null-port', 'Legacy', 1, 'direct-http', '100.77.152.66',
+        70000, NULL, 'online', '2026-08-18T00:00:00.000Z', '2026-08-18T00:00:00.000Z'
+      ),
+      (
+        'legacy-missing-endpoint', 'Missing endpoint', 1, 'ssh', '',
+        80, 22, 'offline', '2026-08-18T00:00:00.000Z', '2026-08-18T00:00:00.000Z'
+      );
     PRAGMA writable_schema = ON;
     UPDATE sqlite_master
     SET sql = REPLACE(
@@ -228,7 +233,11 @@ test("migration repairs legacy NULL gateway ports before running the health chec
   try {
     const migrated = await openDatabase(dbPath, { databaseDriver: "sqljs" });
     try {
-      assert.equal(migrated.getGateway("legacy-null-port").remoteAccess.sshPort, 22);
+      const normalized = migrated.getGateway("legacy-null-port").remoteAccess;
+      assert.equal(normalized.method, "tailscale");
+      assert.equal(normalized.uiPort, 80);
+      assert.equal(normalized.sshPort, 22);
+      assert.equal(migrated.getGateway("legacy-missing-endpoint").remoteAccess.enabled, false);
       assert.equal(migrated.db.prepare("PRAGMA quick_check").get().quick_check, "ok");
     } finally {
       migrated.close();
