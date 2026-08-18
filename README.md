@@ -56,14 +56,17 @@ Do not expose the IPC Hardware-Gateway UI directly to the public Internet.
 
 Hardware-Server can populate the gateway directory from `tailscale status --json`.
 
-On startup, on every `/api/gateways` refresh, and at `TAILSCALE_SYNC_INTERVAL_MS`, it imports online
-Linux peers into SQLite and stores their `100.x.x.x` address as the remote target. Windows peers are
-ignored by default so the server and support laptops do not appear as gateways.
+On startup and at `TAILSCALE_SYNC_INTERVAL_MS`, it imports online Linux peers into SQLite and stores
+their `100.x.x.x` address as the remote target. A `/api/gateways` refresh can request a sync, but it
+reuses an in-flight request and honors the same minimum interval so dashboard polling cannot create
+overlapping Tailscale scans or repeated database writes. Windows peers are ignored by default so the
+server and support laptops do not appear as gateways.
 
 ```bash
 TAILSCALE_SYNC_ENABLED=true
 TAILSCALE_CLI_PATH="C:\Program Files\Tailscale\tailscale.exe"
 TAILSCALE_SYNC_INTERVAL_MS=30000
+TAILSCALE_SYNC_LOG_INTERVAL_MS=60000
 TAILSCALE_SYNC_OS=linux
 TAILSCALE_SYNC_UI_PORT=80
 TAILSCALE_SYNC_SSH_PORT=22
@@ -103,6 +106,12 @@ Default database path:
 ```text
 data/hardware-server.sqlite
 ```
+
+`SQLITE_DRIVER=auto` prefers Node's native SQLite driver when available and falls back to `sql.js`
+on older Node releases. Both use the rollback journal because this service has one process and a
+small gateway directory; the `sql.js` fallback additionally uses atomic file replacement. Do not
+force `sqljs` while a non-empty `hardware-server.sqlite-wal` file exists—start once with
+`SQLITE_DRIVER=node` so native SQLite can recover/checkpoint the old WAL first.
 
 For Docker deployments this should be mounted as persistent storage. The database contains only the
 gateway directory and Tailscale remote metadata.

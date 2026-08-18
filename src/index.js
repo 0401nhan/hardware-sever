@@ -29,6 +29,7 @@ const config = {
   tailscaleGatewayTimeoutMs: positiveIntegerEnv("TAILSCALE_GATEWAY_TIMEOUT_MS", 10000),
   tailscaleSyncEnabled: booleanEnv("TAILSCALE_SYNC_ENABLED", true),
   tailscaleSyncIntervalMs: positiveIntegerEnv("TAILSCALE_SYNC_INTERVAL_MS", 30000),
+  tailscaleSyncLogIntervalMs: positiveIntegerEnv("TAILSCALE_SYNC_LOG_INTERVAL_MS", 60000),
   tailscaleSyncTimeoutMs: positiveIntegerEnv("TAILSCALE_SYNC_TIMEOUT_MS", 5000),
   tailscaleSyncCliPath: process.env.TAILSCALE_CLI_PATH || "",
   tailscaleSyncStatusJson: process.env.TAILSCALE_STATUS_JSON || "",
@@ -47,6 +48,8 @@ let store;
 let server;
 let tailscaleSyncTimer;
 let tailscaleSyncPromise;
+let tailscaleLastSyncAttemptAt = 0;
+let tailscaleSyncFailureState;
 const gatewayProxyStates = new Map();
 
 main().catch((error) => {
@@ -58,6 +61,7 @@ async function main() {
   store = await openDatabase(config.dbPath, {
     offlineAfterMs: config.gatewayOfflineAfterMs,
   });
+  console.info(`SQLite ready (${store.databaseDriver}) at ${config.dbPath}`);
   startTailscaleSyncLoop();
 
   server = http.createServer(async (req, res) => {
@@ -706,47 +710,92 @@ function startTailscaleSyncLoop() {
   if (!config.tailscaleSyncEnabled) return;
 
   syncTailscaleGatewaysIfEnabled("startup").catch((error) => {
-    console.warn("Tailscale gateway sync failed:", error.message);
+    recordTailscaleSyncFailure(error);
   });
 
   tailscaleSyncTimer = setInterval(() => {
     syncTailscaleGatewaysIfEnabled("interval").catch((error) => {
-      console.warn("Tailscale gateway sync failed:", error.message);
+      recordTailscaleSyncFailure(error);
     });
   }, config.tailscaleSyncIntervalMs);
   tailscaleSyncTimer.unref?.();
 }
 
-async function syncTailscaleGatewaysIfEnabled(_reason, { force = false } = {}) {
+async function syncTailscaleGatewaysIfEnabled(reason, { force = false } = {}) {
   if (!config.tailscaleSyncEnabled) return null;
-  if (tailscaleSyncPromise && !force) return tailscaleSyncPromise;
+  if (tailscaleSyncPromise) return tailscaleSyncPromise;
 
-  tailscaleSyncPromise = syncTailscaleGateways({
-    store,
-    includeOffline: config.tailscaleSyncIncludeOffline,
-    allowedOs: config.tailscaleSyncAllowedOs,
-    uiPort: config.tailscaleSyncUiPort,
-    sshPort: config.tailscaleSyncSshPort,
-    tag: config.tailscaleSyncTag,
-    readStatus: () => readTailscaleStatusJson({
-      cliPath: config.tailscaleSyncCliPath,
-      statusJson: config.tailscaleSyncStatusJson,
-      timeoutMs: config.tailscaleSyncTimeoutMs,
-    }),
-  }).catch((error) => ({
-    ok: false,
-    synced: 0,
-    gateways: [],
-    error: error.message,
-  })).finally(() => {
-    tailscaleSyncPromise = null;
-  });
+  const now = Date.now();
+  const elapsedSinceLastAttempt = now - tailscaleLastSyncAttemptAt;
+  if (!force && tailscaleLastSyncAttemptAt && elapsedSinceLastAttempt < config.tailscaleSyncIntervalMs) {
+    return {
+      ok: true,
+      skipped: true,
+      reason: "interval",
+      retryInMs: config.tailscaleSyncIntervalMs - elapsedSinceLastAttempt,
+    };
+  }
+  tailscaleLastSyncAttemptAt = now;
+
+  tailscaleSyncPromise = Promise.resolve()
+    .then(() => syncTailscaleGateways({
+      store,
+      includeOffline: config.tailscaleSyncIncludeOffline,
+      allowedOs: config.tailscaleSyncAllowedOs,
+      uiPort: config.tailscaleSyncUiPort,
+      sshPort: config.tailscaleSyncSshPort,
+      tag: config.tailscaleSyncTag,
+      readStatus: () => readTailscaleStatusJson({
+        cliPath: config.tailscaleSyncCliPath,
+        statusJson: config.tailscaleSyncStatusJson,
+        timeoutMs: config.tailscaleSyncTimeoutMs,
+      }),
+    }))
+    .catch((error) => ({
+      ok: false,
+      synced: 0,
+      gateways: [],
+      error: error.message,
+    }))
+    .finally(() => {
+      tailscaleSyncPromise = null;
+    });
 
   const result = await tailscaleSyncPromise;
   if (result?.ok === false) {
-    console.warn("Tailscale gateway sync failed:", result.error);
+    recordTailscaleSyncFailure(result.error, Date.now(), reason);
+  } else {
+    recordTailscaleSyncSuccess();
   }
   return result;
+}
+
+function recordTailscaleSyncFailure(error, now = Date.now(), reason = "unknown") {
+  const message = String(error?.message || error || "Unknown Tailscale sync error");
+  const previous = tailscaleSyncFailureState;
+  const repeated = previous?.message === message;
+  const shouldLog = !repeated || now - previous.lastLoggedAt >= config.tailscaleSyncLogIntervalMs;
+  const suppressed = repeated ? previous.suppressed : 0;
+
+  tailscaleSyncFailureState = {
+    message,
+    failures: repeated ? previous.failures + 1 : 1,
+    lastLoggedAt: shouldLog ? now : previous.lastLoggedAt,
+    suppressed: shouldLog ? 0 : suppressed + 1,
+  };
+
+  if (shouldLog) {
+    console.warn(
+      `Tailscale gateway sync failed (${reason}): ${message}`
+        + (suppressed ? ` (${suppressed} repeated errors suppressed)` : ""),
+    );
+  }
+}
+
+function recordTailscaleSyncSuccess() {
+  if (!tailscaleSyncFailureState) return;
+  console.info(`Tailscale gateway sync recovered after ${tailscaleSyncFailureState.failures} failed attempt(s)`);
+  tailscaleSyncFailureState = undefined;
 }
 
 function sendJson(res, statusCode, payload, headers = {}) {

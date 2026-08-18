@@ -133,6 +133,55 @@ test("migrates legacy sqlite data into the compact gateway directory", async () 
   }
 });
 
+test("sql.js fallback uses rollback journal and persists through atomic snapshots", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hardware-server-sqljs-"));
+  const dbPath = path.join(dir, "hardware-server.sqlite");
+  let store = await openDatabase(dbPath, { databaseDriver: "sqljs" });
+
+  try {
+    assert.equal(store.databaseDriver, "sqljs");
+    assert.equal(store.db.prepare("PRAGMA journal_mode").get().journal_mode, "delete");
+    store.upsertGateway({
+      id: "moxa",
+      remoteAccess: {
+        enabled: true,
+        ip: "100.77.152.66",
+      },
+    });
+  } finally {
+    store.close();
+  }
+
+  store = await openDatabase(dbPath, { databaseDriver: "sqljs" });
+  try {
+    assert.equal(store.getGateway("moxa").remoteAccess.ip, "100.77.152.66");
+    assert.deepEqual(
+      fs.readdirSync(dir).filter((name) => name.endsWith(".tmp")),
+      [],
+    );
+  } finally {
+    store.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("sql.js fallback refuses to ignore a non-empty native WAL file", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hardware-server-wal-"));
+  const dbPath = path.join(dir, "hardware-server.sqlite");
+  const seed = await openDatabase(dbPath, { databaseDriver: "sqljs" });
+  seed.close();
+  fs.writeFileSync(`${dbPath}-wal`, "pending native WAL data");
+
+  try {
+    await assert.rejects(
+      openDatabase(dbPath, { databaseDriver: "sqljs" }),
+      /Cannot safely open .* with sql\.js while .* contains WAL data/,
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 function tableExists(store, name) {
   return Boolean(store.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?").get(name));
 }
