@@ -12,7 +12,6 @@ const DEFAULT_GATEWAY_OFFLINE_AFTER_MS = 90_000;
 export async function openDatabase(dbPath, options = {}) {
   fs.mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true });
   const { db, driver } = await openSqliteDatabase(dbPath, options.databaseDriver);
-  assertDatabaseHealthy(db, dbPath);
 
   db.exec(`
     PRAGMA journal_mode = DELETE;
@@ -21,14 +20,29 @@ export async function openDatabase(dbPath, options = {}) {
     PRAGMA foreign_keys = OFF;
   `);
 
-  migrateGatewayDirectorySchema(db);
-
-  db.exec(`
-    PRAGMA foreign_keys = ON;
-
-    CREATE INDEX IF NOT EXISTS idx_gateways_status_seen
-      ON gateways(status, last_seen_at);
-  `);
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    migrateGatewayDirectorySchema(db);
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_gateways_status_seen
+        ON gateways(status, last_seen_at);
+    `);
+    assertDatabaseHealthy(db, dbPath);
+    db.exec("COMMIT");
+  } catch (error) {
+    try {
+      db.exec("ROLLBACK");
+    } catch {
+      // Preserve the migration or health-check error that triggered rollback.
+    }
+    try {
+      db.exec("PRAGMA foreign_keys = ON;");
+    } catch {
+      // Preserve the migration or health-check error.
+    }
+    throw error;
+  }
+  db.exec("PRAGMA foreign_keys = ON;");
 
   return new HardwareStore(db, {
     ...options,

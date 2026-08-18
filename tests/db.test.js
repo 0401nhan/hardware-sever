@@ -182,6 +182,62 @@ test("sql.js fallback refuses to ignore a non-empty native WAL file", async () =
   }
 });
 
+test("migration repairs legacy NULL gateway ports before running the health check", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hardware-server-null-port-"));
+  const dbPath = path.join(dir, "hardware-server.sqlite");
+  const seed = await openDatabase(dbPath, { databaseDriver: "sqljs" });
+
+  seed.db.exec(`
+    DROP TABLE gateways;
+    CREATE TABLE gateways (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      site TEXT,
+      remote_access_enabled INTEGER,
+      remote_access_method TEXT,
+      tailscale_host TEXT,
+      tailscale_ip TEXT,
+      tailscale_ui_port INTEGER,
+      tailscale_ssh_port INTEGER,
+      tailscale_tag TEXT,
+      status TEXT,
+      last_seen_at TEXT,
+      app_version TEXT,
+      created_at TEXT,
+      updated_at TEXT
+    );
+    INSERT INTO gateways (
+      id, name, remote_access_enabled, remote_access_method, tailscale_ip,
+      tailscale_ui_port, tailscale_ssh_port, status, created_at, updated_at
+    ) VALUES (
+      'legacy-null-port', 'Legacy', 1, 'tailscale', '100.77.152.66',
+      80, NULL, 'online', '2026-08-18T00:00:00.000Z', '2026-08-18T00:00:00.000Z'
+    );
+    PRAGMA writable_schema = ON;
+    UPDATE sqlite_master
+    SET sql = REPLACE(
+      sql,
+      'tailscale_ssh_port INTEGER,',
+      'tailscale_ssh_port INTEGER NOT NULL,'
+    )
+    WHERE type = 'table' AND name = 'gateways';
+    PRAGMA writable_schema = OFF;
+  `);
+  seed.close();
+
+  try {
+    const migrated = await openDatabase(dbPath, { databaseDriver: "sqljs" });
+    try {
+      assert.equal(migrated.getGateway("legacy-null-port").remoteAccess.sshPort, 22);
+      assert.equal(migrated.db.prepare("PRAGMA quick_check").get().quick_check, "ok");
+    } finally {
+      migrated.close();
+    }
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 function tableExists(store, name) {
   return Boolean(store.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?").get(name));
 }
