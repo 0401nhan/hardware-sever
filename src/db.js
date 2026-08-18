@@ -11,10 +11,13 @@ const DEFAULT_GATEWAY_OFFLINE_AFTER_MS = 90_000;
 
 export async function openDatabase(dbPath, options = {}) {
   fs.mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true });
-  const db = await openSqliteDatabase(dbPath);
+  const { db, driver } = await openSqliteDatabase(dbPath, options.databaseDriver);
+  assertDatabaseHealthy(db, dbPath);
 
   db.exec(`
-    PRAGMA journal_mode = WAL;
+    PRAGMA journal_mode = DELETE;
+    PRAGMA synchronous = FULL;
+    PRAGMA busy_timeout = 5000;
     PRAGMA foreign_keys = OFF;
   `);
 
@@ -27,7 +30,10 @@ export async function openDatabase(dbPath, options = {}) {
       ON gateways(status, last_seen_at);
   `);
 
-  return new HardwareStore(db, options);
+  return new HardwareStore(db, {
+    ...options,
+    databaseDriver: driver,
+  });
 }
 
 function migrateGatewayDirectorySchema(db) {
@@ -126,10 +132,12 @@ export class HardwareStore {
   constructor(db, {
     offlineAfterMs = DEFAULT_GATEWAY_OFFLINE_AFTER_MS,
     now = () => Date.now(),
+    databaseDriver = "unknown",
   } = {}) {
     this.db = db;
     this.offlineAfterMs = positiveInteger(offlineAfterMs, DEFAULT_GATEWAY_OFFLINE_AFTER_MS);
     this.now = now;
+    this.databaseDriver = databaseDriver;
   }
 
   listGateways() {
@@ -300,12 +308,29 @@ function positiveInteger(value, fallback) {
   return Number.isInteger(number) && number > 0 ? number : fallback;
 }
 
-async function openSqliteDatabase(dbPath) {
-  if (process.env.SQLITE_DRIVER === "node") {
-    const { DatabaseSync } = await import("node:sqlite");
-    return new DatabaseSync(dbPath);
+async function openSqliteDatabase(dbPath, configuredDriver = process.env.SQLITE_DRIVER) {
+  const requestedDriver = normalizeDatabaseDriver(configuredDriver);
+
+  if (requestedDriver !== "sqljs") {
+    let DatabaseSync;
+
+    try {
+      ({ DatabaseSync } = await import("node:sqlite"));
+    } catch (error) {
+      if (requestedDriver === "node") {
+        throw new Error(`SQLITE_DRIVER=node requires a Node.js release with node:sqlite support: ${error.message}`);
+      }
+    }
+
+    if (DatabaseSync) {
+      return {
+        db: new DatabaseSync(dbPath),
+        driver: "node",
+      };
+    }
   }
 
+  assertSqlJsCanOpenDatabase(dbPath);
   const wasmPath = require.resolve("sql.js/dist/sql-wasm.wasm");
   const SQL = await initSqlJs({
     locateFile: () => wasmPath,
@@ -314,7 +339,40 @@ async function openSqliteDatabase(dbPath) {
     ? fs.readFileSync(dbPath)
     : null;
 
-  return new SqlJsDatabase(SQL, dbPath, existingDatabase);
+  return {
+    db: new SqlJsDatabase(SQL, dbPath, existingDatabase),
+    driver: "sqljs",
+  };
+}
+
+function assertDatabaseHealthy(db, dbPath) {
+  let result;
+
+  try {
+    result = db.prepare("PRAGMA quick_check").get();
+  } catch (error) {
+    throw new Error(`SQLite health check failed for ${path.resolve(dbPath)}: ${error.message}`, { cause: error });
+  }
+
+  if (result?.quick_check === "ok") return;
+  throw new Error(`SQLite health check failed for ${path.resolve(dbPath)}: ${result?.quick_check || "unknown error"}`);
+}
+
+function normalizeDatabaseDriver(value) {
+  const driver = String(value || "auto").trim().toLowerCase();
+  if (driver === "auto" || driver === "node") return driver;
+  if (["sqljs", "sql.js", "wasm"].includes(driver)) return "sqljs";
+  throw new Error(`Unsupported SQLITE_DRIVER=${value}; expected auto, node, or sqljs`);
+}
+
+function assertSqlJsCanOpenDatabase(dbPath) {
+  const walPath = `${dbPath}-wal`;
+  if (!fs.existsSync(walPath) || fs.statSync(walPath).size === 0) return;
+
+  throw new Error(
+    `Cannot safely open ${dbPath} with sql.js while ${walPath} contains WAL data. `
+      + "Use SQLITE_DRIVER=node to checkpoint the database before using the sql.js fallback.",
+  );
 }
 
 class SqlJsDatabase {
@@ -324,6 +382,7 @@ class SqlJsDatabase {
       ? new SQL.Database(new Uint8Array(existingDatabase))
       : new SQL.Database();
     this.transactionDepth = 0;
+    this.saveSequence = 0;
     this.closed = false;
   }
 
@@ -346,15 +405,17 @@ class SqlJsDatabase {
 
   runPrepared(sql, params) {
     const statement = this.db.prepare(sql);
+    let result;
 
     try {
       statement.run(normalizeSqlParams(params));
-      const result = this.#lastWriteResult();
-      this.#afterSql(sql);
-      return result;
+      result = this.#lastWriteResult();
     } finally {
       statement.free();
     }
+
+    this.#afterSql(sql);
+    return result;
   }
 
   getPrepared(sql, params) {
@@ -409,7 +470,36 @@ class SqlJsDatabase {
 
   #save() {
     if (this.closed) return;
-    fs.writeFileSync(this.dbPath, Buffer.from(this.db.export()));
+    const targetPath = path.resolve(this.dbPath);
+    const tempPath = path.join(
+      path.dirname(targetPath),
+      `.${path.basename(targetPath)}.${process.pid}.${this.saveSequence += 1}.tmp`,
+    );
+    let descriptor;
+
+    try {
+      descriptor = fs.openSync(tempPath, "w", 0o600);
+      fs.writeFileSync(descriptor, Buffer.from(this.db.export()));
+      fs.fsyncSync(descriptor);
+      fs.closeSync(descriptor);
+      descriptor = undefined;
+      fs.renameSync(tempPath, targetPath);
+    } catch (error) {
+      throw new Error(`Failed to persist SQLite database ${targetPath}: ${error.message}`, { cause: error });
+    } finally {
+      if (descriptor !== undefined) {
+        try {
+          fs.closeSync(descriptor);
+        } catch {
+          // Preserve the original persistence error.
+        }
+      }
+      try {
+        fs.unlinkSync(tempPath);
+      } catch {
+        // The destination is already safe; a stale temp file can be cleaned later.
+      }
+    }
   }
 }
 
